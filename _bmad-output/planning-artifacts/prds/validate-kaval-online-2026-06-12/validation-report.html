@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PRD Validation: Kaval Online</title>
+<style>
+  :root {
+    --bg: #fafaf9; --surface: #ffffff; --border: #e7e5e4; --text: #1c1917; --muted: #78716c;
+    --verdict-strong: #16a34a; --verdict-adequate: #65a30d; --verdict-thin: #d97706; --verdict-broken: #dc2626;
+    --sev-low: #64748b; --sev-medium: #ca8a04; --sev-high: #ea580c; --sev-critical: #dc2626;
+    --grade-poor: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px; margin: 0; }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+  header.report-header { display: flex; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, monospace; }
+  .grade { padding: 10px 18px; border-radius: 8px; font-weight: 600; color: white; background: var(--grade-poor); }
+  .synthesis { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--muted); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; }
+  .dimension-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 24px; }
+  .dim-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .dim-name { font-size: 13px; color: var(--muted); }
+  .dim-verdict { font-size: 14px; font-weight: 600; }
+  section details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
+  summary { padding: 14px 20px; cursor: pointer; list-style: none; display: flex; align-items: center; gap: 12px; }
+  summary::-webkit-details-marker { display: none; }
+  .verdict-pill { font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 600; text-transform: uppercase; color: white; }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-broken { background: var(--verdict-broken); }
+  .details-body { padding: 0 20px 18px; }
+  .finding { margin: 12px 0; padding: 12px; background: #fafaf9; border-radius: 6px; border-left: 3px solid var(--border); }
+  .finding.critical { border-left-color: var(--sev-critical); }
+  .finding.high { border-left-color: var(--sev-high); }
+  .sev { font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="container">
+<header class="report-header">
+  <div class="title">
+    <h1>PRD Validation: Kaval Online</h1>
+    <div class="subtitle">docs/Kaaval_Online_PRD.docx.pdf</div>
+  </div>
+  <div class="grade grade-poor">Poor</div>
+</header>
+
+<div class="synthesis">
+  <p>The PDF PRD captures a credible NGO case-management domain but is <strong>not build-ready</strong>. Scope honesty and downstream usability are broken; problem-statement pains (duplicates, handovers) lack testable FRs; Excel sync contradicts the cloud-first thesis.</p>
+  <p>Adversarial review flags POCSO/minor-data privacy and performance-reporting risks. Reconcile via <strong>Update</strong> using <code>_bmad-output/specs/spec-kaval-online/SPEC.md</code> as the change signal.</p>
+</div>
+
+<div class="dimension-summary">
+  <div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color:var(--verdict-thin)">Thin</div></div>
+  <div class="dim-card"><div class="dim-name">Substance</div><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></div>
+  <div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color:var(--verdict-adequate)">Adequate</div></div>
+  <div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color:var(--verdict-thin)">Thin</div></div>
+  <div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color:var(--verdict-broken)">Broken</div></div>
+  <div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color:var(--verdict-broken)">Broken</div></div>
+  <div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color:var(--verdict-thin)">Thin</div></div>
+</div>
+
+<section class="dimension">
+<details open><summary><h2>Scope honesty</h2><span class="verdict-pill verdict-broken">Broken</span></summary>
+<div class="details-body">
+  <div class="finding critical"><span class="sev" style="color:var(--sev-critical)">Critical</span> — No MVP boundary in §4.1. AI, portal, budget, integrations undifferentiated from v1 core.</div>
+  <div class="finding critical"><span class="sev" style="color:var(--sev-critical)">Critical</span> — No explicit Non-Goals section.</div>
+  <div class="finding high"><span class="sev" style="color:var(--sev-high)">High</span> — Offline vs always-connected not decided.</div>
+</div></details>
+</section>
+
+<section class="dimension">
+<details open><summary><h2>Downstream usability</h2><span class="verdict-pill verdict-broken">Broken</span></summary>
+<div class="details-body">
+  <div class="finding critical"><span class="sev" style="color:var(--sev-critical)">Critical</span> — No FR-1…FR-N IDs; epics cannot trace.</div>
+  <div class="finding high"><span class="sev" style="color:var(--sev-high)">High</span> — No user journeys for five-role, two-surface product.</div>
+  <div class="finding high"><span class="sev" style="color:var(--sev-high)">High</span> — No glossary (ICP, PMA, ST, Legends).</div>
+</div></details>
+</section>
+
+<section class="dimension">
+<details open><summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-thin">Thin</span></summary>
+<div class="details-body">
+  <div class="finding critical"><span class="sev" style="color:var(--sev-critical)">Critical</span> — §5 lacks testable consequences per requirement.</div>
+  <div class="finding high"><span class="sev" style="color:var(--sev-high)">High</span> — Court miss escalation absent (reminders only).</div>
+  <div class="finding high"><span class="sev" style="color:var(--sev-high)">High</span> — Case handover not in FRs despite §2.1 pain.</div>
+</div></details>
+</section>
+
+<section class="reviewer-section">
+<details><summary><h2>Adversarial review</h2></summary>
+<div class="details-body">
+  <div class="finding critical"><span class="sev" style="color:var(--sev-critical)">Critical</span> — POCSO/minor data: no privacy or discreet-capture requirements.</div>
+  <div class="finding high"><span class="sev" style="color:var(--sev-high)">High</span> — WhatsApp: problem vs notification channel unresolved.</div>
+  <div class="finding high"><span class="sev" style="color:var(--sev-high)">High</span> — Staff performance report risks perverse incentives.</div>
+</div></details>
+</section>
+
+<footer>
+  Rubric: prd-validation-checklist.md · Run: 2026-06-12 · Workspace: validate-kaval-online-2026-06-12
+</footer>
+</div>
+</body>
+</html>

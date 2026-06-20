@@ -1,0 +1,62 @@
+# Build
+**/bin/
+**/obj/
+**/dist/
+**/out/
+*.user
+*.suo
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# React Native
+apps/mobile/.metro-health-check*
+apps/mobile/android/.gradle/
+apps/mobile/android/app/build/
+apps/mobile/android/app/.cxx/
+apps/mobile/android/build/
+apps/mobile/android/local.properties
+apps/mobile/android/.idea/
+apps/mobile/android/*.iml
+apps/mobile/android/app/*.iml
+
+# Environment
+.env
+.env.local
+infra/.env
+
+# IDE
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+coverage/
+TestResults/
+*.trx
+
+# Angular PWA
+apps/web/dist/
+
+# Playwright
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+
+# Misc
+*.log

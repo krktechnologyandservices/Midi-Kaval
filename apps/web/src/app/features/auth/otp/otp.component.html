@@ -1,0 +1,56 @@
+<mat-card class="auth-card">
+  <mat-card-header>
+    <mat-card-title>Verification code</mat-card-title>
+    <mat-card-subtitle>Enter the 6-digit code from your email.</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (secondsRemaining() > 0) {
+      <p class="hint">Code expires in {{ secondsRemaining() }} seconds.</p>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>6-digit code</mat-label>
+        <input
+          matInput
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          formControlName="code"
+        />
+        @if (form.controls.code.hasError('required') && form.controls.code.touched) {
+          <mat-error>Code is required</mat-error>
+        }
+        @if (form.controls.code.hasError('pattern') && form.controls.code.touched) {
+          <mat-error>Enter a 6-digit code</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="aria-live" aria-live="polite" aria-atomic="true">
+        @if (errorMessage()) {
+          <p class="error-text" role="alert">{{ errorMessage() }}</p>
+        }
+        @if (expiredMessage()) {
+          <p class="error-text" role="alert">{{ expiredMessage() }}</p>
+        }
+      </div>
+
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        [disabled]="submitting() || !!expiredMessage()"
+      >
+        {{ submitting() ? 'Verifying…' : 'Verify' }}
+      </button>
+    </form>
+
+    @if (expiredMessage()) {
+      <p class="resend">
+        <a mat-button routerLink="/login">Request new code</a>
+      </p>
+    }
+  </mat-card-content>
+</mat-card>

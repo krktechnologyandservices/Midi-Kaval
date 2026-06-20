@@ -1,0 +1,131 @@
+<section class="court-sittings" aria-label="Case court sittings">
+  <h3>Court sittings</h3>
+
+  @if (loading()) {
+    <p>Loading court sittings…</p>
+  } @else if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+    <button mat-stroked-button type="button" (click)="loadCourtSittings()">Retry</button>
+  } @else {
+    @if (items().length === 0) {
+      <p class="empty-state">No court sittings yet.</p>
+    } @else {
+      <ul class="sitting-list">
+        @for (item of items(); track item.id) {
+          <li class="sitting-item" [class.past-due]="isPastDue(item)">
+            <div class="row-header">
+              <span class="chip" [class]="statusChipClass(item.status)">{{ item.status }}</span>
+              @if (isPastDue(item)) {
+                <span class="chip overdue">Overdue</span>
+              }
+            </div>
+            <p class="court-name">{{ item.courtName }}</p>
+            <p class="purpose">{{ item.purpose }}</p>
+            <p class="meta">
+              Scheduled {{ formatTimestamp(item.scheduledAtUtc) }}
+              @if (item.nextCourtAtUtc) {
+                · Next court {{ formatTimestamp(item.nextCourtAtUtc) }}
+              }
+            </p>
+            @if (item.notes) {
+              <p class="notes">Notes: {{ item.notes }}</p>
+            }
+            @if (item.outcome) {
+              <p class="outcome">Outcome: {{ item.outcome }}</p>
+            }
+
+            @if (updatingId() === item.id) {
+              <form class="update-form" [formGroup]="updateForm" (ngSubmit)="submitUpdate(item)">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Status</mat-label>
+                  <mat-select formControlName="status">
+                    @for (status of statuses; track status) {
+                      <mat-option [value]="status">{{ status }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Scheduled date</mat-label>
+                  <input matInput type="datetime-local" formControlName="scheduledAtLocal" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Court name</mat-label>
+                  <input matInput formControlName="courtName" maxlength="256" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Purpose</mat-label>
+                  <textarea matInput rows="2" formControlName="purpose" maxlength="512"></textarea>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Notes</mat-label>
+                  <textarea matInput rows="2" formControlName="notes" maxlength="2000"></textarea>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Outcome</mat-label>
+                  <textarea matInput rows="2" formControlName="outcome" maxlength="2000"></textarea>
+                </mat-form-field>
+                @if (updateForm.controls.status.value === 'Postponed') {
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Next court date (optional)</mat-label>
+                    <input matInput type="datetime-local" formControlName="nextCourtAtLocal" />
+                  </mat-form-field>
+                }
+                <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">Save</button>
+                <button mat-button type="button" (click)="cancelUpdate()">Cancel</button>
+              </form>
+            } @else {
+              <button mat-stroked-button type="button" (click)="startUpdate(item)">Update</button>
+            }
+          </li>
+        }
+      </ul>
+    }
+  }
+
+  <form class="add-form" [formGroup]="addForm" (ngSubmit)="submitAdd()">
+    <h4>Add court sitting</h4>
+    @if (formErrorMessage()) {
+      <p class="error">{{ formErrorMessage() }}</p>
+    }
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Status</mat-label>
+      <mat-select formControlName="status">
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ status }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Scheduled date</mat-label>
+      <input matInput type="datetime-local" formControlName="scheduledAtLocal" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Court name</mat-label>
+      <input matInput formControlName="courtName" maxlength="256" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Purpose</mat-label>
+      <textarea matInput rows="2" formControlName="purpose" maxlength="512"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Notes (optional)</mat-label>
+      <textarea matInput rows="2" formControlName="notes" maxlength="2000"></textarea>
+    </mat-form-field>
+
+    @if (addForm.controls.status.value === 'Attended') {
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Outcome</mat-label>
+        <textarea matInput rows="2" formControlName="outcome" maxlength="2000"></textarea>
+      </mat-form-field>
+    }
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting() || addForm.invalid">
+      {{ submitting() ? 'Saving…' : 'Add court sitting' }}
+    </button>
+  </form>
+</section>

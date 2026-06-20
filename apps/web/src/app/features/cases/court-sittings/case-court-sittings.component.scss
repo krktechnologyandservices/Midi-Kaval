@@ -1,0 +1,88 @@
+.court-sittings {
+  margin-top: 1.5rem;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.error {
+  color: var(--mat-sys-error, #b3261e);
+}
+
+.empty-state {
+  color: var(--mat-sys-on-surface-variant, #49454f);
+}
+
+.sitting-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.sitting-item {
+  border: 1px solid var(--mat-sys-outline-variant, #cac4d0);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.sitting-item.past-due {
+  border-color: #b54708;
+  border-left-width: 4px;
+  background: color-mix(in srgb, #b54708 8%, transparent);
+}
+
+.row-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--mat-sys-surface-container-high, #ece6f0);
+}
+
+.chip-upcoming {
+  background: #e8f0fe;
+}
+
+.chip-attended {
+  background: #e6f4ea;
+}
+
+.chip-postponed {
+  background: #f3e8fd;
+}
+
+.chip.overdue {
+  background: #b54708;
+  color: #fff;
+}
+
+.court-name {
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.purpose,
+.meta,
+.notes,
+.outcome {
+  margin: 0.25rem 0;
+}
+
+.update-form {
+  margin-top: 0.75rem;
+}
+
+.add-form {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant, #cac4d0);
+}

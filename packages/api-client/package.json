@@ -1,0 +1,17 @@
+{
+  "name": "@midi-kaval/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenAPI-generated TypeScript client for Midi Kaval API. Do not hand-edit src/generated/.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "build": "tsc",
+    "test": "npm run build"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.6.1",
+    "typescript": "~5.7.2"
+  }
+}

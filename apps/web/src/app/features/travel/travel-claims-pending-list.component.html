@@ -1,0 +1,29 @@
+<section class="travel-pending" aria-label="Pending travel claims">
+  <header class="header">
+    <h1>Travel claims</h1>
+    <a mat-button routerLink="/admin">Back to Admin</a>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-spinner mode="indeterminate" diameter="40" aria-label="Loading claims"></mat-progress-spinner>
+  } @else if (errorMessage()) {
+    <p class="error" role="alert">{{ errorMessage() }}</p>
+    <button mat-stroked-button type="button" (click)="load()">Retry</button>
+  } @else if (items().length === 0) {
+    <p class="empty-state">No claims awaiting approval</p>
+  } @else {
+    <ul class="claim-list">
+      @for (claim of items(); track claim.id) {
+        <li>
+          <a mat-stroked-button class="claim-row" [routerLink]="['/admin/travel-claims', claim.id]">
+            <span class="primary">{{ claim.claimDate | date: 'mediumDate' }} · {{ claim.claimantEmail }}</span>
+            <span class="secondary">
+              {{ claim.destination }} · {{ claim.transportMode }} · ₹{{ claim.amount }} ·
+              {{ receiptCount(claim) }} receipt(s)
+            </span>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</section>

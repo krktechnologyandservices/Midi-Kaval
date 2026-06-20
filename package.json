@@ -1,0 +1,34 @@
+{
+  "name": "midi-kaval",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/mobile",
+    "packages/*",
+    "tests/e2e"
+  ],
+  "scripts": {
+    "build:shared-types": "npm run build -w @midi-kaval/shared-types",
+    "start:web": "npm run build:shared-types && npm run start -w web",
+    "start:mobile": "npm run build:shared-types && npm run start -w @midi-kaval/mobile",
+    "android:mobile": "npm run android -w @midi-kaval/mobile",
+    "mobile:usb": "adb reverse tcp:8081 tcp:8081 && adb reverse tcp:5049 tcp:5049 && adb reverse --list",
+    "test:web": "npm run test -w web",
+    "test:mobile": "npm run test -w @midi-kaval/mobile",
+    "test:api": "dotnet test Midi-Kaval.slnx",
+    "test:api:unit": "dotnet test tests/api.unit/MidiKaval.Api.UnitTests.csproj",
+    "test:api:integration": "dotnet test tests/api.integration/MidiKaval.Api.IntegrationTests.csproj",
+    "test:api:cases": "dotnet test tests/api.integration/MidiKaval.Api.IntegrationTests.csproj --filter FullyQualifiedName~Case",
+    "test:api:auth": "dotnet test tests/api.integration/MidiKaval.Api.IntegrationTests.csproj --filter FullyQualifiedName~Auth",
+    "test:clients": "npm run test:web && npm run test:mobile",
+    "test:all": "npm run test:web && npm run test:mobile && npm run test:api",
+    "generate:api-client": "npm run generate -w @midi-kaval/api-client"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@angular/compiler": "^19.2.0"
+  }
+}

@@ -1,0 +1,38 @@
+<h2 mat-dialog-title id="duplicate-match-sheet-title">Possible match — review before saving.</h2>
+
+<div class="aria-live" aria-live="polite" aria-atomic="true">{{ announcement() }}</div>
+
+<mat-dialog-content role="document">
+  @for (match of data.matches; track match.caseId) {
+    <section class="match-row" [attr.aria-label]="'Match for ' + (match.beneficiaryName ?? 'case')">
+      <p><strong>Crime:</strong> {{ match.crimeNumber }}</p>
+      <p><strong>ST:</strong> {{ match.stNumber }}</p>
+      <p><strong>Beneficiary:</strong> {{ match.beneficiaryName }}</p>
+      <p><strong>Stage:</strong> {{ match.currentStage }}</p>
+      <p class="matched-on">{{ formatMatchedOn(match.matchedOn) }}</p>
+
+      @if (isConfirming(match)) {
+        <p class="confirm-copy">Merge this intake into the existing case?</p>
+        <div class="row-actions">
+          <button mat-stroked-button type="button" (click)="cancelMergeConfirm()">Back</button>
+          <button mat-flat-button color="primary" type="button" (click)="confirmMerge(match)">
+            Confirm merge
+          </button>
+        </div>
+      } @else {
+        <div class="row-actions">
+          <button mat-stroked-button type="button" (click)="openExisting(match)">Open existing</button>
+          @if (data.canMerge) {
+            <button mat-flat-button color="primary" type="button" (click)="startMergeConfirm(match)">
+              Merge
+            </button>
+          }
+        </div>
+      }
+    </section>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+</mat-dialog-actions>

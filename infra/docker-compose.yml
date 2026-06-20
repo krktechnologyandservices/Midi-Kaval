@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: midi-kaval-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: kaval
+      POSTGRES_PASSWORD: kaval_dev
+      POSTGRES_DB: kaval_dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kaval -d kaval_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: midi-kaval-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.34.0
+    container_name: midi-kaval-azurite
+    ports:
+      - "10000:10000"
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000

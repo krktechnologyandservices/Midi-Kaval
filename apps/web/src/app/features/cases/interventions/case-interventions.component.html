@@ -1,0 +1,124 @@
+<section class="interventions" aria-label="Case interventions">
+  <h3>Interventions</h3>
+
+  @if (loading()) {
+    <p>Loading interventions…</p>
+  } @else if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+    <button mat-stroked-button type="button" (click)="loadInterventions()">Retry</button>
+  } @else {
+    @if (items().length === 0) {
+      <p class="empty-state">No interventions yet.</p>
+    } @else {
+      <ul class="intervention-list">
+        @for (item of items(); track item.id) {
+          <li class="intervention-item" [class.overdue]="isOverdue(item)">
+            <div class="row-header">
+              <span class="chip direction">{{ item.direction }}</span>
+              <span class="chip status">{{ item.status }}</span>
+              <span class="chip priority">{{ item.priority }}</span>
+              @if (isOverdue(item)) {
+                <span class="chip overdue">Overdue</span>
+              }
+            </div>
+            <p class="category">{{ item.categoryName }}</p>
+            <p class="description">{{ item.description }}</p>
+            <p class="meta">
+              Assignee: {{ item.assignedStaffEmail ?? item.assignedStaffUserId }}
+              @if (item.dueAtUtc) {
+                · Due {{ formatTimestamp(item.dueAtUtc) }}
+              }
+              @if (item.providedAtUtc) {
+                · Provided {{ formatTimestamp(item.providedAtUtc) }}
+              }
+            </p>
+            @if (item.outcome) {
+              <p class="outcome">Outcome: {{ item.outcome }}</p>
+            }
+
+            @if (updatingId() === item.id) {
+              <form class="update-form" [formGroup]="updateForm" (ngSubmit)="submitUpdate(item)">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Status</mat-label>
+                  <mat-select formControlName="status">
+                    @for (status of statuses; track status) {
+                      <mat-option [value]="status">{{ status }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Outcome</mat-label>
+                  <textarea matInput rows="2" formControlName="outcome" maxlength="2000"></textarea>
+                </mat-form-field>
+                <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">Save</button>
+                <button mat-button type="button" (click)="cancelUpdate()">Cancel</button>
+              </form>
+            } @else {
+              <button mat-stroked-button type="button" (click)="startUpdate(item)">Update</button>
+            }
+          </li>
+        }
+      </ul>
+    }
+  }
+
+  <form class="add-form" [formGroup]="addForm" (ngSubmit)="submitAdd()">
+    <h4>Add intervention</h4>
+    @if (formErrorMessage()) {
+      <p class="error">{{ formErrorMessage() }}</p>
+    }
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Direction</mat-label>
+      <mat-select formControlName="direction">
+        @for (direction of directions; track direction) {
+          <mat-option [value]="direction">{{ direction }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Category</mat-label>
+      <input matInput formControlName="categoryName" maxlength="128" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Description</mat-label>
+      <textarea matInput rows="3" formControlName="description" maxlength="4000"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Priority</mat-label>
+      <mat-select formControlName="priority">
+        @for (priority of priorities; track priority) {
+          <mat-option [value]="priority">{{ priority }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Assigned staff</mat-label>
+      <mat-select formControlName="assignedStaffUserId">
+        @for (worker of fieldWorkers(); track worker.id) {
+          <mat-option [value]="worker.id">{{ worker.email }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (addForm.controls.direction.value === 'Needed') {
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Due date</mat-label>
+        <input matInput type="datetime-local" formControlName="dueAtLocal" />
+      </mat-form-field>
+    } @else {
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Provided date</mat-label>
+        <input matInput type="datetime-local" formControlName="providedAtLocal" />
+      </mat-form-field>
+    }
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting() || addForm.invalid">
+      {{ submitting() ? 'Saving…' : 'Add intervention' }}
+    </button>
+  </form>
+</section>

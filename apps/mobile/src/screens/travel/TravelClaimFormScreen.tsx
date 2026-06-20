@@ -1,0 +1,878 @@
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import DocumentPicker, {types} from 'react-native-document-picker';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {AccessibleErrorRegion} from '../../components/AccessibleErrorRegion';
+import {SyncChip} from '../../components/SyncChip';
+import {MoreStackParamList} from '../../navigation/types';
+import {attachmentApiService} from '../../services/attachments/AttachmentApiService';
+import {caseApiService} from '../../services/cases/CaseApiService';
+import {CaseDto} from '../../services/cases/case.models';
+import {
+  ALLOWED_ATTACHMENT_CONTENT_TYPES,
+  MAX_ATTACHMENT_BYTES,
+} from '../../services/cases/case.models';
+import {findTravelDraftByKey, readOfflineQueue} from '../../services/sync/offlineQueue';
+import {resolveTravelSyncChip} from '../../services/sync/resolveTravelSyncChip';
+import {useSyncOnForeground} from '../../services/sync/useSyncOnForeground';
+import {QueuedMutation} from '../../services/sync/syncMutationTypes';
+import {isDeviceOffline} from '../../services/sync/networkStatus';
+import {
+  travelClaimApiService,
+  TravelClaimApiError,
+} from '../../services/travel/TravelClaimApiService';
+import {
+  RECEIPT_REQUIRED_MESSAGE,
+  requiresReceipt,
+  TRANSPORT_MODES,
+  TransportMode,
+  TravelClaimDto,
+} from '../../services/travel/travel.models';
+
+type Route = RouteProp<MoreStackParamList, 'TravelClaimForm'>;
+type Navigation = NativeStackNavigationProp<MoreStackParamList, 'TravelClaimForm'>;
+
+type PickedReceipt = {
+  uri: string;
+  name: string;
+  type: string;
+  size: number;
+};
+
+function toClaimDateIso(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function statusStyle(status: string | null | undefined) {
+  switch (status) {
+    case 'Submitted':
+      return styles.statusSubmitted;
+    case 'Approved':
+      return styles.statusApproved;
+    case 'Returned':
+      return styles.statusReturned;
+    default:
+      return styles.statusDraft;
+  }
+}
+
+function formatDecidedAt(value: string | null | undefined): string {
+  if (!value) {
+    return '—';
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+}
+
+function validateForm(input: {
+  startLocation: string;
+  destination: string;
+  transportMode: TransportMode;
+  amountText: string;
+  autoNumber: string;
+  selectedCaseIds: string[];
+  notes: string;
+}): string | null {
+  if (!input.startLocation.trim()) {
+    return 'startLocation is required.';
+  }
+
+  if (input.startLocation.trim().length > 256) {
+    return 'startLocation must be at most 256 characters.';
+  }
+
+  if (!input.destination.trim()) {
+    return 'destination is required.';
+  }
+
+  if (input.destination.trim().length > 256) {
+    return 'destination must be at most 256 characters.';
+  }
+
+  if (!TRANSPORT_MODES.includes(input.transportMode)) {
+    return 'transportMode is required.';
+  }
+
+  const amount = Number.parseFloat(input.amountText);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 999999.99) {
+    return 'amount must be greater than zero and at most 999999.99.';
+  }
+
+  if (input.transportMode === 'Auto' && !input.autoNumber.trim()) {
+    return 'autoNumber is required when transportMode is Auto.';
+  }
+
+  if (input.autoNumber.trim().length > 32) {
+    return 'autoNumber must be at most 32 characters.';
+  }
+
+  if (!input.selectedCaseIds.length) {
+    return 'caseIds must contain at least one case id.';
+  }
+
+  if (new Set(input.selectedCaseIds).size !== input.selectedCaseIds.length) {
+    return 'caseIds must not contain duplicate case ids.';
+  }
+
+  if (input.notes.trim().length > 2000) {
+    return 'notes must be at most 2000 characters.';
+  }
+
+  return null;
+}
+
+export function TravelClaimFormScreen(): React.JSX.Element {
+  const navigation = useNavigation<Navigation>();
+  const route = useRoute<Route>();
+  const {claimId, localDraftKey, mode = 'create'} = route.params;
+
+  const readOnly = mode === 'view';
+  const [claim, setClaim] = useState<TravelClaimDto | null>(null);
+  const [offlineQueue, setOfflineQueue] = useState<QueuedMutation[]>([]);
+  const [assignedCases, setAssignedCases] = useState<CaseDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const [claimDate, setClaimDate] = useState(new Date());
+  const [startLocation, setStartLocation] = useState('');
+  const [destination, setDestination] = useState('');
+  const [transportMode, setTransportMode] = useState<TransportMode>('Bus');
+  const [amountText, setAmountText] = useState('');
+  const [autoNumber, setAutoNumber] = useState('');
+  const [notes, setNotes] = useState('');
+  const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
+  const [pickedReceipt, setPickedReceipt] = useState<PickedReceipt | null>(null);
+  const [isLocalDraft, setIsLocalDraft] = useState(false);
+  const [activeLocalDraftKey, setActiveLocalDraftKey] = useState<string | undefined>(
+    localDraftKey,
+  );
+
+  const receiptRequired = requiresReceipt(transportMode);
+  const hasConfirmedReceipt = (claim?.attachments?.length ?? 0) > 0 || !!pickedReceipt;
+
+  const syncChip = useMemo(() => {
+    if (!isLocalDraft || !activeLocalDraftKey) {
+      return null;
+    }
+
+    return resolveTravelSyncChip(activeLocalDraftKey, offlineQueue);
+  }, [activeLocalDraftKey, isLocalDraft, offlineQueue]);
+
+  const load = useCallback(async (): Promise<void> => {
+    setLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const [casesResult, queue] = await Promise.all([
+        caseApiService.listAssignedCases(1, 100),
+        readOfflineQueue(),
+      ]);
+      setAssignedCases(casesResult.items ?? []);
+      setOfflineQueue(queue);
+
+      if (localDraftKey) {
+        const draft = await findTravelDraftByKey(localDraftKey);
+        if (!draft) {
+          setErrorMessage('Local draft not found on this device.');
+          return;
+        }
+
+        setIsLocalDraft(true);
+        setActiveLocalDraftKey(draft.localDraftKey);
+        setClaimDate(new Date(draft.claimDate));
+        setStartLocation(draft.startLocation);
+        setDestination(draft.destination);
+        setTransportMode(draft.transportMode as TransportMode);
+        setAmountText(String(draft.amount));
+        setAutoNumber(draft.autoNumber ?? '');
+        setNotes(draft.notes ?? '');
+        setSelectedCaseIds(draft.caseIds);
+        if (draft.localReceiptUri && draft.receiptFileName && draft.receiptContentType) {
+          setPickedReceipt({
+            uri: draft.localReceiptUri,
+            name: draft.receiptFileName,
+            type: draft.receiptContentType,
+            size: 1,
+          });
+        }
+        return;
+      }
+
+      if (claimId) {
+        const loaded = await travelClaimApiService.get(claimId);
+        setClaim(loaded);
+        setClaimDate(loaded.claimDate ? new Date(loaded.claimDate) : new Date());
+        setStartLocation(loaded.startLocation ?? '');
+        setDestination(loaded.destination ?? '');
+        setTransportMode((loaded.transportMode as TransportMode) ?? 'Bus');
+        setAmountText(loaded.amount != null ? String(loaded.amount) : '');
+        setAutoNumber(loaded.autoNumber ?? '');
+        setNotes(loaded.notes ?? '');
+        setSelectedCaseIds(loaded.caseIds ?? []);
+      }
+    } catch (error) {
+      setErrorMessage(travelClaimApiService.extractErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [claimId, localDraftKey]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useSyncOnForeground({
+    enabled: isLocalDraft,
+    onSynced: async result => {
+      if (!activeLocalDraftKey) {
+        await load();
+        return;
+      }
+
+      const syncedClaim = result.appliedTravelClaimsByLocalDraftKey.get(
+        activeLocalDraftKey,
+      );
+      if (syncedClaim?.id) {
+        navigation.replace('TravelClaimForm', {
+          claimId: syncedClaim.id,
+          mode: 'edit',
+        });
+        return;
+      }
+
+      const draft = await findTravelDraftByKey(activeLocalDraftKey);
+      if (draft) {
+        await load();
+        return;
+      }
+
+      await load();
+    },
+  });
+
+  const onTransportModeChange = (next: TransportMode): void => {
+    setTransportMode(next);
+    if (next !== 'Auto') {
+      setAutoNumber('');
+    }
+  };
+
+  const toggleCase = (caseItemId: string | undefined): void => {
+    if (!caseItemId || readOnly) {
+      return;
+    }
+
+    setSelectedCaseIds(prev =>
+      prev.includes(caseItemId)
+        ? prev.filter(id => id !== caseItemId)
+        : [...prev, caseItemId],
+    );
+  };
+
+  const pickReceipt = async (): Promise<void> => {
+    if (readOnly || isLocalDraft) {
+      return;
+    }
+
+    try {
+      const result = await DocumentPicker.pickSingle({
+        type: [types.images, types.pdf],
+        copyTo: 'cachesDirectory',
+      });
+
+      const mime = result.type ?? 'application/octet-stream';
+      if (
+        !ALLOWED_ATTACHMENT_CONTENT_TYPES.includes(
+          mime as (typeof ALLOWED_ATTACHMENT_CONTENT_TYPES)[number],
+        )
+      ) {
+        setErrorMessage('File type not allowed. Use JPEG, PNG, WebP, or PDF.');
+        return;
+      }
+
+      const size = result.size;
+      if (size == null || size <= 0) {
+        setErrorMessage('Could not determine file size. Try another file.');
+        return;
+      }
+
+      if (size > MAX_ATTACHMENT_BYTES) {
+        setErrorMessage('File exceeds 10 MiB limit.');
+        return;
+      }
+
+      setPickedReceipt({
+        uri: result.fileCopyUri ?? result.uri,
+        name: result.name ?? 'receipt',
+        type: mime,
+        size,
+      });
+      setErrorMessage(null);
+    } catch (error) {
+      if (!DocumentPicker.isCancel(error)) {
+        setErrorMessage('Could not pick receipt.');
+      }
+    }
+  };
+
+  const uploadReceipt = async (targetClaimId: string): Promise<void> => {
+    if (!pickedReceipt) {
+      return;
+    }
+
+    const presign = await attachmentApiService.presign({
+      resourceType: 'TravelClaim',
+      resourceId: targetClaimId,
+      fileName: pickedReceipt.name,
+      contentType: pickedReceipt.type,
+      fileSizeBytes: pickedReceipt.size,
+    });
+
+    if (!presign.uploadUrl || !presign.attachmentId) {
+      throw new Error('Presign failed');
+    }
+
+    const blob = await (await fetch(pickedReceipt.uri)).blob();
+    await attachmentApiService.uploadToPresignedUrl(
+      presign.uploadUrl,
+      blob,
+      presign.requiredHeaders ?? {
+        'x-ms-blob-type': 'BlockBlob',
+        'Content-Type': pickedReceipt.type,
+      },
+    );
+    await attachmentApiService.confirm({attachmentId: presign.attachmentId});
+  };
+
+  const saveDraft = async (): Promise<void> => {
+    const validationError = validateForm({
+      startLocation,
+      destination,
+      transportMode,
+      amountText,
+      autoNumber,
+      selectedCaseIds,
+      notes,
+    });
+
+    if (validationError) {
+      setErrorMessage(validationError);
+      return;
+    }
+
+    setSaving(true);
+    setErrorMessage(null);
+
+    const payload = {
+      claimDate: toClaimDateIso(claimDate),
+      startLocation: startLocation.trim(),
+      destination: destination.trim(),
+      transportMode,
+      amount: Number.parseFloat(amountText),
+      autoNumber: transportMode === 'Auto' ? autoNumber.trim() : null,
+      notes: notes.trim() || null,
+      caseIds: selectedCaseIds,
+    };
+
+    try {
+      if (mode === 'create' && !claimId && !isLocalDraft) {
+        if (await isDeviceOffline()) {
+          await travelClaimApiService.createOfflineDraft({
+            ...payload,
+            localReceiptUri: pickedReceipt?.uri,
+            receiptFileName: pickedReceipt?.name,
+            receiptContentType: pickedReceipt?.type,
+          });
+          navigation.navigate('TravelClaimsList');
+          return;
+        }
+
+        const created = await travelClaimApiService.create(payload);
+        if (pickedReceipt && created.id) {
+          await uploadReceipt(created.id);
+        }
+        navigation.replace('TravelClaimForm', {
+          claimId: created.id,
+          mode: 'edit',
+        });
+        return;
+      }
+
+      if (isLocalDraft) {
+        setErrorMessage('This draft is saved on this device — sync when online to edit on server.');
+        return;
+      }
+
+      if (!claimId) {
+        setErrorMessage('Claim id is required to save changes.');
+        return;
+      }
+
+      const updated = await travelClaimApiService.update(claimId, payload);
+      setClaim(updated);
+    } catch (error) {
+      if (
+        error instanceof TravelClaimApiError &&
+        error.kind === 'network' &&
+        mode === 'create' &&
+        !claimId
+      ) {
+        try {
+          await travelClaimApiService.createOfflineDraft({
+            ...payload,
+            localReceiptUri: pickedReceipt?.uri,
+            receiptFileName: pickedReceipt?.name,
+            receiptContentType: pickedReceipt?.type,
+          });
+          navigation.navigate('TravelClaimsList');
+          return;
+        } catch (enqueueError) {
+          setErrorMessage(travelClaimApiService.extractErrorMessage(enqueueError));
+          return;
+        }
+      }
+
+      setErrorMessage(travelClaimApiService.extractErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitClaim = async (): Promise<void> => {
+    if (!claimId || readOnly || isLocalDraft) {
+      return;
+    }
+
+    if (receiptRequired && !hasConfirmedReceipt) {
+      setErrorMessage(RECEIPT_REQUIRED_MESSAGE);
+      return;
+    }
+
+    setSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      const fresh = await travelClaimApiService.get(claimId);
+      if (fresh.status !== 'Draft') {
+        setErrorMessage('Only draft claims can be submitted.');
+        return;
+      }
+
+      if (pickedReceipt) {
+        await uploadReceipt(claimId);
+      }
+
+      await travelClaimApiService.submit(claimId);
+      navigation.navigate('TravelClaimsList');
+    } catch (error) {
+      const message = travelClaimApiService.extractErrorMessage(error);
+      setErrorMessage(
+        message.includes('Receipt image is required')
+          ? RECEIPT_REQUIRED_MESSAGE
+          : message,
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator color="#0D6E6E" />
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {syncChip ? (
+        <View style={styles.syncRow}>
+          <SyncChip chip={syncChip} />
+        </View>
+      ) : null}
+
+      {readOnly && claim?.status ? (
+        <View style={styles.statusRow}>
+          <Text style={[styles.statusChip, statusStyle(claim.status)]}>{claim.status}</Text>
+        </View>
+      ) : null}
+
+      {readOnly && (claim?.status === 'Approved' || claim?.status === 'Returned') ? (
+        <View style={styles.decisionSection} accessibilityLabel="Director feedback">
+          <Text style={styles.decisionHeading}>Director feedback</Text>
+          {claim.decisionComment ? (
+            <Text style={styles.decisionComment}>{claim.decisionComment}</Text>
+          ) : claim.status === 'Approved' ? (
+            <Text style={styles.decisionComment}>Your claim was approved.</Text>
+          ) : null}
+          <Text style={styles.decisionMeta}>Decided {formatDecidedAt(claim.decidedAtUtc)}</Text>
+        </View>
+      ) : null}
+
+      <Text style={styles.label}>Claim date</Text>
+      {readOnly || isLocalDraft ? (
+        <Text style={styles.readOnlyValue}>{claimDate.toLocaleDateString()}</Text>
+      ) : (
+        <DateTimePicker
+          value={claimDate}
+          mode="date"
+          onChange={(_, date) => {
+            if (date) {
+              setClaimDate(date);
+            }
+          }}
+        />
+      )}
+
+      <Text style={styles.label}>Start location</Text>
+      <TextInput
+        style={styles.input}
+        value={startLocation}
+        editable={!readOnly && !isLocalDraft}
+        onChangeText={setStartLocation}
+        accessibilityLabel="Start location"
+      />
+
+      <Text style={styles.label}>Destination</Text>
+      <TextInput
+        style={styles.input}
+        value={destination}
+        editable={!readOnly && !isLocalDraft}
+        onChangeText={setDestination}
+        accessibilityLabel="Destination"
+      />
+
+      <Text style={styles.label}>Transport mode</Text>
+      <View style={styles.modeRow}>
+        {TRANSPORT_MODES.map(modeOption => (
+          <Pressable
+            key={modeOption}
+            style={[
+              styles.modeChip,
+              transportMode === modeOption ? styles.modeChipActive : null,
+            ]}
+            disabled={readOnly || isLocalDraft}
+            onPress={() => onTransportModeChange(modeOption)}
+            accessibilityRole="button"
+            accessibilityLabel={`Transport mode ${modeOption}`}>
+            <Text
+              style={
+                transportMode === modeOption
+                  ? styles.modeChipTextActive
+                  : styles.modeChipText
+              }>
+              {modeOption}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Text style={styles.label}>Amount</Text>
+      <TextInput
+        style={styles.input}
+        value={amountText}
+        editable={!readOnly && !isLocalDraft}
+        keyboardType="decimal-pad"
+        onChangeText={setAmountText}
+        accessibilityLabel="Amount"
+      />
+
+      {transportMode === 'Auto' ? (
+        <>
+          <Text style={styles.label}>Auto number</Text>
+          <TextInput
+            style={styles.input}
+            value={autoNumber}
+            editable={!readOnly && !isLocalDraft}
+            onChangeText={setAutoNumber}
+            accessibilityLabel="Auto number"
+          />
+        </>
+      ) : null}
+
+      <Text style={styles.label}>Linked cases</Text>
+      {assignedCases.map(caseItem => {
+        const selected = selectedCaseIds.includes(caseItem.id ?? '');
+        return (
+          <Pressable
+            key={caseItem.id}
+            style={[styles.caseRow, selected ? styles.caseRowSelected : null]}
+            disabled={readOnly || isLocalDraft}
+            onPress={() => toggleCase(caseItem.id)}
+            accessibilityRole="checkbox"
+            accessibilityState={{checked: selected}}>
+            <Text style={styles.caseRowText}>
+              {caseItem.crimeNumber ?? '—'} · {caseItem.stNumber ?? '—'}
+            </Text>
+          </Pressable>
+        );
+      })}
+
+      <Text style={styles.label}>Notes</Text>
+      <TextInput
+        style={[styles.input, styles.notesInput]}
+        value={notes}
+        editable={!readOnly && !isLocalDraft}
+        multiline
+        onChangeText={setNotes}
+        accessibilityLabel="Notes"
+      />
+
+      {!readOnly ? (
+        <>
+          <Text style={styles.label}>Receipt</Text>
+          {claim?.attachments?.map(attachment => (
+            <Text key={attachment.id} style={styles.receiptName}>
+              {attachment.originalFileName}
+            </Text>
+          ))}
+          {pickedReceipt ? (
+            <Text style={styles.receiptName}>{pickedReceipt.name}</Text>
+          ) : null}
+          {!isLocalDraft ? (
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={() => void pickReceipt()}
+              accessibilityRole="button"
+              accessibilityLabel="Pick receipt">
+              <Text style={styles.secondaryButtonText}>
+                {pickedReceipt || claim?.attachments?.length
+                  ? 'Replace receipt'
+                  : 'Add receipt'}
+              </Text>
+            </Pressable>
+          ) : null}
+        </>
+      ) : null}
+
+      <AccessibleErrorRegion message={errorMessage} />
+
+      {!readOnly ? (
+        <Pressable
+          style={[styles.primaryButton, saving ? styles.buttonDisabled : null]}
+          disabled={saving}
+          onPress={() => void saveDraft()}
+          accessibilityRole="button"
+          accessibilityLabel="Save draft">
+          <Text style={styles.primaryButtonText}>
+            {saving ? 'Saving…' : isLocalDraft ? 'Saved on this device' : 'Save draft'}
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {!readOnly && claimId && !isLocalDraft && claim?.status === 'Draft' ? (
+        <>
+          {receiptRequired && !hasConfirmedReceipt ? (
+            <Text style={styles.hint}>{RECEIPT_REQUIRED_MESSAGE}</Text>
+          ) : null}
+          <Pressable
+            style={[
+              styles.primaryButton,
+              submitting || (receiptRequired && !hasConfirmedReceipt)
+                ? styles.buttonDisabled
+                : null,
+            ]}
+            disabled={submitting || (receiptRequired && !hasConfirmedReceipt)}
+            onPress={() => void submitClaim()}
+            accessibilityRole="button"
+            accessibilityLabel="Submit claim">
+            <Text style={styles.primaryButtonText}>
+              {submitting ? 'Submitting…' : 'Submit'}
+            </Text>
+          </Pressable>
+        </>
+      ) : null}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  content: {
+    padding: 16,
+    gap: 8,
+    paddingBottom: 32,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  syncRow: {
+    marginBottom: 8,
+  },
+  statusRow: {
+    marginBottom: 8,
+  },
+  statusChip: {
+    alignSelf: 'flex-start',
+    fontSize: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  statusDraft: {
+    backgroundColor: '#f2f4f7',
+    color: '#344054',
+  },
+  statusSubmitted: {
+    backgroundColor: '#e0f2fe',
+    color: '#026aa2',
+  },
+  statusApproved: {
+    backgroundColor: '#ecfdf3',
+    color: '#027a48',
+  },
+  statusReturned: {
+    backgroundColor: '#fef3f2',
+    color: '#b42318',
+  },
+  decisionSection: {
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    backgroundColor: '#f9fafb',
+  },
+  decisionHeading: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#344054',
+    marginBottom: 6,
+  },
+  decisionComment: {
+    fontSize: 14,
+    color: '#101828',
+    marginBottom: 6,
+  },
+  decisionMeta: {
+    fontSize: 12,
+    color: '#667085',
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#344054',
+    marginTop: 8,
+  },
+  readOnlyValue: {
+    fontSize: 15,
+    color: '#101828',
+    marginBottom: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#101828',
+  },
+  notesInput: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  modeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  modeChip: {
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  modeChipActive: {
+    backgroundColor: '#0d6e6e',
+    borderColor: '#0d6e6e',
+  },
+  modeChipText: {
+    color: '#344054',
+    fontSize: 13,
+  },
+  modeChipTextActive: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  caseRow: {
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 4,
+  },
+  caseRowSelected: {
+    borderColor: '#0d6e6e',
+    backgroundColor: '#ecfdf3',
+  },
+  caseRowText: {
+    fontSize: 14,
+    color: '#101828',
+  },
+  receiptName: {
+    fontSize: 14,
+    color: '#475467',
+  },
+  hint: {
+    fontSize: 13,
+    color: '#b54708',
+    marginTop: 4,
+  },
+  primaryButton: {
+    marginTop: 12,
+    backgroundColor: '#0d6e6e',
+    borderRadius: 8,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButton: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#0d6e6e',
+    borderRadius: 8,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  secondaryButtonText: {
+    color: '#0d6e6e',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+});

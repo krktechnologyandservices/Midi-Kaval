@@ -1,0 +1,36 @@
+.handoff-whisper {
+  background: #eff8ff;
+  border-left: 3px solid #175cd3;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+}
+
+.handoff-line {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0.25rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.label {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-link {
+  margin-top: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #175cd3;
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+}

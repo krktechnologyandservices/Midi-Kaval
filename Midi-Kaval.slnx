@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/apps/" />
+  <Folder Name="/apps/api/">
+    <Project Path="apps/api/MidiKaval.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/api.integration/">
+    <Project Path="tests/api.integration/MidiKaval.Api.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/api.unit/">
+    <Project Path="tests/api.unit/MidiKaval.Api.UnitTests.csproj" />
+  </Folder>
+</Solution>

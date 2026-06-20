@@ -1,0 +1,120 @@
+<mat-card class="detail-card">
+  <mat-card-header>
+    <mat-card-title>Case detail</mat-card-title>
+    <mat-card-subtitle>Case ID: {{ caseId }}</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (loading()) {
+      <p>Loading case…</p>
+    } @else if (errorMessage()) {
+      <p class="error">{{ errorMessage() }}</p>
+      <button mat-stroked-button type="button" (click)="loadDetail()">Retry</button>
+    } @else if (summary) {
+      @if (summary.crimeNumber) {
+        <p><strong>Crime:</strong> {{ summary.crimeNumber }}</p>
+      }
+      @if (summary.stNumber) {
+        <p><strong>ST:</strong> {{ summary.stNumber }}</p>
+      }
+      @if (summary.beneficiaryName) {
+        <p><strong>Beneficiary:</strong> {{ summary.beneficiaryName }}</p>
+      }
+      @if (summary.currentStage) {
+        <p><strong>Stage:</strong> {{ summary.currentStage }}</p>
+      }
+      @if (!stageIsTerminal() && nextForwardStage(); as nextStage) {
+        <section class="stage-transition-section">
+          <h3>Change stage</h3>
+          @if (stageErrorMessage(); as stageError) {
+            <p class="error">{{ stageError }}</p>
+          }
+          <form [formGroup]="stageForm" (ngSubmit)="submitStageTransition()">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Next stage</mat-label>
+              <mat-select formControlName="targetStage">
+                <mat-option [value]="nextStage">{{ nextStage }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Notes (optional)</mat-label>
+              <input matInput formControlName="notes" />
+            </mat-form-field>
+
+            <button
+              mat-flat-button
+              color="primary"
+              type="submit"
+              [disabled]="stageSubmitting() || stageForm.invalid">
+              {{ stageSubmitting() ? 'Updating…' : 'Update stage' }}
+            </button>
+          </form>
+        </section>
+      } @else if (stageIsTerminal()) {
+        <p class="terminal-stage-note">Stage is terminal — no further transitions.</p>
+      }
+      @if (assignedWorkerLabel(); as workerLabel) {
+        <p><strong>Assigned worker:</strong> {{ workerLabel }}</p>
+      }
+      @if (matchedOnLabel(); as matchedOn) {
+        <p>{{ matchedOn }}</p>
+      }
+
+      @if (detail()?.handoffWhisper; as whisper) {
+        <app-handoff-whisper [whisper]="whisper" (viewFullTimeline)="onViewFullTimeline()" />
+      }
+
+      <app-case-notes-timeline [caseId]="caseId" />
+
+      <app-case-interventions [caseId]="caseId" [fieldWorkers]="fieldWorkers()" />
+
+      <app-case-court-sittings [caseId]="caseId" />
+
+      <section class="transfer-section">
+        <h3>Transfer case</h3>
+        @if (fieldWorkersError(); as workersError) {
+          <p class="error">{{ workersError }}</p>
+          <button mat-stroked-button type="button" (click)="loadFieldWorkers()">Retry</button>
+        }
+        <form [formGroup]="transferForm" (ngSubmit)="submitTransfer()">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Assignee</mat-label>
+            <mat-select formControlName="assigneeUserId">
+              @for (worker of fieldWorkers(); track worker.id) {
+                <mat-option [value]="worker.id">{{ worker.email }} ({{ worker.role }})</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Prior actions</mat-label>
+            <input matInput formControlName="priorActions" maxlength="500" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Open items</mat-label>
+            <input matInput formControlName="openItems" maxlength="500" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Next visit purpose</mat-label>
+            <input matInput formControlName="nextVisitPurpose" maxlength="500" />
+          </mat-form-field>
+
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            [disabled]="submitting() || transferForm.invalid">
+            {{ submitting() ? 'Transferring…' : 'Transfer case' }}
+          </button>
+        </form>
+      </section>
+    } @else {
+      <p>Full case details available in registry (coming soon).</p>
+    }
+
+    <button mat-stroked-button type="button" (click)="backHome()">Back to home</button>
+  </mat-card-content>
+</mat-card>

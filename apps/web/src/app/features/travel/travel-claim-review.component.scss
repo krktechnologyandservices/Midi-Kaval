@@ -1,0 +1,63 @@
+.travel-review {
+  max-width: 960px;
+}
+
+.header {
+  margin-bottom: 0.5rem;
+}
+
+.readonly-banner {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container, #f8fafc);
+  border-left: 4px solid var(--mat-sys-outline, #667085);
+}
+
+.error {
+  color: var(--mat-sys-error, #b42318);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.detail-grid dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.detail-grid dd {
+  margin: 0.25rem 0 0;
+}
+
+.notes {
+  margin: 1rem 0;
+}
+
+.receipt-list {
+  list-style: none;
+  padding: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.action-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.full-width {
+  width: 100%;
+}

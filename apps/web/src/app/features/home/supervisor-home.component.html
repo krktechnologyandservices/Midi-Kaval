@@ -1,0 +1,18 @@
+<mat-card class="home-card">
+  <mat-card-header>
+    <mat-card-title>Supervisor home</mat-card-title>
+    <mat-card-subtitle>Crisis Queue in Epic 8</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (auth.currentUser(); as user) {
+      <p class="user-line">
+        Signed in as <strong>{{ user.email }}</strong> ({{ user.role }})
+      </p>
+    }
+    <p>Placeholder shell for coordinator and director tools.</p>
+    <a mat-flat-button color="primary" routerLink="/cases/new">New case</a>
+    <a mat-stroked-button routerLink="/cases">Case registry</a>
+    <button mat-stroked-button type="button" (click)="logout()">Log out</button>
+  </mat-card-content>
+</mat-card>

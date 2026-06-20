@@ -1,0 +1,14 @@
+@if (showToolbar()) {
+  <mat-toolbar color="primary">
+    <span>{{ title }}</span>
+    <span class="spacer"></span>
+    @if (auth.currentUser(); as user) {
+      <span class="user-chip">{{ user.email }} ({{ user.role }})</span>
+    }
+    <button mat-button type="button" (click)="logout()">Log out</button>
+  </mat-toolbar>
+}
+
+<main class="shell">
+  <router-outlet />
+</main>

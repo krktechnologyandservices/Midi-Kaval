@@ -1,0 +1,108 @@
+<section class="travel-review" aria-label="Travel claim review">
+  <header class="header">
+    <a mat-button [routerLink]="backLink()">Back</a>
+  </header>
+
+  @if (readOnly()) {
+    <p class="readonly-banner" role="status">Director approval required</p>
+  }
+
+  @if (loading()) {
+    <p>Loading claim…</p>
+  } @else if (errorMessage()) {
+    <p class="error" role="alert">{{ errorMessage() }}</p>
+    <button mat-stroked-button type="button" (click)="load()">Retry</button>
+  } @else {
+    @if (claim(); as item) {
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>{{ item.destination }}</mat-card-title>
+        <mat-card-subtitle>
+          {{ item.claimantEmail }} · {{ item.status }} · {{ item.claimDate | date: 'mediumDate' }}
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <dl class="detail-grid">
+          <div><dt>From</dt><dd>{{ item.startLocation }}</dd></div>
+          <div><dt>Mode</dt><dd>{{ item.transportMode }}</dd></div>
+          <div><dt>Amount</dt><dd>₹{{ item.amount }}</dd></div>
+          @if (item.autoNumber) {
+            <div><dt>Auto #</dt><dd>{{ item.autoNumber }}</dd></div>
+          }
+        </dl>
+
+        @if (item.notes) {
+          <p class="notes"><strong>Notes:</strong> {{ item.notes }}</p>
+        }
+
+        <section aria-label="Linked cases">
+          <h3>Linked cases</h3>
+          <ul>
+            @for (linked of linkedCases(); track linked.id) {
+              <li>
+                <a [routerLink]="['/cases', linked.id]">
+                  {{ linked.crimeNumber }} / {{ linked.stNumber }}
+                </a>
+              </li>
+            }
+          </ul>
+        </section>
+
+        <section aria-label="Receipts">
+          <h3>Receipts</h3>
+          @if (item.attachments.length === 0) {
+            <p>No receipts attached.</p>
+          } @else {
+            <ul class="receipt-list">
+              @for (attachment of item.attachments; track attachment.id) {
+                <li>
+                  <button mat-button type="button" (click)="openReceipt(attachment.id)">
+                    {{ basename(attachment.originalFileName) }}
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        @if (actionError()) {
+          <p class="error" role="alert">{{ actionError() }}</p>
+        }
+
+        @if (!readOnly() && item.status === 'Submitted') {
+          <div class="actions">
+            @if (!showApproveForm() && !showReturnForm()) {
+              <button mat-flat-button color="primary" type="button" (click)="showApproveForm.set(true)">
+                Approve
+              </button>
+              <button mat-stroked-button type="button" (click)="showReturnForm.set(true)">Return</button>
+            }
+
+            @if (showApproveForm()) {
+              <form class="action-form" [formGroup]="approveForm" (ngSubmit)="submitApprove()">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Comment (optional)</mat-label>
+                  <textarea matInput rows="2" formControlName="comment" maxlength="2000"></textarea>
+                </mat-form-field>
+                <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">Confirm approve</button>
+                <button mat-button type="button" (click)="showApproveForm.set(false)">Cancel</button>
+              </form>
+            }
+
+            @if (showReturnForm()) {
+              <form class="action-form" [formGroup]="returnForm" (ngSubmit)="submitReturn()">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Return comment (required)</mat-label>
+                  <textarea matInput rows="2" formControlName="comment" maxlength="2000" required></textarea>
+                </mat-form-field>
+                <button mat-flat-button color="warn" type="submit" [disabled]="submitting()">Confirm return</button>
+                <button mat-button type="button" (click)="showReturnForm.set(false)">Cancel</button>
+              </form>
+            }
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+    }
+  }
+</section>

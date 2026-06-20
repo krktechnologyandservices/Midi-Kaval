@@ -1,0 +1,94 @@
+<mat-card class="case-card">
+  <mat-card-header>
+    <mat-card-title>New case</mat-card-title>
+    <mat-card-subtitle>Register a beneficiary case</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Crime number</mat-label>
+        <input
+          #crimeInput
+          matInput
+          id="crimeNumber"
+          formControlName="crimeNumber"
+          (blur)="onIdentifierBlur('crimeNumber')"
+        />
+        @if (form.controls.crimeNumber.touched && form.controls.crimeNumber.hasError('required')) {
+          <mat-error>Crime number is required</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>ST number</mat-label>
+        <input
+          #stInput
+          matInput
+          id="stNumber"
+          formControlName="stNumber"
+          (blur)="onIdentifierBlur('stNumber')"
+        />
+        @if (form.controls.stNumber.touched && form.controls.stNumber.hasError('required')) {
+          <mat-error>ST number is required</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Beneficiary name</mat-label>
+        <input matInput formControlName="beneficiaryName" />
+        @if (form.controls.beneficiaryName.touched && form.controls.beneficiaryName.hasError('required')) {
+          <mat-error>Beneficiary name is required</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Beneficiary age</mat-label>
+        <input matInput type="number" formControlName="beneficiaryAge" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Beneficiary contact</mat-label>
+        <input matInput formControlName="beneficiaryContact" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Type of offence</mat-label>
+        <input matInput formControlName="typeOfOffence" />
+        @if (form.controls.typeOfOffence.touched && form.controls.typeOfOffence.hasError('required')) {
+          <mat-error>Type of offence is required</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Offence classification</mat-label>
+        <mat-select formControlName="offenceClassification">
+          @for (option of offenceClassifications; track option) {
+            <mat-option [value]="option">{{ option }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Domicile</mat-label>
+        <mat-select formControlName="domicile">
+          @for (option of domicileOptions; track option) {
+            <mat-option [value]="option">{{ option }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-checkbox formControlName="isFirstTimeOffender">First-time offender</mat-checkbox>
+
+      <div class="aria-live" aria-live="polite" aria-atomic="true">
+        @if (errorMessage()) {
+          <p class="error-text" role="alert">{{ errorMessage() }}</p>
+        }
+      </div>
+
+      <button mat-flat-button color="primary" type="submit" [disabled]="saveDisabled()">
+        {{ saveLabel() }}
+      </button>
+    </form>
+  </mat-card-content>
+</mat-card>

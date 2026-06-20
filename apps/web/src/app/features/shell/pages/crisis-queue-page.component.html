@@ -1,0 +1,55 @@
+<section class="crisis-queue" aria-label="Crisis queue">
+  <header class="header">
+    <h1>Crisis queue</h1>
+    <p class="subtitle">{{ subtitle() }}</p>
+  </header>
+
+  @if (loading()) {
+    <div class="skeleton-list" aria-hidden="true">
+      @for (_ of [1, 2, 3]; track _) {
+        <div class="skeleton-row">
+          <span class="skeleton skeleton-badge"></span>
+          <span class="skeleton-content">
+            <span class="skeleton skeleton-title"></span>
+            <span class="skeleton skeleton-detail"></span>
+          </span>
+          <span class="skeleton skeleton-chevron"></span>
+        </div>
+      }
+    </div>
+  } @else if (errorMessage()) {
+    <p class="error" role="alert">{{ errorMessage() }}</p>
+    <button mat-stroked-button type="button" (click)="load()">Retry</button>
+  } @else if (items().length === 0) {
+    <div class="empty-state">
+      <p>No urgent items</p>
+      <div class="empty-actions">
+        <a mat-stroked-button routerLink="/dashboard">Go to Dashboard</a>
+        <a mat-stroked-button routerLink="/cases">Go to Cases</a>
+      </div>
+    </div>
+  } @else {
+    @if (refreshing()) {
+      <p class="refreshing-indicator" aria-live="polite">Updating…</p>
+    }
+    <ul class="queue-list" aria-live="polite">
+      @for (item of items(); track item.rowType + '|' + (item.travelClaimId ?? item.courtSittingId ?? item.caseId)) {
+        <li>
+          <button
+            type="button"
+            class="queue-row"
+            [class]="rowClass(item)"
+            (click)="navigateRow(item)"
+          >
+            <span class="badge" [class]="'badge-' + item.severity">{{ item.badgeLabel }}</span>
+            <span class="content">
+              <span class="title">{{ item.title }}</span>
+              <span class="detail">{{ item.detail }}</span>
+            </span>
+            <span class="chev" aria-hidden="true">›</span>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</section>

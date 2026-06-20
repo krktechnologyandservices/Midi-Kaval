@@ -1,0 +1,23 @@
+<div class="layout">
+  <aside class="sidebar" aria-label="Primary navigation">
+    <div class="logo">Kaval</div>
+    <app-notification-bell />
+    <nav class="nav">
+      @for (item of navItems(); track item.path) {
+        <a
+          class="nav-link"
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="item.path === '/cases' ? { exact: false } : { exact: true }"
+        >
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+  </aside>
+
+  <section class="main" aria-label="Main content">
+    <router-outlet />
+  </section>
+</div>
+

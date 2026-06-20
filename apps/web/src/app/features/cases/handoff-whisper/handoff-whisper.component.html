@@ -1,0 +1,17 @@
+<section class="handoff-whisper" aria-label="Handoff summary">
+  <p class="handoff-line" title="{{ whisper().priorActions }}">
+    <span class="label">Prior actions:</span>
+    <span class="value">{{ whisper().priorActions }}</span>
+  </p>
+  <p class="handoff-line" title="{{ whisper().openItems }}">
+    <span class="label">Open items:</span>
+    <span class="value">{{ whisper().openItems }}</span>
+  </p>
+  <p class="handoff-line" title="{{ whisper().nextVisitPurpose }}">
+    <span class="label">Next visit:</span>
+    <span class="value">{{ whisper().nextVisitPurpose }}</span>
+  </p>
+  <button type="button" class="timeline-link" (click)="onViewFullTimeline()">
+    View full timeline
+  </button>
+</section>

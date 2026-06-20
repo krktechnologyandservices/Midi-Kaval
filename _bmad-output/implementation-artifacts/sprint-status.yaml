@@ -1,0 +1,129 @@
+# generated: 2026-06-13
+# last_updated: 2026-06-20
+# project: Midi-Kaval
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-06-13
+last_updated: 2026-06-20
+project: Midi-Kaval
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: done
+  1-1-monorepo-scaffold-and-local-dev-environment: done
+  1-2-api-host-foundation-with-health-and-openapi: done
+  1-3-users-schema-and-seed-admin-account: done
+  1-4-login-and-email-otp-api: done
+  1-5-refresh-logout-and-forced-session-invalidation: done
+  1-6-angular-pwa-shell-with-login-and-otp-flow: done
+  1-7-react-native-shell-with-login-and-otp-flow: done
+  1-8-rbac-policies-on-protected-endpoints: done
+  1-9-self-service-password-reset: done
+  epic-1-retrospective: done
+
+  epic-2: in-progress
+  2-1-case-aggregate-schema-and-create-api: done
+  2-2-six-stage-lifecycle-transitions: done
+  2-3-unique-crime-and-st-constraints-with-duplicate-check: done
+  2-4-duplicate-match-sheet-on-web-and-mobile-create: done
+  2-5-case-merge-workflow: done
+  2-6-case-search-filters-and-saved-presets: done
+  2-7-case-export-to-excel-and-pdf: done
+  2-8-case-assignment-transfer-and-handoff-whisper: done
+  2-9-web-case-registry-and-detail-ui: done
+  epic-2-retrospective: optional
+
+  epic-3: in-progress
+  3-1-visit-scheduler-api: done
+  3-2-morning-command-strip-mobile-home: done
+  3-3-active-visit-flow-with-start-and-complete: done
+  3-4-gps-capture-landmark-and-google-maps-navigation: done
+  3-5-proximity-visit-grouping-suggestion: done
+  3-6-offline-visit-storage-and-sync-push-api: done
+  3-7-sync-chip-and-sync-queue-mobile-ui: done
+  3-8-discreet-pocso-capture-mode: done
+  epic-3-retrospective: optional
+
+  epic-4: in-progress
+  4-1-case-notes-api-and-timeline: done
+  4-2-attachment-presign-upload-for-notes: done
+  4-3-notes-timeline-ui-web-and-mobile: done
+  4-4-interventions-crud-api: done
+  4-5-interventions-ui-and-overdue-job: done
+  epic-4-retrospective: optional
+
+  epic-5: in-progress
+  5-1-court-sitting-crud-api: done
+  5-2-court-schedule-ui-web-case-detail-and-mobile: done
+  5-3-court-reminder-background-job: done
+  5-4-court-miss-escalation-and-crisis-queue-feed: done
+  epic-5-retrospective: optional
+
+  epic-6: in-progress
+  6-1-travel-claim-api-with-receipt-validation: done
+  6-2-mobile-travel-claim-capture: done
+  6-3-director-claim-approval-on-web: done
+  6-4-claim-status-notifications: done
+  epic-6-retrospective: optional
+
+  epic-7: in-progress
+  7-1-device-token-registration-and-notification-store: done
+  7-2-push-delivery-service: done
+  7-3-email-notification-templates: done
+  7-4-in-app-notification-bell-web-and-mobile: done
+  epic-7-retrospective: optional
+
+  epic-8: in-progress
+  8-1-crisis-queue-prioritized-api: done
+  8-2-crisis-queue-web-ui: done
+  8-3-dashboard-api-and-redis-cached-widgets: done
+  8-4-dashboard-web-ui: backlog
+  8-5-standard-reports-api-and-async-export-jobs: backlog
+  8-6-reports-web-ui-with-export-progress: backlog
+  8-7-angular-pwa-offline-snapshot-cache: backlog
+  epic-8-retrospective: optional
+
+  epic-9: backlog
+  9-1-legends-crud-api-and-web-ui: backlog
+  9-2-staff-directory-management: backlog
+  9-3-audit-log-api-and-director-ui: backlog
+  9-4-angular-material-theme-from-design-tokens: backlog
+  epic-9-retrospective: optional
+
+  epic-10: backlog
+  10-1-excel-column-mapping-specification-and-validation: backlog
+  10-2-one-time-import-tool-api-and-admin-ui: backlog
+  epic-10-retrospective: optional

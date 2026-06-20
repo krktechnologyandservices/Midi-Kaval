@@ -1,0 +1,6 @@
+@MidiKaval.Api_HostAddress = http://localhost:5049
+
+GET {{MidiKaval.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

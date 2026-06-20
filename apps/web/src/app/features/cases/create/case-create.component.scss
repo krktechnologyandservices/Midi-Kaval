@@ -1,0 +1,30 @@
+.case-card {
+  max-width: 40rem;
+  margin: 2rem auto;
+}
+
+.full-width {
+  width: 100%;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.aria-live {
+  min-height: 1.5rem;
+  margin: 1rem 0;
+}
+
+.error-text {
+  margin: 0;
+  color: #b91c1c;
+}
+
+button[type='submit'] {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+mat-checkbox {
+  display: block;
+  margin: 0.5rem 0 1rem;
+}

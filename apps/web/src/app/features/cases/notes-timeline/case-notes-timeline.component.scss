@@ -1,0 +1,122 @@
+.notes-timeline {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant, #e2e8f0);
+}
+
+.notes-timeline h3,
+.notes-timeline h4 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.full-width {
+  width: 100%;
+  display: block;
+}
+
+.error {
+  color: var(--mat-sys-error, #b42318);
+}
+
+.empty-state {
+  color: var(--mat-sys-on-surface-variant, #475569);
+  margin-bottom: 1rem;
+}
+
+.timeline-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+.timeline-item {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, #e2e8f0);
+}
+
+.timeline-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.meta {
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant, #475569);
+}
+
+.body {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.action-required {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--mat-sys-error, #b42318);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.badge-visit {
+  background: var(--mat-sys-primary, #0d6e6e);
+}
+
+.badge-court {
+  background: var(--mat-sys-tertiary, #175cd3);
+}
+
+.badge-intervention {
+  background: var(--mat-sys-secondary, #b54708);
+}
+
+.badge-general {
+  background: var(--mat-sys-on-surface-variant, #667085);
+}
+
+.attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.attachment-chip {
+  border: 1px solid var(--mat-sys-outline, #cbd5e1);
+  background: var(--mat-sys-surface-container, #f8fafc);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.add-note-form {
+  margin-top: 1rem;
+}
+
+.file-row {
+  margin: 0.75rem 0;
+}
+
+.file-label {
+  display: block;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.file-name {
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant, #475569);
+}

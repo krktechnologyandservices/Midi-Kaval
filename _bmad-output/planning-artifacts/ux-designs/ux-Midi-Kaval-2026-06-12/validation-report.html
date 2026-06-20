@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UX Validation: Kaval Online</title>
+<style>
+  :root { --bg:#fafaf9; --surface:#fff; --border:#e7e5e4; --text:#1c1917; --muted:#78716c;
+    --strong:#16a34a; --adequate:#65a30d; --thin:#d97706; --broken:#dc2626;
+    --crit:#dc2626; --high:#ea580c; --med:#ca8a04; --low:#64748b; }
+  body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; line-height: 1.6; }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; font-family: monospace; margin-bottom: 24px; }
+  .synthesis { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--muted); padding: 18px 22px; border-radius: 8px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 24px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .card .label { font-size: 12px; color: var(--muted); }
+  .card .v { font-weight: 600; font-size: 14px; }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; }
+  summary { padding: 14px 18px; cursor: pointer; font-weight: 600; }
+  .body { padding: 0 18px 16px; }
+  .f { margin: 10px 0; padding: 10px; background: #fafaf9; border-radius: 6px; border-left: 3px solid var(--border); }
+  .f.crit { border-left-color: var(--crit); }
+  .f.high { border-left-color: var(--high); }
+  footer { margin-top: 32px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>UX Spine Validation — Kaval Online</h1>
+  <p class="sub">DESIGN.md + EXPERIENCE.md · 2026-06-12</p>
+  <div class="synthesis">
+    <p><strong>Core journeys are solid</strong> (Priya visit day, Ravi crisis queue, duplicate block). <strong>Not architecture-ready yet:</strong> no visual mocks, thin state/flow coverage on secondary surfaces, component token gaps on sync and crisis-neutral rows.</p>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="label">Flow coverage</div><div class="v" style="color:var(--thin)">Thin</div></div>
+    <div class="card"><div class="label">Token completeness</div><div class="v" style="color:var(--adequate)">Adequate</div></div>
+    <div class="card"><div class="label">Component coverage</div><div class="v" style="color:var(--thin)">Thin</div></div>
+    <div class="card"><div class="label">State coverage</div><div class="v" style="color:var(--thin)">Thin</div></div>
+    <div class="card"><div class="label">Visual references</div><div class="v" style="color:var(--broken)">Broken</div></div>
+    <div class="card"><div class="label">Bloat</div><div class="v" style="color:var(--strong)">Strong</div></div>
+    <div class="card"><div class="label">Inheritance</div><div class="v" style="color:var(--adequate)">Adequate</div></div>
+    <div class="card"><div class="label">Shape fit</div><div class="v" style="color:var(--strong)">Strong</div></div>
+  </div>
+  <details open><summary>Critical — No visual mocks</summary><div class="body"><div class="f crit">Command Strip & Crisis Queue are spine-only. Add mockups/ HTML or Stitch outputs.</div></div></details>
+  <details open><summary>High findings (9)</summary><div class="body">
+    <div class="f high">Missing flows: travel approval, intervention overdue, auth OTP</div>
+    <div class="f high">Missing DESIGN tokens: sync-chip-pending/error, crisis-row-neutral</div>
+    <div class="f high">Missing DESIGN specs: duplicate sheet, court sitting row</div>
+    <div class="f high">State patterns missing for web admin surfaces & mobile travel/notifications</div>
+    <div class="f high">OTP accessibility unspecified</div>
+  </div></details>
+  <details><summary>Accessibility reviewer</summary><div class="body">
+    <div class="f high">OTP/2FA input and error announcement not specified</div>
+    <div class="f med">Duplicate sheet focus trap; discreet mode re-auth for screen reader expand</div>
+  </div></details>
+  <footer>Full report: validation-report.md · Roll fixes via bmad-ux Update</footer>
+</div>
+</body>
+</html>
