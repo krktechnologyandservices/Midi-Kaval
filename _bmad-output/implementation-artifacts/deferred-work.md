@@ -304,3 +304,18 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - **InvalidateCacheAsync never wired** — Story 8.4 (Dashboard Web UI) will wire it into mutation endpoints; out of scope for this API-only story
 - **WorkerName populated with user.Email** — consistent with CrisisQueueService pattern; a proper Name/FullName field would require User entity schema change
 - **No empty-dashboard (AC12) integration test** — non-trivial test setup requiring a separate organisation; can be addressed in a follow-up
+
+## Deferred from: code review of 8-6-reports-web-ui-with-export-progress.md (2026-06-20)
+
+- **Polling never adds new jobs from other sessions** — `refreshActiveJobs` only patches existing jobs by ID, never inserts new jobs created by other users/sessions
+- **`totalCount` pagination issues during polling** — polling fetches page 1 only; totalCount not refreshed during poll cycles
+- **Single `exporting` boolean prevents concurrent exports** — user cannot start a second export while any request is in-flight
+- **`getStatusLabel` is a pure function inside component class** — should be standalone for better tree-shaking and OnPush compatibility
+- **`formatTimestamp` hardcodes `en-IN` locale** — should use Angular `LOCALE_ID` injection token instead
+- **`window.open` URL unsanitized / popup blocker risk** — URLs from API; acceptable for first iteration
+- **In-flight HTTP not cancelled on destroy** — `ngOnDestroy` only clears poll timer, not active HTTP requests
+- **`startExport` URL vulnerable to path traversal via `type`** — service has no validation; constrained by component
+- **`loadingGuard` mutation after component destruction** — plain boolean field mutated in `finally` after destroy
+- **Page change silently desyncs on rapid click** — `loadingGuard` prevents re-fetch after page state already updated
+- **`startExport` makes fragile API ordering assumptions** — prepends job and increments count unconditionally
+- **`displayFormat()` mislabels unknown formats as "PDF"** — format field is `string`, not union type

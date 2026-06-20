@@ -112,7 +112,7 @@ development_status:
   8-3-dashboard-api-and-redis-cached-widgets: done
   8-4-dashboard-web-ui: done
   8-5-standard-reports-api-and-async-export-jobs: done
-  8-6-reports-web-ui-with-export-progress: backlog
+  8-6-reports-web-ui-with-export-progress: done
   8-7-angular-pwa-offline-snapshot-cache: backlog
   epic-8-retrospective: optional
 

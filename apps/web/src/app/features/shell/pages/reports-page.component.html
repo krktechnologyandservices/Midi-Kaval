@@ -1,0 +1,222 @@
+<section class="reports" aria-label="Standard reports">
+  <header class="header">
+    <h1>Reports</h1>
+    <p class="subtitle">{{ subtitle() }}</p>
+  </header>
+
+  <!-- Start Export Section -->
+  <mat-card class="export-card" appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>Start Export</mat-card-title>
+      <mat-card-subtitle>Select a report type and format</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <!-- Report type selector -->
+      <mat-form-field appearance="outline" class="field-type">
+        <mat-label>Report type</mat-label>
+        <mat-select [(ngModel)]="selectedType" (selectionChange)="exportError.set(null)">
+          @for (type of REPORT_TYPES; track type.key) {
+            <mat-option [value]="type.key">
+              {{ type.displayName }}
+              <span class="option-description"> — {{ type.description }}</span>
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      @if (selectedTypeInfo(); as info) {
+        <p class="selected-description">{{ info.description }}</p>
+      }
+
+      <!-- Format toggle -->
+      <div class="format-row">
+        <label class="field-label">Format</label>
+        <mat-button-toggle-group
+          name="format"
+          [(ngModel)]="selectedFormat"
+          aria-label="Select export format"
+        >
+          <mat-button-toggle value="excel">Excel</mat-button-toggle>
+          <mat-button-toggle value="pdf">PDF</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
+      <!-- Conditional date inputs -->
+      @if (showDateRange()) {
+        <div class="date-row">
+          <mat-form-field appearance="outline" class="field-date">
+            <mat-label>From</mat-label>
+            <input
+              matInput
+              [matDatepicker]="fromPicker"
+              (dateChange)="fromDate.set($event.value?.toISOString?.() ?? null)"
+              placeholder="Select start date"
+            />
+            <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
+            <mat-datepicker #fromPicker></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="field-date">
+            <mat-label>To</mat-label>
+            <input
+              matInput
+              [matDatepicker]="toPicker"
+              (dateChange)="toDate.set($event.value?.toISOString?.() ?? null)"
+              placeholder="Select end date"
+            />
+            <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
+            <mat-datepicker #toPicker></mat-datepicker>
+          </mat-form-field>
+        </div>
+      }
+
+      @if (showYear()) {
+        <mat-form-field appearance="outline" class="field-year">
+          <mat-label>Year</mat-label>
+          <input
+            matInput
+            type="number"
+            [ngModel]="year()"
+            (ngModelChange)="year.set($event ? (isNaN(Number($event)) ? null : Number($event)) : null)"
+            placeholder="e.g. 2026"
+            min="2000"
+            max="2100"
+          />
+        </mat-form-field>
+      }
+
+      <!-- Export error -->
+      @if (exportError(); as err) {
+        <p class="export-error" role="alert">{{ err }}</p>
+      }
+
+      <!-- Start button -->
+      <div class="export-actions">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          [disabled]="!canStartExport()"
+          (click)="startExport()"
+        >
+          @if (exporting()) {
+            Starting…
+          } @else {
+            Start Export
+          }
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Export Jobs List Section -->
+  <mat-card class="jobs-card" appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>Export History</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (loading()) {
+        <div class="skeleton-table" aria-hidden="true">
+          <div class="skeleton-header">
+            @for (_ of displayedColumns; track _) {
+              <span class="skeleton skeleton-col-label"></span>
+            }
+          </div>
+          @for (_ of [1,2,3,4,5]; track _) {
+            <div class="skeleton-row">
+              <span class="skeleton skeleton-cell"></span>
+              <span class="skeleton skeleton-cell"></span>
+              <span class="skeleton skeleton-cell"></span>
+              <span class="skeleton skeleton-cell"></span>
+              <span class="skeleton skeleton-cell"></span>
+            </div>
+          }
+        </div>
+      } @else if (errorMessage()) {
+        <div class="error-state">
+          <p class="error" role="alert">{{ errorMessage() }}</p>
+          <button mat-stroked-button type="button" (click)="loadJobs()">Retry</button>
+        </div>
+      } @else if (jobs().length === 0) {
+        <div class="empty-state">
+          <p>No exports yet. Start one above.</p>
+        </div>
+      } @else {
+        <div class="table-wrapper">
+          <table mat-table [dataSource]="jobs()" class="jobs-table">
+            <!-- Report Type Column -->
+            <ng-container matColumnDef="reportType">
+              <th mat-header-cell *matHeaderCellDef>Report Type</th>
+              <td mat-cell *matCellDef="let job">
+                <span class="cell-report-type">{{ getReportDisplayName(job.reportType) }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Format Column -->
+            <ng-container matColumnDef="format">
+              <th mat-header-cell *matHeaderCellDef>Format</th>
+              <td mat-cell *matCellDef="let job">{{ formatReportFormat(job.format) }}</td>
+            </ng-container>
+
+            <!-- Created At Column -->
+            <ng-container matColumnDef="createdAt">
+              <th mat-header-cell *matHeaderCellDef>Started</th>
+              <td mat-cell *matCellDef="let job">
+                <span class="cell-timestamp">{{ formatTimestamp(job.createdAtUtc) }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let job">
+                <span class="status-chip" [class]="'status-' + job.status">
+                  @if (job.status === 'processing') {
+                    <span class="status-spinner" aria-hidden="true"></span>
+                  }
+                  {{ getStatusLabel(job.status) }}
+                </span>
+                @if (job.status === 'failed' && job.errorMessage) {
+                  <span class="error-detail" role="alert">{{ job.errorMessage }}</span>
+                }
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let job">
+                @if (job.status === 'completed' && job.downloadUrl) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="downloadJob(job)"
+                  >
+                    Download
+                  </button>
+                } @else if (job.status === 'completed' && !job.downloadUrl) {
+                  <span class="expired-label">Download expired — start a new export</span>
+                } @else {
+                  <span class="no-action">—</span>
+                }
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          </table>
+        </div>
+
+        <mat-paginator
+          [length]="totalCount()"
+          [pageSize]="pageSize()"
+          [pageIndex]="page() - 1"
+          [pageSizeOptions]="[10, 20, 50]"
+          (page)="onPageChange($event)"
+          aria-label="Export jobs pagination"
+        >
+        </mat-paginator>
+      }
+    </mat-card-content>
+  </mat-card>
+</section>
