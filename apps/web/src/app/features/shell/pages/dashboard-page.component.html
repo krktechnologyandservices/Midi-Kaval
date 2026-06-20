@@ -1,0 +1,180 @@
+<section class="dashboard" aria-label="Operational dashboard">
+  <header class="header">
+    <h1>Dashboard</h1>
+    <p class="subtitle">{{ subtitle() }}</p>
+  </header>
+
+  @if (loading()) {
+    <div class="widget-grid" aria-hidden="true">
+      @for (_ of [1,2,3,4,5,6,7,8,9]; track _) {
+        <div class="skeleton-widget"></div>
+      }
+    </div>
+  } @else if (errorMessage()) {
+    <div class="error-state">
+      <p class="error" role="alert">{{ errorMessage() }}</p>
+      <button mat-stroked-button type="button" (click)="load()">Retry</button>
+    </div>
+  } @else {
+    @if (refreshing()) {
+      <p class="refreshing-indicator" aria-live="polite">Updating…</p>
+    }
+
+    <div class="widget-grid">
+      <!-- Cases by Stage -->
+      <section class="widget" aria-label="Cases by Stage">
+        <h2 class="widget-title">Cases by Stage</h2>
+        @if (data()?.casesByStage; as items) {
+          @for (item of items; track item.stage) {
+            <div class="bar-row">
+              <span class="bar-label">{{ item.stage }}</span>
+              <span class="bar-track">
+                <span
+                  class="bar-fill bar-fill-info"
+                  [style.width.%]="pct(item.count, maxStageCount())"
+                ></span>
+              </span>
+              <span class="bar-count">{{ item.count }}</span>
+            </div>
+          }
+        } @else {
+          <p class="widget-empty">No data</p>
+        }
+      </section>
+
+      <!-- Cases by Offence Classification -->
+      <section class="widget" aria-label="Cases by Offence Classification">
+        <h2 class="widget-title">Cases by Offence Classification</h2>
+        @if (data()?.casesByOffenceClassification; as items) {
+          @for (item of items; track item.offenceClassification) {
+            <div class="bar-row">
+              <span class="bar-label">{{ item.offenceClassification }}</span>
+              <span class="bar-track">
+                <span
+                  class="bar-fill bar-fill-info"
+                  [style.width.%]="pct(item.count, maxOffenceCount())"
+                ></span>
+              </span>
+              <span class="bar-count">{{ item.count }}</span>
+            </div>
+          }
+        } @else {
+          <p class="widget-empty">No data</p>
+        }
+      </section>
+
+      <!-- Cases by Domicile -->
+      <section class="widget" aria-label="Cases by Domicile">
+        <h2 class="widget-title">Cases by Domicile</h2>
+        @if (data()?.casesByDomicile; as items) {
+          @for (item of items; track item.domicile) {
+            <div class="bar-row">
+              <span class="bar-label">{{ item.domicile }}</span>
+              <span class="bar-track">
+                <span
+                  class="bar-fill bar-fill-info"
+                  [style.width.%]="pct(item.count, maxDomicileCount())"
+                ></span>
+              </span>
+              <span class="bar-count">{{ item.count }}</span>
+            </div>
+          }
+        } @else {
+          <p class="widget-empty">No data</p>
+        }
+      </section>
+
+      <!-- Cases by Staff -->
+      <section class="widget" aria-label="Cases by Staff">
+        <h2 class="widget-title">Cases by Staff</h2>
+        @if (data()?.casesByStaff; as items) {
+          @for (item of items; track item.workerId) {
+            <div class="bar-row">
+              <span class="bar-label">{{ item.workerName }}</span>
+              <span class="bar-track">
+                <span
+                  class="bar-fill bar-fill-primary"
+                  [style.width.%]="pct(item.caseCount, maxStaffCount())"
+                ></span>
+              </span>
+              <span class="bar-count">{{ item.caseCount }}</span>
+            </div>
+          }
+        } @else {
+          <p class="widget-empty">No data</p>
+        }
+      </section>
+
+      <!-- Overdue Visits -->
+      <section class="widget metric-card" aria-label="Overdue Visits">
+        <h2 class="widget-title">Overdue Visits</h2>
+        <p class="metric-primary">{{ data()?.overdueVisits?.totalOverdue ?? '—' }}</p>
+        <p class="metric-sub">Cases affected: {{ data()?.overdueVisits?.uniqueCasesAffected ?? '—' }}</p>
+      </section>
+
+      <!-- Interventions Gauge -->
+      <section class="widget metric-card" aria-label="Interventions Gauge">
+        <h2 class="widget-title">Interventions</h2>
+        <div class="metric-group">
+          <div class="metric-item">
+            <span class="metric-primary-sm">{{ data()?.interventionsGauge?.inProgress ?? '—' }}</span>
+            <span class="metric-label">In Progress</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-primary-sm metric-overdue">{{ data()?.interventionsGauge?.overdue ?? '—' }}</span>
+            <span class="metric-label">Overdue</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-primary-sm">{{ data()?.interventionsGauge?.completedThisMonth ?? '—' }}</span>
+            <span class="metric-label">Completed this month</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Court This Week -->
+      <section class="widget metric-card" aria-label="Court This Week">
+        <h2 class="widget-title">Court This Week</h2>
+        <p class="metric-primary">{{ data()?.courtThisWeek?.totalUpcoming ?? '—' }}</p>
+        <p class="metric-sub">
+          Attended: {{ data()?.courtThisWeek?.attendedSoFar ?? '—' }}
+          &middot; Cases: {{ data()?.courtThisWeek?.totalCasesWithSittings ?? '—' }}
+        </p>
+      </section>
+
+      <!-- Pending Claims -->
+      <section class="widget metric-card" aria-label="Pending Claims">
+        <h2 class="widget-title">Pending Claims</h2>
+        <p class="metric-primary">{{ data()?.pendingClaims?.pendingCount ?? '—' }}</p>
+        <p class="metric-sub">
+          @if (data()?.pendingClaims; as pc) {
+            Amount: ₹{{ formatAmount(pc.totalAmountPending) }}
+            &middot; Oldest: {{ oldestDays(pc.oldestPendingDays) }}
+          }
+        </p>
+      </section>
+
+      <!-- Intake Trend -->
+      <section class="widget widget-trend" aria-label="12-month Intake Trend">
+        <h2 class="widget-title">Intake Trend (12 months)</h2>
+        @if (allIntakeZero()) {
+          <p class="widget-empty">No intake data for the past 12 months</p>
+        } @else if (data()?.intakeTrend; as trend) {
+          <div class="trend-chart">
+            @for (point of trend; track point.month) {
+              <div class="trend-bar-container">
+                <span
+                  class="trend-bar"
+                  [style.height.%]="trendHeight(point.count, maxIntakeCount())"
+                  [class.zero]="(point.count ?? 0) === 0"
+                ></span>
+                <span class="trend-label">{{ monthLabel(point.month) }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="widget-empty">No intake data for the past 12 months</p>
+        }
+      </section>
+    </div>
+  }
+</section>

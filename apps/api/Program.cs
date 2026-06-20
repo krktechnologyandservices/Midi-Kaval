@@ -68,6 +68,8 @@ if (!builder.Environment.IsTesting())
         builder.Configuration.GetSection(CourtMissEscalationJobOptions.SectionName));
     builder.Services.Configure<PushNotificationsOptions>(
         builder.Configuration.GetSection(PushNotificationsOptions.SectionName));
+    builder.Services.Configure<ReportExportOptions>(
+        builder.Configuration.GetSection(ReportExportOptions.SectionName));
     builder.Services.AddSingleton<FakePushNotificationSender>();
     var pushOptions = builder.Configuration
         .GetSection(PushNotificationsOptions.SectionName)
@@ -91,11 +93,14 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<CourtMissEscalationJobRunner>();
     builder.Services.AddScoped<CrisisQueueService>();
     builder.Services.AddScoped<DashboardService>();
+    builder.Services.AddScoped<ReportGenerationService>();
+    builder.Services.AddScoped<ReportExportJobRunner>();
     if (!builder.Environment.IsDevelopment())
     {
         builder.Services.AddHostedService<InterventionOverdueBackgroundService>();
         builder.Services.AddHostedService<CourtReminderBackgroundService>();
         builder.Services.AddHostedService<CourtMissEscalationBackgroundService>();
+        builder.Services.AddHostedService<ReportExportBackgroundService>();
     }
     builder.Services.AddScoped<AttachmentService>();
     builder.Services.AddScoped<VisitService>();

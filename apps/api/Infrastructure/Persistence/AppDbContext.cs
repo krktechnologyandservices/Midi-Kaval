@@ -22,6 +22,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TravelClaim> TravelClaims => Set<TravelClaim>();
     public DbSet<TravelClaimCaseLink> TravelClaimCaseLinks => Set<TravelClaimCaseLink>();
     public DbSet<SyncMutation> SyncMutations => Set<SyncMutation>();
+    public DbSet<ReportExportJob> ReportExportJobs => Set<ReportExportJob>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
