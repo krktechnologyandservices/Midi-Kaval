@@ -319,3 +319,35 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - **Page change silently desyncs on rapid click** — `loadingGuard` prevents re-fetch after page state already updated
 - **`startExport` makes fragile API ordering assumptions** — prepends job and increments count unconditionally
 - **`displayFormat()` mislabels unknown formats as "PDF"** — format field is `string`, not union type
+
+## Deferred from: code review of 9-2-staff-directory-management.md (2026-06-20)
+
+- **No pagination on List endpoint** — valid scale concern, not in ACs; add when needed
+- **API accepts Director role but UI excludes it** — deliberate design choice; Directors manage staff, not created by staff management
+- **No invite/password-set flow on create** — requires email integration beyond this story's scope
+- **Rate limiting on force-reset** — potential DoS vector; security hardening story
+- **Role change increments TokenVersion (logout)** — intentional per spec; role changes treated as security events
+- **No explicit ForcePasswordReset DB column** — implicit via PasswordHash="" + TokenVersion=1 per spec decision
+- **Test coverage** — test creation deferred for a testing-specific story
+- **Audit events lack IP/user-agent** — cross-cutting concern affecting all controllers equally
+
+## Deferred from: code review of 9-3-audit-log-api-and-director-ui.md (2026-06-20)
+
+- **ResolveOrganisationId() throws 500 instead of 401/403** — pre-existing pattern across all controllers, not fixable in isolation
+- **Skip/Take pagination O(n) on append-only table** — keyset pagination is a future performance story
+- **ActorUserId/SubjectUserId filters lack dedicated DB indexes** — performance optimization, valid but not in current scope
+- **AuditApiService re-throws raw error** — component's extractErrorMessage handles HttpErrorResponse correctly
+- **AuditEventDto 10-parameter positional record fragility** — matches project-wide record pattern; refactor to named properties deferred
+- **ResolveRequestId() fallback to TraceIdentifier inconsistent** — pre-existing concern across all controllers
+- **Audit log access not itself audited** — read-only endpoint per spec; not an AC requirement
+- **Missing actorUserId/subjectUserId UI filter controls** — API supports them; UI needs a user-search infrastructure first
+
+## Deferred from: code review of 9-4-angular-material-theme-from-design-tokens.md (2026-06-20)
+
+- **F1: `IsUniqueConstraintViolation` uses DB-provider-specific string matching** — `IsUniqueConstraintViolation` in `LegendsController` matches on `"UNIQUE"` / `"duplicate"` only; provider-specific check; pre-existing
+- **F2: LegendsController uses raw reflection in every endpoint** — `EF.Property<Guid>(e, "OrganisationId")` and `type.GetProperty("Name")!.SetValue(...)` in every endpoint; pre-existing design choice
+- **F3: 10 identical entity classes + configs copy-paste debt** — every legend entity is an exact structural copy; shared base class would eliminate; pre-existing pattern
+- **F4: ReportGenerationService client-side `.ToString()` evaluation** — EF expression tree → anonymous type + in-memory Select forces client-side evaluation; from prior EF Core fix session
+- **F5: LegendsController file minified to single line** — 438-character single line; unreviewable, unblameable; pre-existing formatting
+- **F6: Claims resolution throws 500 instead of 401** — `ResolveOrganisationId()` / `ResolveUserId()` throw `InvalidOperationException` on bad claims; pre-existing pattern across all controllers
+- **F7: Legend entities lack concurrency tokens** — no row version or `UPDATE ... WHERE UpdatedAtUtc` pattern; low write contention acceptable

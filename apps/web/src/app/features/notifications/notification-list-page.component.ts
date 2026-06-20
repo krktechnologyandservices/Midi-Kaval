@@ -1,5 +1,4 @@
-import { Component, DestroyRef, inject, OnInit } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, inject, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -170,7 +169,6 @@ import { NotificationDto } from '../cases/models/case.models';
 export class NotificationListPageComponent implements OnInit {
   private readonly caseApi = inject(CaseApiService);
   private readonly deeplink = inject(NotificationDeeplinkService);
-  private readonly destroyRef = inject(DestroyRef);
 
   notifications: NotificationDto[] = [];
   loading = true;
@@ -180,27 +178,21 @@ export class NotificationListPageComponent implements OnInit {
     this.loadNotifications();
   }
 
-  private loadNotifications(): void {
+  protected async loadNotifications(): Promise<void> {
     this.loading = true;
     this.error = false;
-    this.caseApi
-      .listNotifications()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: result => {
-          this.notifications = result.items;
-          this.loading = false;
-        },
-        error: () => {
-          this.loading = false;
-          this.error = true;
-        },
-      });
+    try {
+      this.notifications = await this.caseApi.listNotifications();
+    } catch {
+      this.error = true;
+    } finally {
+      this.loading = false;
+    }
   }
 
   onNotificationClick(notification: NotificationDto): void {
-    if (!notification.readAtUtc) {
-      this.caseApi.markNotificationRead(notification.id).subscribe();
+    if (!notification.readAtUtc && notification.id) {
+      this.caseApi.markNotificationRead(notification.id).catch(() => {});
     }
     this.deeplink.navigate(notification);
   }

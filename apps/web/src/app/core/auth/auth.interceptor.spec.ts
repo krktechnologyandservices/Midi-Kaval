@@ -17,7 +17,7 @@ describe('authInterceptor', () => {
   let auth: jasmine.SpyObj<AuthSessionService>;
 
   beforeEach(() => {
-    auth = jasmine.createSpyObj<AuthSessionService>('AuthSessionService', [
+    auth = jasmine.createSpyObj('AuthSessionService', [
       'getAccessToken',
       'refreshSession',
       'handleSessionExpired',

@@ -1,0 +1,22 @@
+// Inter font loaded via angular.json build config — no @import needed here
+// This file provides SCSS variables and CSS custom properties for component consumption.
+
+$font-family-body: 'Inter', system-ui, -apple-system, sans-serif;
+$font-family-display: 'Inter', system-ui, -apple-system, sans-serif;
+$font-display-weight: 600;
+$font-display-size: 30px;
+$font-display-line-height: 36px;
+$font-body-weight: 400;
+$font-body-size: 16px;
+$font-body-line-height: 1.5;
+
+:root {
+  --font-family-body: #{$font-family-body};
+  --font-family-display: #{$font-family-display};
+  --font-display-weight: #{$font-display-weight};
+  --font-display-size: #{$font-display-size};
+  --font-display-line-height: #{$font-display-line-height};
+  --font-body-weight: #{$font-body-weight};
+  --font-body-size: #{$font-body-size};
+  --font-body-line-height: #{$font-body-line-height};
+}

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Domain.Enums;
 using MidiKaval.Api.Infrastructure;
@@ -41,7 +42,7 @@ public sealed class ReportsController(
             return BadRequest(new ProblemDetails
             {
                 Detail = $"Invalid report type '{type}'. Valid types: {string.Join(", ", ReportTypeExtensions.All)}",
-                StatusCode = StatusCodes.Status400BadRequest,
+                Status = StatusCodes.Status400BadRequest,
             });
         }
 
@@ -51,7 +52,7 @@ public sealed class ReportsController(
             return BadRequest(new ProblemDetails
             {
                 Detail = "Format must be 'excel' or 'pdf'",
-                StatusCode = StatusCodes.Status400BadRequest,
+                Status = StatusCodes.Status400BadRequest,
             });
         }
 

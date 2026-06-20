@@ -15,7 +15,7 @@ describe('CaseCreateComponent', () => {
   let router: Router;
 
   beforeEach(async () => {
-    caseApi = jasmine.createSpyObj<CaseApiService>('CaseApiService', [
+    caseApi = jasmine.createSpyObj('CaseApiService', [
       'checkDuplicate',
       'createCase',
       'mergeCase',
@@ -23,7 +23,7 @@ describe('CaseCreateComponent', () => {
       'isConflict',
       'isNetworkError',
     ]);
-    dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
+    dialog = jasmine.createSpyObj('MatDialog', ['open']);
 
     await TestBed.configureTestingModule({
       imports: [CaseCreateComponent],

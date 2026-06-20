@@ -15,7 +15,7 @@
       <mat-form-field appearance="outline" class="field-type">
         <mat-label>Report type</mat-label>
         <mat-select [(ngModel)]="selectedType" (selectionChange)="exportError.set(null)">
-          @for (type of REPORT_TYPES; track type.key) {
+          @for (type of reportTypes; track type.key) {
             <mat-option [value]="type.key">
               {{ type.displayName }}
               <span class="option-description"> — {{ type.description }}</span>

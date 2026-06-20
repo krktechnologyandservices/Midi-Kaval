@@ -207,7 +207,7 @@ public sealed class ReportGenerationService(
         var rangeEnd = (to ?? DateOnly.FromDateTime(DateTime.UtcNow))
             .ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
 
-        var rows = await (
+        var rawRows = await (
             from i in db.Interventions
             join c in db.Cases on i.CaseId equals c.Id
             join u in db.Users on i.AssignedStaffUserId equals u.Id into userJoin
@@ -215,20 +215,31 @@ public sealed class ReportGenerationService(
             where i.OrganisationId == organisationId
                 && i.CreatedAtUtc >= rangeStart
                 && i.CreatedAtUtc <= rangeEnd
-            select new ReportExportRowDto
+            select new
             {
-                Columns = new Dictionary<string, object?>
-                {
-                    ["Worker"] = u != null && u.OrganisationId == organisationId ? u.Email : "Unknown",
-                    ["Case"] = c.CrimeNumber,
-                    ["Category"] = i.CategoryName,
-                    ["Status"] = i.Status.ToString(),
-                    ["Priority"] = i.Priority.ToString(),
-                    ["Due (UTC)"] = i.DueAtUtc?.ToString("O") ?? string.Empty,
-                    ["Provided (UTC)"] = i.ProvidedAtUtc?.ToString("O") ?? string.Empty,
-                }
+                WorkerEmail = u != null && u.OrganisationId == organisationId ? u.Email : (string?)null,
+                CrimeNumber = c.CrimeNumber,
+                CategoryName = i.CategoryName,
+                Status = i.Status,
+                Priority = i.Priority,
+                DueAtUtc = i.DueAtUtc,
+                ProvidedAtUtc = i.ProvidedAtUtc,
             })
             .ToListAsync(ct);
+
+        var rows = rawRows.Select(r => new ReportExportRowDto
+        {
+            Columns = new Dictionary<string, object?>
+            {
+                ["Worker"] = r.WorkerEmail ?? "Unknown",
+                ["Case"] = r.CrimeNumber,
+                ["Category"] = r.CategoryName,
+                ["Status"] = r.Status.ToString(),
+                ["Priority"] = r.Priority.ToString(),
+                ["Due (UTC)"] = r.DueAtUtc?.ToString("O") ?? string.Empty,
+                ["Provided (UTC)"] = r.ProvidedAtUtc?.ToString("O") ?? string.Empty,
+            }
+        }).ToList();
 
         return rows;
     }
@@ -244,25 +255,35 @@ public sealed class ReportGenerationService(
         var rangeEnd = (to ?? DateOnly.FromDateTime(DateTime.UtcNow))
             .ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
 
-        var rows = await (
+        var rawRows = await (
             from cs in db.CourtSittings
             join c in db.Cases on cs.CaseId equals c.Id
             where cs.OrganisationId == organisationId
                 && cs.ScheduledAtUtc >= rangeStart
                 && cs.ScheduledAtUtc <= rangeEnd
-            select new ReportExportRowDto
+            select new
             {
-                Columns = new Dictionary<string, object?>
-                {
-                    ["Case"] = c.CrimeNumber,
-                    ["Court"] = cs.CourtName,
-                    ["Purpose"] = cs.Purpose,
-                    ["Status"] = cs.Status.ToString(),
-                    ["Scheduled (UTC)"] = cs.ScheduledAtUtc.ToString("O"),
-                    ["Outcome"] = cs.Outcome ?? string.Empty,
-                }
+                CrimeNumber = c.CrimeNumber,
+                CourtName = cs.CourtName,
+                Purpose = cs.Purpose,
+                Status = cs.Status,
+                ScheduledAtUtc = cs.ScheduledAtUtc,
+                Outcome = cs.Outcome,
             })
             .ToListAsync(ct);
+
+        var rows = rawRows.Select(r => new ReportExportRowDto
+        {
+            Columns = new Dictionary<string, object?>
+            {
+                ["Case"] = r.CrimeNumber,
+                ["Court"] = r.CourtName,
+                ["Purpose"] = r.Purpose,
+                ["Status"] = r.Status.ToString(),
+                ["Scheduled (UTC)"] = r.ScheduledAtUtc.ToString("O"),
+                ["Outcome"] = r.Outcome ?? string.Empty,
+            }
+        }).ToList();
 
         return rows;
     }
@@ -273,19 +294,26 @@ public sealed class ReportGenerationService(
     private async Task<IReadOnlyList<ReportExportRowDto>> BuildOffenceAreaCountsReportAsync(
         Guid organisationId, CancellationToken ct)
     {
-        var rows = await db.Cases
+        var rawRows = await db.Cases
             .Where(c => c.OrganisationId == organisationId)
             .GroupBy(c => new { c.OffenceClassification, c.Domicile })
-            .Select(g => new ReportExportRowDto
+            .Select(g => new
             {
-                Columns = new Dictionary<string, object?>
-                {
-                    ["Offence Classification"] = g.Key.OffenceClassification.ToString(),
-                    ["Domicile"] = g.Key.Domicile.ToString(),
-                    ["Case Count"] = g.Count(),
-                }
+                OffenceClassification = g.Key.OffenceClassification,
+                Domicile = g.Key.Domicile,
+                Count = g.Count(),
             })
             .ToListAsync(ct);
+
+        var rows = rawRows.Select(r => new ReportExportRowDto
+        {
+            Columns = new Dictionary<string, object?>
+            {
+                ["Offence Classification"] = r.OffenceClassification.ToString(),
+                ["Domicile"] = r.Domicile.ToString(),
+                ["Case Count"] = r.Count,
+            }
+        }).ToList();
 
         return rows;
     }
@@ -296,7 +324,7 @@ public sealed class ReportGenerationService(
     private async Task<IReadOnlyList<ReportExportRowDto>> BuildWorkloadDistributionReportAsync(
         Guid organisationId, CancellationToken ct)
     {
-        var rows = await (
+        var rawRows = await (
             from c in db.Cases
             join u in db.Users on c.AssignedWorkerId equals u.Id into userJoin
             from u in userJoin.DefaultIfEmpty()
@@ -310,15 +338,21 @@ public sealed class ReportGenerationService(
                     ? u.Email
                     : "Unknown",
             } into g
-            select new ReportExportRowDto
+            select new
             {
-                Columns = new Dictionary<string, object?>
-                {
-                    ["Worker"] = g.Key.WorkerName,
-                    ["Active Case Count"] = g.Count(),
-                }
+                WorkerName = g.Key.WorkerName,
+                ActiveCaseCount = g.Count(),
             })
             .ToListAsync(ct);
+
+        var rows = rawRows.Select(r => new ReportExportRowDto
+        {
+            Columns = new Dictionary<string, object?>
+            {
+                ["Worker"] = r.WorkerName,
+                ["Active Case Count"] = r.ActiveCaseCount,
+            }
+        }).ToList();
 
         return rows;
     }
@@ -334,7 +368,7 @@ public sealed class ReportGenerationService(
         var rangeEnd = (to ?? DateOnly.FromDateTime(DateTime.UtcNow))
             .ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
 
-        var rows = await (
+        var rawRows = await (
             from tc in db.TravelClaims
             join u in db.Users on tc.ClaimantUserId equals u.Id into userJoin
             from u in userJoin.DefaultIfEmpty()
@@ -348,16 +382,23 @@ public sealed class ReportGenerationService(
                     ? u.Email
                     : "Unknown",
             } into g
-            select new ReportExportRowDto
+            select new
             {
-                Columns = new Dictionary<string, object?>
-                {
-                    ["Worker"] = g.Key.WorkerName,
-                    ["Total Claims"] = g.Count(),
-                    ["Total Amount"] = g.Sum(x => (decimal?)x.tc.Amount) ?? 0m,
-                }
+                WorkerName = g.Key.WorkerName,
+                TotalClaims = g.Count(),
+                TotalAmount = g.Sum(x => (decimal?)x.tc.Amount) ?? 0m,
             })
             .ToListAsync(ct);
+
+        var rows = rawRows.Select(r => new ReportExportRowDto
+        {
+            Columns = new Dictionary<string, object?>
+            {
+                ["Worker"] = r.WorkerName,
+                ["Total Claims"] = r.TotalClaims,
+                ["Total Amount"] = r.TotalAmount,
+            }
+        }).ToList();
 
         return rows;
     }

@@ -55,7 +55,7 @@ public sealed class ReportExportJobRunner(
                     job.Year,
                     ct);
 
-                var title = reportService.ReportTypeToDisplayName(reportType);
+                var title = reportService.ReportTypeToDisplayName(reportType.Value);
                 var fileBytes = await reportService.GenerateFileAsync(rows, job.Format, title);
 
                 var extension = job.Format == "pdf" ? ".pdf" : ".xlsx";

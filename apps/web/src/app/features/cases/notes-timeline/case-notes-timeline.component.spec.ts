@@ -35,12 +35,12 @@ describe('CaseNotesTimelineComponent', () => {
   ];
 
   beforeEach(async () => {
-    caseApi = jasmine.createSpyObj<CaseApiService>('CaseApiService', [
+    caseApi = jasmine.createSpyObj('CaseApiService', [
       'listCaseNotes',
       'createCaseNote',
       'extractErrorMessage',
     ]);
-    attachmentApi = jasmine.createSpyObj<AttachmentApiService>('AttachmentApiService', [
+    attachmentApi = jasmine.createSpyObj('AttachmentApiService', [
       'getDownloadUrl',
       'presign',
       'confirm',

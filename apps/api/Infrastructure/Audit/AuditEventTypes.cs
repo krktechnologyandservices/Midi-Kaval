@@ -35,4 +35,13 @@ public static class AuditEventTypes
     public const string TravelClaimReturned = "travel.claim.returned";
     public const string AttachmentPresignIssued = "attachment.presign.issued";
     public const string AttachmentConfirmed = "attachment.confirmed";
+    public const string LegendCreated = "legend.created";
+    public const string LegendUpdated = "legend.updated";
+    public const string LegendDeactivated = "legend.deactivated";
+    public const string LegendReactivated = "legend.reactivated";
+    public const string StaffCreated = "staff.created";
+    public const string StaffUpdated = "staff.updated";
+    public const string StaffDeactivated = "staff.deactivated";
+    public const string StaffReactivated = "staff.reactivated";
+    public const string StaffForceReset = "staff.force-reset";
 }

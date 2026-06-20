@@ -42,7 +42,7 @@ describe('CaseDetailPlaceholderComponent', () => {
   };
 
   beforeEach(async () => {
-    caseApi = jasmine.createSpyObj<CaseApiService>('CaseApiService', [
+    caseApi = jasmine.createSpyObj('CaseApiService', [
       'getCaseDetail',
       'listFieldWorkers',
       'transferCase',

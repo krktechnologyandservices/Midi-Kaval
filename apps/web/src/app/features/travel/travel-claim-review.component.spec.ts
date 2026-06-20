@@ -27,7 +27,7 @@ describe('TravelClaimReviewComponent', () => {
   };
 
   beforeEach(async () => {
-    travelApi = jasmine.createSpyObj<TravelClaimApiService>('TravelClaimApiService', [
+    travelApi = jasmine.createSpyObj('TravelClaimApiService', [
       'getForDirectorReview',
       'getForSupervisorReview',
       'approve',
@@ -38,14 +38,14 @@ describe('TravelClaimReviewComponent', () => {
     travelApi.getForSupervisorReview.and.resolveTo(submittedClaim);
     travelApi.extractErrorMessage.and.returnValue('Error');
 
-    const caseApi = jasmine.createSpyObj<CaseApiService>('CaseApiService', ['getCaseDetail']);
+    const caseApi = jasmine.createSpyObj('CaseApiService', ['getCaseDetail']);
     caseApi.getCaseDetail.and.resolveTo({
       id: 'case-1',
       crimeNumber: 'CR-1',
       stNumber: 'ST-1',
     });
 
-    const attachmentApi = jasmine.createSpyObj<AttachmentApiService>('AttachmentApiService', [
+    const attachmentApi = jasmine.createSpyObj('AttachmentApiService', [
       'getDownloadUrl',
       'extractErrorMessage',
     ]);
@@ -90,14 +90,14 @@ describe('TravelClaimReviewComponent', () => {
 
   it('hides approve and return actions in read-only mode', async () => {
     TestBed.resetTestingModule();
-    travelApi = jasmine.createSpyObj<TravelClaimApiService>('TravelClaimApiService', [
+    travelApi = jasmine.createSpyObj('TravelClaimApiService', [
       'getForSupervisorReview',
       'extractErrorMessage',
     ]);
     travelApi.getForSupervisorReview.and.resolveTo(submittedClaim);
     travelApi.extractErrorMessage.and.returnValue('Error');
 
-    const caseApi = jasmine.createSpyObj<CaseApiService>('CaseApiService', ['getCaseDetail']);
+    const caseApi = jasmine.createSpyObj('CaseApiService', ['getCaseDetail']);
     caseApi.getCaseDetail.and.resolveTo({
       id: 'case-1',
       crimeNumber: 'CR-1',

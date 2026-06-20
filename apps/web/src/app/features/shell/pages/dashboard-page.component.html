@@ -158,9 +158,10 @@
       <!-- Intake Trend -->
       <section class="widget widget-trend" aria-label="12-month Intake Trend">
         <h2 class="widget-title">Intake Trend (12 months)</h2>
-        @if (allIntakeZero()) {
+      @let trend = data()?.intakeTrend;
+      @if (allIntakeZero()) {
           <p class="widget-empty">No intake data for the past 12 months</p>
-        } @else if (data()?.intakeTrend; as trend) {
+        } @else if (trend) {
           <div class="trend-chart">
             @for (point of trend; track point.month) {
               <div class="trend-bar-container">

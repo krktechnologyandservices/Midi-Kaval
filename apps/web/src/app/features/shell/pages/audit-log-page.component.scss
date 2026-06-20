@@ -1,0 +1,159 @@
+.audit-log-page {
+  padding: 1.5rem;
+  max-width: 1200px;
+}
+
+.page-header {
+  margin-bottom: 1.5rem;
+
+  h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 500;
+  }
+
+  .subtitle {
+    margin: 0.25rem 0 0;
+    color: var(--mat-sys-on-surface-variant, #475467);
+    font-size: 0.875rem;
+  }
+}
+
+.filter-card {
+  margin-bottom: 1rem;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+
+  mat-form-field {
+    flex: 1 1 200px;
+    min-width: 160px;
+  }
+}
+
+.filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding-top: 0.25rem;
+}
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  font-size: 0.875rem;
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+
+  button {
+    margin-left: auto;
+  }
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.audit-table {
+  width: 100%;
+
+  .mat-column-timestamp {
+    min-width: 160px;
+    white-space: nowrap;
+  }
+
+  .mat-column-eventType {
+    min-width: 200px;
+  }
+
+  .mat-column-actor,
+  .mat-column-subject {
+    min-width: 180px;
+  }
+
+  .mat-column-details {
+    min-width: 200px;
+    max-width: 300px;
+    font-size: 0.8125rem;
+    color: var(--mat-sys-on-surface-variant, #475467);
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 3rem 1rem;
+  color: var(--mat-sys-on-surface-variant, #475467);
+
+  mat-icon {
+    font-size: 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    opacity: 0.5;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.9375rem;
+  }
+}
+
+.skeleton-list {
+  padding: 0.5rem 0;
+}
+
+.skeleton-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 180px 180px 1fr;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, #e5e7eb);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+  height: 1rem;
+}
+
+.skeleton-text--short {
+  width: 60%;
+}
+
+.skeleton-text--medium {
+  width: 75%;
+}
+
+.skeleton-text--long {
+  width: 90%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

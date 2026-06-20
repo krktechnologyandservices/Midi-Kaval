@@ -8,7 +8,7 @@ describe('LoginComponent', () => {
   let auth: jasmine.SpyObj<AuthSessionService>;
 
   beforeEach(async () => {
-    auth = jasmine.createSpyObj<AuthSessionService>('AuthSessionService', [
+    auth = jasmine.createSpyObj('AuthSessionService', [
       'login',
       'extractErrorMessage',
     ]);

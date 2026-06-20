@@ -116,11 +116,11 @@ development_status:
   8-7-angular-pwa-offline-snapshot-cache: done
   epic-8-retrospective: optional
 
-  epic-9: backlog
-  9-1-legends-crud-api-and-web-ui: backlog
-  9-2-staff-directory-management: backlog
-  9-3-audit-log-api-and-director-ui: backlog
-  9-4-angular-material-theme-from-design-tokens: backlog
+  epic-9: in-progress
+  9-1-legends-crud-api-and-web-ui: done
+  9-2-staff-directory-management: done
+  9-3-audit-log-api-and-director-ui: done
+  9-4-angular-material-theme-from-design-tokens: done
   epic-9-retrospective: optional
 
   epic-10: backlog

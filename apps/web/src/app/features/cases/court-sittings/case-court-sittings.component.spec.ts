@@ -26,7 +26,7 @@ describe('CaseCourtSittingsComponent', () => {
   ];
 
   beforeEach(async () => {
-    caseApi = jasmine.createSpyObj<CaseApiService>('CaseApiService', [
+    caseApi = jasmine.createSpyObj('CaseApiService', [
       'listCourtSittings',
       'createCourtSitting',
       'updateCourtSitting',

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MidiKaval.Api.Domain.Entities;
+using MidiKaval.Api.Domain.Entities.Legends;
 
 namespace MidiKaval.Api.Infrastructure.Persistence;
 
@@ -23,6 +24,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TravelClaimCaseLink> TravelClaimCaseLinks => Set<TravelClaimCaseLink>();
     public DbSet<SyncMutation> SyncMutations => Set<SyncMutation>();
     public DbSet<ReportExportJob> ReportExportJobs => Set<ReportExportJob>();
+    public DbSet<OffenceType> OffenceTypes => Set<OffenceType>();
+    public DbSet<Classification> Classifications => Set<Classification>();
+    public DbSet<InterventionCategory> InterventionCategories => Set<InterventionCategory>();
+    public DbSet<EducationLevel> EducationLevels => Set<EducationLevel>();
+    public DbSet<Occupation> Occupations => Set<Occupation>();
+    public DbSet<VisitOutcome> VisitOutcomes => Set<VisitOutcome>();
+    public DbSet<CourtOutcome> CourtOutcomes => Set<CourtOutcome>();
+    public DbSet<Area> Areas => Set<Area>();
+    public DbSet<Designation> Designations => Set<Designation>();
+    public DbSet<PoliceStation> PoliceStations => Set<PoliceStation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

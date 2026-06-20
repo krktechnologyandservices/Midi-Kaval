@@ -1,0 +1,17 @@
+@use '@angular/material' as mat;
+@use './theme-colors' as colors;
+
+:root {
+  @include mat.theme((
+    color: (
+      theme-type: light,
+      primary: colors.$primary-palette,
+      tertiary: colors.$tertiary-palette,
+    ),
+    typography: (
+      plain-family: 'Inter, system-ui, sans-serif',
+      brand-family: 'Inter, system-ui, sans-serif',
+    ),
+    density: 0,
+  ));
+}

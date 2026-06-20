@@ -9,6 +9,7 @@ using MidiKaval.Api.Infrastructure;
 using MidiKaval.Api.Infrastructure.Cases;
 using MidiKaval.Api.Infrastructure.Visits;
 using MidiKaval.Api.Infrastructure.Sync;
+using MidiKaval.Api.Infrastructure.Reports;
 using MidiKaval.Api.Infrastructure.Storage;
 using MidiKaval.Api.Infrastructure.Supervisor;
 using MidiKaval.Api.Infrastructure.TravelClaims;

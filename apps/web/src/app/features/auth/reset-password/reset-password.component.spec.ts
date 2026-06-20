@@ -8,7 +8,7 @@ describe('ResetPasswordComponent', () => {
   let auth: jasmine.SpyObj<AuthSessionService>;
 
   beforeEach(async () => {
-    auth = jasmine.createSpyObj<AuthSessionService>('AuthSessionService', [
+    auth = jasmine.createSpyObj('AuthSessionService', [
       'resetPassword',
       'extractErrorMessage',
     ]);

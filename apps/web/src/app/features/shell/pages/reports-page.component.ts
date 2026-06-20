@@ -47,6 +47,11 @@ export class ReportsPageComponent implements OnInit, OnDestroy {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private loadingGuard = false;
 
+  // Template helpers (expose imports for AOT)
+  readonly reportTypes = REPORT_TYPES;
+  protected readonly isNaN = globalThis.isNaN;
+  protected readonly Number = globalThis.Number;
+
   // Shared state
   readonly loading = signal(true);
   readonly refreshing = signal(false);

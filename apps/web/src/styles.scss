@@ -1,20 +1,11 @@
-@use '@angular/material' as mat;
-
-html {
-  @include mat.theme(
-    (
-      color: (
-        theme-type: light,
-        primary: mat.$azure-palette,
-      ),
-      typography: Roboto,
-      density: 0,
-    )
-  );
-}
+@use './styles/theme';
+@use './styles/design-tokens';
+@use './styles/typography';
+@use './styles/dark-mode';
 
 body {
   margin: 0;
-  font-family: Roboto, 'Helvetica Neue', sans-serif;
-  background: #f8fafc;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--color-surface-base);
+  color: var(--color-ink-primary);
 }

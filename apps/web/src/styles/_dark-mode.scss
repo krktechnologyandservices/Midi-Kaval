@@ -1,0 +1,50 @@
+@use '@angular/material' as mat;
+@use './theme-colors' as colors;
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    // Dark mode token overrides (DESIGN.md §dark) — declared FIRST to avoid Sass mixed-decls warning
+    --color-surface-base: #101828;
+    --color-surface-raised: #1D2939;
+    --color-ink-primary: #F9FAFB;
+    --color-ink-secondary: #98A2B3;
+    --color-border-hairline: #344054;
+    --color-primary: #5CB8B8;
+    --color-primary-foreground: #042F2F;
+
+    @include mat.theme((
+      color: (
+        theme-type: dark,
+        primary: colors.$primary-palette,
+        tertiary: colors.$tertiary-palette,
+      ),
+      typography: (
+        plain-family: 'Inter, system-ui, sans-serif',
+      ),
+      density: 0,
+    ));
+  }
+}
+
+// Manual dark mode toggle via class
+.kaval-dark-mode {
+  --color-surface-base: #101828;
+  --color-surface-raised: #1D2939;
+  --color-ink-primary: #F9FAFB;
+  --color-ink-secondary: #98A2B3;
+  --color-border-hairline: #344054;
+  --color-primary: #5CB8B8;
+  --color-primary-foreground: #042F2F;
+
+  @include mat.theme((
+    color: (
+      theme-type: dark,
+      primary: colors.$primary-palette,
+      tertiary: colors.$tertiary-palette,
+    ),
+    typography: (
+      plain-family: 'Inter, system-ui, sans-serif',
+    ),
+    density: 0,
+  ));
+}

@@ -14,9 +14,10 @@ import { MatCardModule } from '@angular/material/card';
       </mat-card-header>
       <mat-card-content>
         <nav class="admin-nav" aria-label="Admin sections">
+          <a mat-stroked-button routerLink="/admin/audit">Audit Log</a>
+          <a mat-stroked-button routerLink="/admin/staff">Staff Directory</a>
           <a mat-stroked-button routerLink="/admin/travel-claims">Travel claims approval</a>
         </nav>
-        <p class="hint">User management and audit log will be implemented in Epic 9.</p>
       </mat-card-content>
     </mat-card>
   `,

@@ -127,6 +127,22 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'admin/staff',
+        canActivate: [directorGuard],
+        loadComponent: () =>
+          import('./features/shell/pages/staff-page.component').then(
+            (m) => m.StaffPageComponent,
+          ),
+      },
+      {
+        path: 'admin/audit',
+        canActivate: [directorGuard],
+        loadComponent: () =>
+          import('./features/shell/pages/audit-log-page.component').then(
+            (m) => m.AuditLogPageComponent,
+          ),
+      },
+      {
         path: 'admin/travel-claims',
         canActivate: [directorGuard],
         loadComponent: () =>

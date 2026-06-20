@@ -24,5 +24,15 @@ public sealed class AuditEventConfiguration : IEntityTypeConfiguration<AuditEven
 
         builder.HasIndex(e => new { e.OrganisationId, e.CreatedAtUtc });
         builder.HasIndex(e => new { e.EventType, e.CreatedAtUtc });
+
+        builder.HasOne(e => e.ActorUser)
+            .WithMany()
+            .HasForeignKey(e => e.ActorUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(e => e.SubjectUser)
+            .WithMany()
+            .HasForeignKey(e => e.SubjectUserId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

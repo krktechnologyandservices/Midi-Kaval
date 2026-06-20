@@ -25,7 +25,7 @@ describe('TravelClaimsPendingListComponent', () => {
   };
 
   beforeEach(async () => {
-    travelApi = jasmine.createSpyObj<TravelClaimApiService>('TravelClaimApiService', [
+    travelApi = jasmine.createSpyObj('TravelClaimApiService', [
       'listPending',
       'extractErrorMessage',
     ]);
