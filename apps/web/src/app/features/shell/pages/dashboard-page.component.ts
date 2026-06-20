@@ -3,17 +3,23 @@ import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular
 import { MatButtonModule } from '@angular/material/button';
 import { DashboardApiService } from '../services/dashboard-api.service';
 import { DashboardResultDto } from '../shell.models';
+import { OnlineStateService } from '../../../core/services/online-state.service';
+import { OfflineCacheService } from '../../../core/services/offline-cache.service';
+import { StaleBannerComponent } from '../../../shared/stale-banner/stale-banner.component';
 
 const SKELETON_WIDGET_COUNT = 9;
+const CACHE_KEY = 'dashboard';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [CommonModule, MatButtonModule],
+  imports: [CommonModule, MatButtonModule, StaleBannerComponent],
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.scss',
 })
 export class DashboardPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(DashboardApiService);
+  private readonly onlineState = inject(OnlineStateService);
+  private readonly offlineCache = inject(OfflineCacheService);
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly data = signal<DashboardResultDto | null>(null);
@@ -21,6 +27,9 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
   private loadingGuard = false;
   readonly refreshing = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly staleTimestamp = signal<Date | null>(null);
+
+  readonly showingStale = computed(() => this.staleTimestamp() !== null);
 
   readonly skeletonCount = SKELETON_WIDGET_COUNT;
 
@@ -56,9 +65,12 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.errorMessage.set(null);
     try {
-      this.data.set(await this.api.get());
+      const data = await this.api.get();
+      this.data.set(data);
+      this.staleTimestamp.set(null);
+      this.offlineCache.set(CACHE_KEY, data);
     } catch (error) {
-      this.errorMessage.set(this.api.extractErrorMessage(error));
+      this.tryServeFromCache(error);
     } finally {
       this.loading.set(false);
       this.loadingGuard = false;
@@ -71,12 +83,33 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
     }
     this.refreshing.set(true);
     try {
-      this.data.set(await this.api.get());
+      const data = await this.api.get();
+      this.data.set(data);
       this.errorMessage.set(null);
-    } catch {
-      // Keep stale data visible — only clear on manual retry
+      this.staleTimestamp.set(null);
+      this.offlineCache.set(CACHE_KEY, data);
+    } catch (error) {
+      // Auto-refresh errors: try to serve stale cache if not already showing stale data
+      if (!this.showingStale()) {
+        this.tryServeFromCache(error);
+      }
     } finally {
       this.refreshing.set(false);
+    }
+  }
+
+  private tryServeFromCache(error?: unknown): void {
+    const cached = this.offlineCache.get<DashboardResultDto>(CACHE_KEY);
+    if (cached) {
+      this.data.set(cached.data);
+      this.staleTimestamp.set(new Date(cached.timestamp));
+      this.errorMessage.set(null);
+    } else {
+      this.errorMessage.set(
+        error
+          ? this.api.extractErrorMessage(error)
+          : 'Unable to load data — check your connection',
+      );
     }
   }
 
@@ -133,7 +166,7 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
   /** Format amount as INR currency string */
   formatAmount(amount: number | null | undefined): string {
     if (amount == null || Number.isNaN(amount)) {
-      return '—';
+      return '\u2014';
     }
     try {
       return amount.toLocaleString('en-IN', { maximumFractionDigits: 0 });
@@ -145,7 +178,7 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
   /** Format oldest pending days as human-readable string */
   oldestDays(days: number | null | undefined): string {
     if (days == null || Number.isNaN(days)) {
-      return '—';
+      return '\u2014';
     }
     if (days <= 0) {
       return 'Today';

@@ -4,6 +4,8 @@
     <p class="subtitle">{{ subtitle() }}</p>
   </header>
 
+  <app-stale-banner [staleTimestamp]="staleTimestamp()"></app-stale-banner>
+
   @if (loading()) {
     <div class="widget-grid" aria-hidden="true">
       @for (_ of [1,2,3,4,5,6,7,8,9]; track _) {

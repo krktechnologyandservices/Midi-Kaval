@@ -9,5 +9,27 @@
         "files": ["/favicon.ico", "/index.html", "/*.css", "/*.js"]
       }
     }
+  ],
+  "dataGroups": [
+    {
+      "name": "crisis-queue-api",
+      "urls": ["/api/v1/supervisor/crisis-queue"],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "maxSize": 1,
+        "maxAge": "30s",
+        "timeout": "5s"
+      }
+    },
+    {
+      "name": "dashboard-api",
+      "urls": ["/api/v1/supervisor/dashboard"],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "maxSize": 1,
+        "maxAge": "30s",
+        "timeout": "5s"
+      }
+    }
   ]
 }

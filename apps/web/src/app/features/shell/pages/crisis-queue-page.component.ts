@@ -5,10 +5,15 @@ import { AppRole } from '@midi-kaval/shared-types';
 import { AuthSessionService } from '../../../core/auth/auth-session.service';
 import { CrisisQueueApiService } from '../../travel/services/crisis-queue-api.service';
 import { CrisisQueueItemDto } from '../../travel/travel.models';
+import { OnlineStateService } from '../../../core/services/online-state.service';
+import { OfflineCacheService } from '../../../core/services/offline-cache.service';
+import { StaleBannerComponent } from '../../../shared/stale-banner/stale-banner.component';
+
+const CACHE_KEY = 'crisis-queue';
 
 @Component({
   selector: 'app-crisis-queue-page',
-  imports: [RouterLink, MatButtonModule],
+  imports: [RouterLink, MatButtonModule, StaleBannerComponent],
   templateUrl: './crisis-queue-page.component.html',
   styleUrl: './crisis-queue-page.component.scss',
 })
@@ -16,6 +21,8 @@ export class CrisisQueuePageComponent implements OnInit, OnDestroy {
   private readonly crisisQueueApi = inject(CrisisQueueApiService);
   private readonly auth = inject(AuthSessionService);
   private readonly router = inject(Router);
+  private readonly onlineState = inject(OnlineStateService);
+  private readonly offlineCache = inject(OfflineCacheService);
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly items = signal<CrisisQueueItemDto[]>([]);
@@ -23,6 +30,9 @@ export class CrisisQueuePageComponent implements OnInit, OnDestroy {
   private loadingGuard = false;
   readonly refreshing = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly staleTimestamp = signal<Date | null>(null);
+
+  readonly showingStale = computed(() => this.staleTimestamp() !== null);
 
   readonly subtitle = computed(() => {
     const count = this.items().length;
@@ -50,16 +60,19 @@ export class CrisisQueuePageComponent implements OnInit, OnDestroy {
   }
 
   async load(): Promise<void> {
-    if (this.loadingGuard) {
+    if (this.loadingGuard || this.refreshing()) {
       return;
     }
     this.loadingGuard = true;
     this.loading.set(true);
     this.errorMessage.set(null);
     try {
-      this.items.set(await this.crisisQueueApi.list());
+      const data = await this.crisisQueueApi.list();
+      this.items.set(data);
+      this.staleTimestamp.set(null);
+      this.offlineCache.set(CACHE_KEY, data);
     } catch (error) {
-      this.errorMessage.set(this.crisisQueueApi.extractErrorMessage(error));
+      this.tryServeFromCache(error);
     } finally {
       this.loading.set(false);
       this.loadingGuard = false;
@@ -72,12 +85,33 @@ export class CrisisQueuePageComponent implements OnInit, OnDestroy {
     }
     this.refreshing.set(true);
     try {
-      this.items.set(await this.crisisQueueApi.list());
+      const data = await this.crisisQueueApi.list();
+      this.items.set(data);
       this.errorMessage.set(null);
-    } catch {
-      // Silently ignore auto-refresh errors — keep the last successful data
+      this.staleTimestamp.set(null);
+      this.offlineCache.set(CACHE_KEY, data);
+    } catch (error) {
+      // Auto-refresh errors: try to serve stale cache if not already showing stale data
+      if (!this.showingStale()) {
+        this.tryServeFromCache(error);
+      }
     } finally {
       this.refreshing.set(false);
+    }
+  }
+
+  private tryServeFromCache(error?: unknown): void {
+    const cached = this.offlineCache.get<CrisisQueueItemDto[]>(CACHE_KEY);
+    if (cached) {
+      this.items.set(cached.data);
+      this.staleTimestamp.set(new Date(cached.timestamp));
+      this.errorMessage.set(null);
+    } else {
+      this.errorMessage.set(
+        error
+          ? this.crisisQueueApi.extractErrorMessage(error)
+          : 'Unable to load data — check your connection',
+      );
     }
   }
 

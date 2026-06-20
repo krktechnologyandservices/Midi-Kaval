@@ -4,6 +4,8 @@
     <p class="subtitle">{{ subtitle() }}</p>
   </header>
 
+  <app-stale-banner [staleTimestamp]="staleTimestamp()"></app-stale-banner>
+
   @if (loading()) {
     <div class="skeleton-list" aria-hidden="true">
       @for (_ of [1, 2, 3]; track _) {
