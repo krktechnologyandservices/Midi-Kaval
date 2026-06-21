@@ -710,6 +710,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Create(
         [FromBody] CreateCaseRequest? request,
         CancellationToken cancellationToken)
@@ -727,6 +728,10 @@ public sealed class CasesController(
         catch (CaseValidationException ex)
         {
             return BadRequestProblem(ex.Message);
+        }
+        catch (CaseBusinessRuleException ex)
+        {
+            return UnprocessableProblem(ex.Message);
         }
         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {

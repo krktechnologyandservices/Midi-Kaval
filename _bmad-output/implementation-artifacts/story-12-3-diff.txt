@@ -1,0 +1,319 @@
+--- Begin Story 12.3 Diff ---
+This diff contains: modified files for Stage 4 placement support + new files.
+Baseline commit: edd947b5
+
+=== Modified Files ===
+
+--- apps/api/Infrastructure/Audit/AuditEventTypes.cs
++++ apps/api/Infrastructure/Audit/AuditEventTypes.cs
+@@ -47,4 +47,10 @@ namespace MidiKaval.Api.Infrastructure.Audit;
+     public const string Stage2DataCreated = "case.stage2_data.created";
+     public const string Stage2DataUpdated = "case.stage2_data.updated";
+     public const string Stage3DataCreated = "case.stage3_data.created";
+     public const string Stage3DataUpdated = "case.stage3_data.updated";
++    public const string Stage4PlacementCreated = "case.stage4_placement.created";
++    public const string Stage4PlacementUpdated = "case.stage4_placement.updated";
+
+--- apps/api/Infrastructure/Persistence/AppDbContext.cs
++++ apps/api/Infrastructure/Persistence/AppDbContext.cs
+@@ -34,6 +34,9 @@ namespace MidiKaval.Api.Infrastructure.Persistence;
+     public DbSet<CaseStage2Data> CaseStage2Data => Set<CaseStage2Data>();
+     public DbSet<CaseStage3Support> CaseStage3Supports => Set<CaseStage3Support>();
++    public DbSet<CaseStage4Placement> CaseStage4Placements => Set<CaseStage4Placement>();
+
+--- apps/api/Program.cs
++++ apps/api/Program.cs
+@@ -112,6 +112,9 @@ namespace MidiKaval.Api;
+     builder.Services.AddScoped<CaseStage2DataService>();
+     builder.Services.AddScoped<CaseStage3DataService>();
++    builder.Services.AddScoped<CaseStage4DataService>();
+
+=== New Files ===
+
+--- a/apps/api/Domain/Enums/PlacementType.cs
++++ b/apps/api/Domain/Enums/PlacementType.cs
+@@ -0,0 +1,7 @@
++namespace MidiKaval.Api.Domain.Enums;
++
++public enum PlacementType
++{
++    InHome,
++    ObservationHome,
++    SpecialHome,
++}
+
+--- a/apps/api/Domain/Entities/CaseStage4Placement.cs
++++ b/apps/api/Domain/Entities/CaseStage4Placement.cs
+@@ -0,0 +1,20 @@
++using MidiKaval.Api.Domain.Enums;
++
++namespace MidiKaval.Api.Domain.Entities;
++
++public sealed class CaseStage4Placement
++{
++    public Guid Id { get; set; }
++    public Guid CaseId { get; set; }
++    public Guid OrganisationId { get; set; }
++
++    public PlacementType PlacementType { get; set; }
++    public string? InstitutionName { get; set; }
++    public string? Address { get; set; }
++    public DateOnly StartDate { get; set; }
++
++    public Guid CreatedByUserId { get; set; }
++    public DateTime CreatedAtUtc { get; set; }
++    public DateTime UpdatedAtUtc { get; set; }
++}
+
+--- a/apps/api/Infrastructure/Persistence/CaseStage4PlacementConfiguration.cs
++++ b/apps/api/Infrastructure/Persistence/CaseStage4PlacementConfiguration.cs
+@@ -0,0 +1,57 @@
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Metadata.Builders;
++using MidiKaval.Api.Domain.Entities;
++
++namespace MidiKaval.Api.Infrastructure.Persistence;
++
++public sealed class CaseStage4PlacementConfiguration : IEntityTypeConfiguration<CaseStage4Placement>
++{
++    public void Configure(EntityTypeBuilder<CaseStage4Placement> builder)
++    {
++        builder.ToTable("case_stage4_placement");
++
++        builder.HasKey(d => d.Id);
++
++        builder.Property(d => d.PlacementType)
++            .HasConversion<string>()
++            .HasMaxLength(32)
++            .IsRequired();
++
++        builder.Property(d => d.InstitutionName)
++            .HasMaxLength(500);
++
++        builder.Property(d => d.Address)
++            .HasMaxLength(2000);
++
++        builder.Property(d => d.StartDate)
++            .IsRequired()
++            .HasColumnType("date");
++
++        builder.Property(d => d.CreatedAtUtc)
++            .IsRequired();
++
++        builder.Property(d => d.UpdatedAtUtc)
++            .IsRequired();
++
++        builder.HasOne<Case>()
++            .WithMany()
++            .HasForeignKey(d => d.CaseId)
++            .OnDelete(DeleteBehavior.Restrict);
++
++        builder.HasOne<User>()
++            .WithMany()
++            .HasForeignKey(d => d.CreatedByUserId)
++            .OnDelete(DeleteBehavior.Restrict);
++
++        builder.HasIndex(d => d.CaseId)
++            .IsUnique();
++    }
++}
+
+--- a/apps/api/Models/Cases/Stage4DataDtos.cs
++++ b/apps/api/Models/Cases/Stage4DataDtos.cs
+@@ -0,0 +1,42 @@
++using System.ComponentModel.DataAnnotations;
++
++namespace MidiKaval.Api.Models.Cases;
++
++public sealed class Stage4PlacementDto
++{
++    public Guid Id { get; set; }
++    public Guid CaseId { get; set; }
++    public string PlacementType { get; set; } = string.Empty;
++    public string? InstitutionName { get; set; }
++    public string? Address { get; set; }
++    public DateOnly StartDate { get; set; }
++    public Guid CreatedByUserId { get; set; }
++    public DateTime CreatedAtUtc { get; set; }
++    public DateTime UpdatedAtUtc { get; set; }
++}
++
++public sealed class UpsertStage4PlacementRequest
++{
++    [Required(AllowEmptyStrings = false)]
++    [MaxLength(32)]
++    public string PlacementType { get; set; } = string.Empty;
++
++    [MaxLength(500)]
++    public string? InstitutionName { get; set; }
++
++    [MaxLength(2000)]
++    public string? Address { get; set; }
++
++    public DateOnly StartDate { get; set; }
++}
+
+--- a/apps/api/Infrastructure/Cases/CaseStage4DataService.cs
++++ b/apps/api/Infrastructure/Cases/CaseStage4DataService.cs
+@@ -0,0 +1,160 @@
++using System.IdentityModel.Tokens.Jwt;
++using System.Security.Claims;
++using System.Text.Json;
++using Microsoft.EntityFrameworkCore;
++using MidiKaval.Api.Domain.Entities;
++using MidiKaval.Api.Domain.Enums;
++using MidiKaval.Api.Infrastructure.Audit;
++using MidiKaval.Api.Infrastructure.Auth;
++using MidiKaval.Api.Infrastructure.Persistence;
++using MidiKaval.Api.Models.Cases;
++
++namespace MidiKaval.Api.Infrastructure.Cases;
++
++public sealed class CaseStage4DataService(
++    AppDbContext db,
++    IHttpContextAccessor httpContextAccessor)
++{
++    private const int MaxInstitutionNameLength = 500;
++    private const int MaxAddressLength = 2000;
++
++    public async Task<Stage4PlacementDto> GetAsync(Guid caseId, CancellationToken ct)
++    {
++        var (organisationId, _) = ResolveActorContext();
++
++        var caseEntity = await db.Cases
++            .Where(c => c.Id == caseId && c.OrganisationId == organisationId)
++            .Select(c => new { c.CurrentStage })
++            .FirstOrDefaultAsync(ct);
++
++        if (caseEntity is null)
++            throw new CaseNotFoundException();
++
++        if (caseEntity.CurrentStage != CaseStage.Rehabilitation)
++            throw new CaseNotFoundException();
++
++        var data = await db.Set<CaseStage4Placement>()
++            .FirstOrDefaultAsync(d => d.CaseId == caseId, ct);
++
++        return ToDto(data, caseId);
++    }
++
++    public async Task<Stage4PlacementDto> UpsertAsync(
++        Guid caseId, UpsertStage4PlacementRequest request, CancellationToken ct)
++    {
++        var (organisationId, actorUserId) = ResolveActorContext();
++
++        var caseEntity = await db.Cases
++            .Where(c => c.Id == caseId && c.OrganisationId == organisationId)
++            .Select(c => new { c.CurrentStage })
++            .FirstOrDefaultAsync(ct);
++
++        if (caseEntity is null)
++            throw new CaseNotFoundException();
++
++        if (caseEntity.CurrentStage != CaseStage.Rehabilitation)
++            throw new CaseNotFoundException();
++
++        ValidateRequest(request);
++
++        var now = DateTime.UtcNow;
++        var existing = await db.Set<CaseStage4Placement>()
++            .FirstOrDefaultAsync(d => d.CaseId == caseId, ct);
++
++        Stage4PlacementDto result;
++
++        if (existing is not null)
++        {
++            existing.PlacementType = Enum.Parse<PlacementType>(request.PlacementType, ignoreCase: true);
++            existing.InstitutionName = request.InstitutionName;
++            existing.Address = request.Address;
++            existing.StartDate = request.StartDate;
++            existing.UpdatedAtUtc = now;
++
++            db.AuditEvents.Add(new AuditEvent
++            {
++                Id = Guid.NewGuid(),
++                OrganisationId = organisationId,
++                ActorUserId = actorUserId,
++                SubjectUserId = null,
++                EventType = AuditEventTypes.Stage4PlacementUpdated,
++                MetadataJson = JsonSerializer.Serialize(
++                    new Dictionary<string, object?>
++                    {
++                        ["caseId"] = caseId.ToString("D"),
++                        ["actorUserId"] = actorUserId.ToString("D"),
++                    }, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
++                CreatedAtUtc = now,
++            });
++
++            await db.SaveChangesAsync(ct);
++            result = ToDto(existing, caseId);
++        }
++        else
++        {
++            var newRecord = new CaseStage4Placement
++            {
++                Id = Guid.NewGuid(),
++                CaseId = caseId,
++                OrganisationId = organisationId,
++                PlacementType = Enum.Parse<PlacementType>(request.PlacementType, ignoreCase: true),
++                InstitutionName = request.InstitutionName,
++                Address = request.Address,
++                StartDate = request.StartDate,
++                CreatedByUserId = actorUserId,
++                CreatedAtUtc = now,
++                UpdatedAtUtc = now,
++            };
++
++            db.Add(newRecord);
++
++            db.AuditEvents.Add(new AuditEvent
++            {
++                Id = Guid.NewGuid(),
++                OrganisationId = organisationId,
++                ActorUserId = actorUserId,
++                SubjectUserId = null,
++                EventType = AuditEventTypes.Stage4PlacementCreated,
++                MetadataJson = JsonSerializer.Serialize(
++                    new Dictionary<string, object?>
++                    {
++                        ["caseId"] = caseId.ToString("D"),
++                        ["actorUserId"] = actorUserId.ToString("D"),
++                    }, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
++                CreatedAtUtc = now,
++            });
++
++            await db.SaveChangesAsync(ct);
++            result = ToDto(newRecord, caseId);
++        }
++
++        return result;
++    }
++
++    private static void ValidateRequest(UpsertStage4PlacementRequest request)
++    {
++        if (string.IsNullOrWhiteSpace(request.PlacementType))
++            throw new CaseBusinessRuleException("PlacementType is required.");
++
++        if (!Enum.TryParse<PlacementType>(request.PlacementType, ignoreCase: true, out _))
++            throw new CaseBusinessRuleException($"'{request.PlacementType}' is not a valid PlacementType. Must be one of: InHome, ObservationHome, SpecialHome.");
++
++        if (request.InstitutionName?.Length > MaxInstitutionNameLength)
++            throw new CaseBusinessRuleException($"InstitutionName exceeds maximum length of {MaxInstitutionNameLength}.");
++
++        if (request.Address?.Length > MaxAddressLength)
++            throw new CaseBusinessRuleException($"Address exceeds maximum length of {MaxAddressLength}.");
++    }
++
++    private static Stage4PlacementDto ToDto(CaseStage4Placement? data, Guid caseId)
++    {
++        if (data is null)
++        {
++            return new Stage4PlacementDto { CaseId = caseId };
++        }
++
++        return new Stage4PlacementDto { /* ... mapping ... */ };
++    }
++
++    private (Guid OrganisationId, Guid ActorUserId) ResolveActorContext()
++    { /* ... claims resolution ... */ }
++}

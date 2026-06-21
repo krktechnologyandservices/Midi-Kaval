@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using MidiKaval.Api.Domain.Entities;
+using MidiKaval.Api.Domain.Entities.Legends;
 using MidiKaval.Api.Domain.Enums;
 using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Auth;
@@ -31,7 +32,7 @@ public sealed class CaseService(
         }
 
         var (organisationId, actorUserId) = ResolveActorContext();
-        var validated = ValidateIntakeRequest(request);
+        var validated = await ValidateIntakeRequestAsync(request, organisationId, cancellationToken);
         var now = DateTime.UtcNow;
         var caseId = Guid.NewGuid();
 
@@ -50,6 +51,11 @@ public sealed class CaseService(
             Gender = validated.Gender,
             FamilyType = validated.FamilyType,
             EconomicStatus = validated.EconomicStatus,
+            OccupationId = validated.OccupationId,
+            EducationLevelId = validated.EducationLevelId,
+            FamilyHistoryOfCrime = validated.FamilyHistoryOfCrime,
+            RecidivismBeforeCount = validated.RecidivismBeforeCount,
+            RecidivismAfterCount = validated.RecidivismAfterCount,
             IsFirstTimeOffender = validated.IsFirstTimeOffender,
             SensitivityLevel = validated.SensitivityLevel,
             CurrentStage = CaseStage.ProcessInitiation,
@@ -79,6 +85,16 @@ public sealed class CaseService(
         });
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Load navigation properties for the response DTO
+        if (entity.OccupationId is not null)
+        {
+            await db.Entry(entity).Reference(c => c.Occupation).LoadAsync(cancellationToken);
+        }
+        if (entity.EducationLevelId is not null)
+        {
+            await db.Entry(entity).Reference(c => c.EducationLevel).LoadAsync(cancellationToken);
+        }
 
         return ToDto(entity);
     }
@@ -153,7 +169,10 @@ public sealed class CaseService(
         var targetStage = ParseRequiredCaseStage(request.TargetStage);
         var notes = ValidateTransitionNotes(request.Notes);
 
-        var entity = await db.Cases.SingleOrDefaultAsync(
+        var entity = await db.Cases
+            .Include(c => c.Occupation)
+            .Include(c => c.EducationLevel)
+            .SingleOrDefaultAsync(
             c => c.Id == caseId && c.OrganisationId == organisationId,
             cancellationToken);
 
@@ -219,7 +238,7 @@ public sealed class CaseService(
         }
 
         var (organisationId, actorUserId) = ResolveActorContext();
-        var validated = ValidateIntakeRequest(request);
+        var validated = await ValidateIntakeRequestAsync(request, organisationId, cancellationToken);
 
         var entity = await db.Cases.SingleOrDefaultAsync(
             c => c.Id == targetCaseId && c.OrganisationId == organisationId,
@@ -301,6 +320,37 @@ public sealed class CaseService(
             fieldsChanged = true;
         }
 
+        if (entity.OccupationId is null && validated.OccupationId is not null)
+        {
+            entity.OccupationId = validated.OccupationId;
+            fieldsChanged = true;
+        }
+
+        if (entity.EducationLevelId is null && validated.EducationLevelId is not null)
+        {
+            entity.EducationLevelId = validated.EducationLevelId;
+            fieldsChanged = true;
+        }
+
+        // FamilyHistoryOfCrime — fill-empty: only set if false → true
+        if (!entity.FamilyHistoryOfCrime && validated.FamilyHistoryOfCrime)
+        {
+            entity.FamilyHistoryOfCrime = validated.FamilyHistoryOfCrime;
+            fieldsChanged = true;
+        }
+
+        if (entity.RecidivismBeforeCount is null && validated.RecidivismBeforeCount is not null)
+        {
+            entity.RecidivismBeforeCount = validated.RecidivismBeforeCount;
+            fieldsChanged = true;
+        }
+
+        if (entity.RecidivismAfterCount is null && validated.RecidivismAfterCount is not null)
+        {
+            entity.RecidivismAfterCount = validated.RecidivismAfterCount;
+            fieldsChanged = true;
+        }
+
         var now = DateTime.UtcNow;
         if (fieldsChanged)
         {
@@ -333,6 +383,11 @@ public sealed class CaseService(
                         ["familyType"] = validated.FamilyType?.ToString(),
                         ["economicStatus"] = validated.EconomicStatus?.ToString(),
                         ["isFirstTimeOffender"] = validated.IsFirstTimeOffender,
+                        ["occupationId"] = validated.OccupationId?.ToString("D"),
+                        ["educationLevelId"] = validated.EducationLevelId?.ToString("D"),
+                        ["familyHistoryOfCrime"] = validated.FamilyHistoryOfCrime,
+                        ["recidivismBeforeCount"] = validated.RecidivismBeforeCount,
+                        ["recidivismAfterCount"] = validated.RecidivismAfterCount,
                     },
                 },
                 JsonOptions),
@@ -340,6 +395,16 @@ public sealed class CaseService(
         });
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Load navigation properties for the response DTO
+        if (entity.OccupationId is not null)
+        {
+            await db.Entry(entity).Reference(c => c.Occupation).LoadAsync(cancellationToken);
+        }
+        if (entity.EducationLevelId is not null)
+        {
+            await db.Entry(entity).Reference(c => c.EducationLevel).LoadAsync(cancellationToken);
+        }
 
         return ToDto(entity);
     }
@@ -365,7 +430,10 @@ public sealed class CaseService(
 
         var (organisationId, actorUserId) = ResolveActorContext();
 
-        var entity = await db.Cases.SingleOrDefaultAsync(
+        var entity = await db.Cases
+            .Include(c => c.Occupation)
+            .Include(c => c.EducationLevel)
+            .SingleOrDefaultAsync(
             c => c.Id == caseId && c.OrganisationId == organisationId,
             cancellationToken);
 
@@ -448,7 +516,10 @@ public sealed class CaseService(
         var (organisationId, actorUserId) = ResolveActorContext();
         var actorRole = ResolveActorRole();
 
-        var entity = await db.Cases.SingleOrDefaultAsync(
+        var entity = await db.Cases
+            .Include(c => c.Occupation)
+            .Include(c => c.EducationLevel)
+            .SingleOrDefaultAsync(
             c => c.Id == caseId && c.OrganisationId == organisationId,
             cancellationToken);
 
@@ -641,6 +712,8 @@ public sealed class CaseService(
         var totalCount = await cases.CountAsync(cancellationToken);
 
         var entities = await cases
+            .Include(c => c.Occupation)
+            .Include(c => c.EducationLevel)
             .OrderByDescending(c => c.AssignedAtUtc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -712,8 +785,31 @@ public sealed class CaseService(
                 Gender = c.Gender != null ? c.Gender.ToString()! : null,
                 FamilyType = c.FamilyType != null ? c.FamilyType.ToString()! : null,
                 EconomicStatus = c.EconomicStatus != null ? c.EconomicStatus.ToString()! : null,
+                OccupationId = c.OccupationId,
+                EducationLevelId = c.EducationLevelId,
+                FamilyHistoryOfCrime = c.FamilyHistoryOfCrime,
+                RecidivismBeforeCount = c.RecidivismBeforeCount,
+                RecidivismAfterCount = c.RecidivismAfterCount,
             })
             .ToListAsync(cancellationToken);
+
+        // Resolve Occupation and EducationLevel names
+        var occupationIds = items.Where(i => i.OccupationId.HasValue).Select(i => i.OccupationId!.Value).Distinct().ToList();
+        var educationLevelIds = items.Where(i => i.EducationLevelId.HasValue).Select(i => i.EducationLevelId!.Value).Distinct().ToList();
+
+        var occupations = occupationIds.Count > 0
+            ? await db.Set<Occupation>().Where(o => occupationIds.Contains(o.Id)).ToDictionaryAsync(o => o.Id, o => o.Name, cancellationToken)
+            : new Dictionary<Guid, string>();
+
+        var educationLevels = educationLevelIds.Count > 0
+            ? await db.Set<EducationLevel>().Where(el => educationLevelIds.Contains(el.Id)).ToDictionaryAsync(el => el.Id, el => el.Name, cancellationToken)
+            : new Dictionary<Guid, string>();
+
+        foreach (var item in items)
+        {
+            item.OccupationName = item.OccupationId.HasValue && occupations.TryGetValue(item.OccupationId.Value, out var occName) ? occName : null;
+            item.EducationLevelName = item.EducationLevelId.HasValue && educationLevels.TryGetValue(item.EducationLevelId.Value, out var elName) ? elName : null;
+        }
 
         return (new CaseSearchResultDto
         {
@@ -766,6 +862,13 @@ public sealed class CaseService(
                 Gender = c.Gender != null ? c.Gender.ToString()! : null,
                 FamilyType = c.FamilyType != null ? c.FamilyType.ToString()! : null,
                 EconomicStatus = c.EconomicStatus != null ? c.EconomicStatus.ToString()! : null,
+                // EF Core translates navigation property access (c.Occupation.Name) in Select
+                // projections via correlated subquery — no Include() needed here.
+                Occupation = c.Occupation != null ? c.Occupation.Name : null,
+                EducationLevel = c.EducationLevel != null ? c.EducationLevel.Name : null,
+                FamilyHistoryOfCrime = c.FamilyHistoryOfCrime,
+                RecidivismBeforeCount = c.RecidivismBeforeCount,
+                RecidivismAfterCount = c.RecidivismAfterCount,
             })
             .ToListAsync(cancellationToken);
 
@@ -805,7 +908,9 @@ public sealed class CaseService(
         Domicile? Domicile,
         Gender? Gender,
         FamilyType? FamilyType,
-        EconomicStatus? EconomicStatus);
+        EconomicStatus? EconomicStatus,
+        Guid? OccupationId,
+        Guid? EducationLevelId);
 
     private static ParsedSearchFilters ValidateSearchFilters(CaseSearchQuery query)
     {
@@ -878,7 +983,27 @@ public sealed class CaseService(
             economicStatus = parsedEs;
         }
 
-        return new ParsedSearchFilters(currentStage, offenceClassification, domicile, gender, familyType, economicStatus);
+        Guid? occupationId = null;
+        if (query.OccupationId is not null)
+        {
+            if (query.OccupationId == Guid.Empty)
+            {
+                throw new CaseValidationException("occupationId must be a non-empty UUID.");
+            }
+            occupationId = query.OccupationId;
+        }
+
+        Guid? educationLevelId = null;
+        if (query.EducationLevelId is not null)
+        {
+            if (query.EducationLevelId == Guid.Empty)
+            {
+                throw new CaseValidationException("educationLevelId must be a non-empty UUID.");
+            }
+            educationLevelId = query.EducationLevelId;
+        }
+
+        return new ParsedSearchFilters(currentStage, offenceClassification, domicile, gender, familyType, economicStatus, occupationId, educationLevelId);
     }
 
     private static IQueryable<Case> ApplySearchFilters(
@@ -937,6 +1062,16 @@ public sealed class CaseService(
         if (parsed.EconomicStatus is not null)
         {
             cases = cases.Where(c => c.EconomicStatus == parsed.EconomicStatus);
+        }
+
+        if (parsed.OccupationId is not null)
+        {
+            cases = cases.Where(c => c.OccupationId == parsed.OccupationId);
+        }
+
+        if (parsed.EducationLevelId is not null)
+        {
+            cases = cases.Where(c => c.EducationLevelId == parsed.EducationLevelId);
         }
 
         if (query.AssignedWorkerUserId is not null)
@@ -1006,7 +1141,8 @@ public sealed class CaseService(
         return (organisationId, actorUserId);
     }
 
-    private static ValidatedCreateCaseRequest ValidateIntakeRequest(CreateCaseRequest request)
+    private async Task<ValidatedCreateCaseRequest> ValidateIntakeRequestAsync(
+        CreateCaseRequest request, Guid organisationId, CancellationToken cancellationToken)
     {
         var crimeNumber = NormalizeRequiredIdentifier(request.CrimeNumber, "crimeNumber");
         var stNumber = NormalizeRequiredIdentifier(request.StNumber, "stNumber");
@@ -1089,6 +1225,51 @@ public sealed class CaseService(
             economicStatus = parsedEs;
         }
 
+        // OccupationId validation — verify Legend entity exists and belongs to same organisation
+        Guid? occupationId = request.OccupationId;
+        if (occupationId is not null)
+        {
+            var occupation = await db.Set<Occupation>()
+                .FirstOrDefaultAsync(o => o.Id == occupationId && o.OrganisationId == organisationId && o.IsActive, cancellationToken);
+            if (occupation is null)
+            {
+                throw new CaseBusinessRuleException(
+                    $"referenced occupationId not found for id: {occupationId}");
+            }
+        }
+
+        // EducationLevelId validation — verify Legend entity exists and belongs to same organisation
+        Guid? educationLevelId = request.EducationLevelId;
+        if (educationLevelId is not null)
+        {
+            var educationLevel = await db.Set<EducationLevel>()
+                .FirstOrDefaultAsync(el => el.Id == educationLevelId && el.OrganisationId == organisationId && el.IsActive, cancellationToken);
+            if (educationLevel is null)
+            {
+                throw new CaseBusinessRuleException(
+                    $"referenced educationLevelId not found for id: {educationLevelId}");
+            }
+        }
+
+        // FamilyHistoryOfCrime — default false
+        var familyHistoryOfCrime = request.FamilyHistoryOfCrime ?? false;
+
+        // RecidivismBeforeCount — validate non-negative
+        int? recidivismBeforeCount = request.RecidivismBeforeCount;
+        if (recidivismBeforeCount < 0)
+        {
+            throw new CaseBusinessRuleException(
+                $"recidivismBeforeCount must be a non-negative integer.");
+        }
+
+        // RecidivismAfterCount — validate non-negative
+        int? recidivismAfterCount = request.RecidivismAfterCount;
+        if (recidivismAfterCount < 0)
+        {
+            throw new CaseBusinessRuleException(
+                $"recidivismAfterCount must be a non-negative integer.");
+        }
+
         var sensitivityLevel = SensitivityLevel.Standard;
         if (!string.IsNullOrWhiteSpace(request.SensitivityLevel))
         {
@@ -1114,7 +1295,12 @@ public sealed class CaseService(
             sensitivityLevel,
             gender,
             familyType,
-            economicStatus);
+            economicStatus,
+            occupationId,
+            educationLevelId,
+            familyHistoryOfCrime,
+            recidivismBeforeCount,
+            recidivismAfterCount);
     }
 
     private static string NormalizeRequiredIdentifier(string? value, string fieldName)
@@ -1179,6 +1365,13 @@ public sealed class CaseService(
         Gender = entity.Gender?.ToString(),
         FamilyType = entity.FamilyType?.ToString(),
         EconomicStatus = entity.EconomicStatus?.ToString(),
+        OccupationId = entity.OccupationId,
+        OccupationName = entity.Occupation?.Name,
+        EducationLevelId = entity.EducationLevelId,
+        EducationLevelName = entity.EducationLevel?.Name,
+        FamilyHistoryOfCrime = entity.FamilyHistoryOfCrime,
+        RecidivismBeforeCount = entity.RecidivismBeforeCount,
+        RecidivismAfterCount = entity.RecidivismAfterCount,
     };
 
     private async Task<CaseDetailDto> BuildDetailDtoAsync(
@@ -1213,6 +1406,9 @@ public sealed class CaseService(
             }
         }
 
+        // Fetch related cases
+        var relatedCaseDtos = await BuildRelatedCaseDtosAsync(entity.Id, entity.OrganisationId, cancellationToken);
+
         return new CaseDetailDto
         {
             Id = entity.Id,
@@ -1240,7 +1436,38 @@ public sealed class CaseService(
             Gender = entity.Gender?.ToString(),
             FamilyType = entity.FamilyType?.ToString(),
             EconomicStatus = entity.EconomicStatus?.ToString(),
+            OccupationId = entity.OccupationId,
+            OccupationName = entity.Occupation?.Name,
+            EducationLevelId = entity.EducationLevelId,
+            EducationLevelName = entity.EducationLevel?.Name,
+            FamilyHistoryOfCrime = entity.FamilyHistoryOfCrime,
+            RecidivismBeforeCount = entity.RecidivismBeforeCount,
+            RecidivismAfterCount = entity.RecidivismAfterCount,
+            RelatedCases = relatedCaseDtos,
         };
+    }
+
+    private async Task<List<RelatedCaseDto>> BuildRelatedCaseDtosAsync(
+        Guid caseId, Guid organisationId, CancellationToken ct)
+    {
+        var raw = await db.Set<CaseRelatedCase>()
+            .Where(r => r.CaseIdA == caseId || r.CaseIdB == caseId)
+            .Join(
+                db.Cases.Where(c => c.OrganisationId == organisationId),
+                r => r.CaseIdA == caseId ? r.CaseIdB : r.CaseIdA,
+                c => c.Id,
+                (r, c) => new { r.RelationshipType, c.Id, c.CrimeNumber, c.StNumber, c.BeneficiaryName, c.CurrentStage })
+            .ToListAsync(ct);
+
+        return raw.Select(x => new RelatedCaseDto
+        {
+            CaseId = x.Id,
+            CrimeNumber = x.CrimeNumber,
+            StNumber = x.StNumber,
+            BeneficiaryName = x.BeneficiaryName,
+            CurrentStage = x.CurrentStage.ToString(),
+            RelationshipType = x.RelationshipType.ToString(),
+        }).ToList();
     }
 
     private static CaseGpsDto ToCaseGpsDto(Case entity) => new()
@@ -1305,7 +1532,12 @@ public sealed class CaseService(
         SensitivityLevel SensitivityLevel,
         Gender? Gender,
         FamilyType? FamilyType,
-        EconomicStatus? EconomicStatus);
+        EconomicStatus? EconomicStatus,
+        Guid? OccupationId,
+        Guid? EducationLevelId,
+        bool FamilyHistoryOfCrime,
+        int? RecidivismBeforeCount,
+        int? RecidivismAfterCount);
 }
 
 public sealed class CaseValidationException(string message) : Exception(message);

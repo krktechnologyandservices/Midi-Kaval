@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MidiKaval.Api.Domain.Entities;
+using MidiKaval.Api.Domain.Entities.Legends;
 using MidiKaval.Api.Domain.Enums;
 
 namespace MidiKaval.Api.Infrastructure.Persistence;
@@ -53,6 +54,28 @@ public sealed class CaseConfiguration : IEntityTypeConfiguration<Case>
         builder.Property(c => c.EconomicStatus)
             .HasConversion<string>()
             .HasMaxLength(16);
+
+        // FK references to Legend tables (from Story 9.1)
+        builder.Property(c => c.OccupationId);
+
+        builder.HasOne(c => c.Occupation)
+            .WithMany()
+            .HasForeignKey(c => c.OccupationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(c => c.EducationLevelId);
+
+        builder.HasOne(c => c.EducationLevel)
+            .WithMany()
+            .HasForeignKey(c => c.EducationLevelId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Simple scalar fields for Recidivism and Family History (Story 11.3)
+        builder.Property(c => c.FamilyHistoryOfCrime);
+
+        builder.Property(c => c.RecidivismBeforeCount);
+
+        builder.Property(c => c.RecidivismAfterCount);
 
         builder.Property(c => c.CurrentStage)
             .HasConversion<string>()

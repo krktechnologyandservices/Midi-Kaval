@@ -109,6 +109,11 @@ public static class AuthServiceCollectionExtensions
             AddActiveUserRolePolicy(options, Policies.Coordinator, UserRoles.Coordinator);
             AddActiveUserRolePolicy(options, Policies.SocialWorker, UserRoles.SocialWorker);
             AddActiveUserRolePolicy(options, Policies.CaseWorker, UserRoles.CaseWorker);
+            AddActiveUserRolePolicy(
+                options,
+                Policies.AccountantOrAbove,
+                UserRoles.Director,
+                UserRoles.Accountant);
         });
 
         var rateLimitOptions = configuration.GetSection(AuthRateLimitOptions.SectionName).Get<AuthRateLimitOptions>()

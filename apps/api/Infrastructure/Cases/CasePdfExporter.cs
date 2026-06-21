@@ -19,6 +19,11 @@ public static class CasePdfExporter
         "Gender",
         "Family Type",
         "Economic Status",
+        "Occupation",
+        "Education Level",
+        "Family History of Crime",
+        "Recidivism (Before)",
+        "Recidivism (After)",
         "Visits",
         "Next Visit Due (UTC)",
         "Updated (UTC)",
@@ -66,6 +71,11 @@ public static class CasePdfExporter
                         table.Cell().Padding(2).Text(row.Gender ?? string.Empty);
                         table.Cell().Padding(2).Text(row.FamilyType ?? string.Empty);
                         table.Cell().Padding(2).Text(row.EconomicStatus ?? string.Empty);
+                        table.Cell().Padding(2).Text(row.Occupation ?? string.Empty);
+                        table.Cell().Padding(2).Text(row.EducationLevel ?? string.Empty);
+                        table.Cell().Padding(2).Text(row.FamilyHistoryOfCrime ? "Yes" : "No");
+                        table.Cell().Padding(2).Text(row.RecidivismBeforeCount?.ToString() ?? string.Empty);
+                        table.Cell().Padding(2).Text(row.RecidivismAfterCount?.ToString() ?? string.Empty);
                         table.Cell().Padding(2).Text(row.VisitCount.ToString());
                         table.Cell().Padding(2).Text(row.NextVisitDueAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? string.Empty);
                         table.Cell().Padding(2).Text(row.UpdatedAtUtc.ToString("yyyy-MM-dd HH:mm"));

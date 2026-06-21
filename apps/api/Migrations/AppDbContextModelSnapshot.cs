@@ -146,6 +146,120 @@ namespace MidiKaval.Api.Migrations
                     b.ToTable("audit_events", (string)null);
                 });
 
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.BudgetLineItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("AmountAllocated")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount_allocated");
+
+                    b.Property<decimal>("AmountUtilized")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("amount_utilized");
+
+                    b.Property<string>("BudgetHead")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("budget_head");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("ProjectBudgetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_budget_id");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_budget_line_items");
+
+                    b.HasIndex("ProjectBudgetId")
+                        .HasDatabaseName("ix_budget_line_items_project_budget_id");
+
+                    b.HasIndex("ProjectBudgetId", "BudgetHead")
+                        .IsUnique()
+                        .HasDatabaseName("ix_budget_line_items_project_budget_id_budget_head");
+
+                    b.ToTable("budget_line_items", (string)null);
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.BudgetUtilization", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("AmountUtilized")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount_utilized");
+
+                    b.Property<Guid>("BudgetLineItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("budget_line_item_id");
+
+                    b.Property<Guid?>("CaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("case_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at_utc");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<DateOnly>("UtilizationDate")
+                        .HasColumnType("date")
+                        .HasColumnName("utilization_date");
+
+                    b.HasKey("Id")
+                        .HasName("pk_budget_utilizations");
+
+                    b.HasIndex("CaseId")
+                        .HasDatabaseName("ix_budget_utilizations_case_id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_budget_utilizations_created_by_user_id");
+
+                    b.HasIndex("DeletedAtUtc")
+                        .HasDatabaseName("ix_budget_utilizations_deleted_at_utc");
+
+                    b.HasIndex("BudgetLineItemId", "UtilizationDate")
+                        .HasDatabaseName("ix_budget_utilizations_budget_line_item_id_utilization_date");
+
+                    b.ToTable("budget_utilizations", (string)null);
+                });
+
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.Case", b =>
                 {
                     b.Property<Guid>("Id")
@@ -211,6 +325,14 @@ namespace MidiKaval.Api.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("economic_status");
 
+                    b.Property<Guid?>("EducationLevelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("education_level_id");
+
+                    b.Property<bool>("FamilyHistoryOfCrime")
+                        .HasColumnType("boolean")
+                        .HasColumnName("family_history_of_crime");
+
                     b.Property<string>("FamilyType")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
@@ -260,6 +382,10 @@ namespace MidiKaval.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("next_visit_due_at_utc");
 
+                    b.Property<Guid?>("OccupationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("occupation_id");
+
                     b.Property<string>("OffenceClassification")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -269,6 +395,14 @@ namespace MidiKaval.Api.Migrations
                     b.Property<Guid>("OrganisationId")
                         .HasColumnType("uuid")
                         .HasColumnName("organisation_id");
+
+                    b.Property<int?>("RecidivismAfterCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("recidivism_after_count");
+
+                    b.Property<int?>("RecidivismBeforeCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("recidivism_before_count");
 
                     b.Property<string>("SensitivityLevel")
                         .IsRequired()
@@ -305,6 +439,12 @@ namespace MidiKaval.Api.Migrations
 
                     b.HasIndex("AssignedWorkerId")
                         .HasDatabaseName("ix_cases_assigned_worker_id");
+
+                    b.HasIndex("EducationLevelId")
+                        .HasDatabaseName("ix_cases_education_level_id");
+
+                    b.HasIndex("OccupationId")
+                        .HasDatabaseName("ix_cases_occupation_id");
 
                     b.HasIndex("OrganisationId", "AssignedWorkerId")
                         .HasDatabaseName("ix_cases_organisation_id_assigned_worker_id");
@@ -441,6 +581,54 @@ namespace MidiKaval.Api.Migrations
                     b.ToTable("case_notes", (string)null);
                 });
 
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseRelatedCase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CaseIdA")
+                        .HasColumnType("uuid")
+                        .HasColumnName("case_id_a");
+
+                    b.Property<Guid>("CaseIdB")
+                        .HasColumnType("uuid")
+                        .HasColumnName("case_id_b");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("RelationshipType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("relationship_type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_case_related_cases");
+
+                    b.HasIndex("CaseIdB")
+                        .HasDatabaseName("ix_case_related_cases_case_id_b");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_case_related_cases_created_by_user_id");
+
+                    b.HasIndex("CaseIdA", "CaseIdB")
+                        .IsUnique()
+                        .HasDatabaseName("ix_case_related_cases_case_id_a_case_id_b");
+
+                    b.ToTable("case_related_cases", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_case_related_cases_ordered_pair", "case_id_a < case_id_b");
+                        });
+                });
+
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseSearchPreset", b =>
                 {
                     b.Property<Guid>("Id")
@@ -483,6 +671,326 @@ namespace MidiKaval.Api.Migrations
                         .HasDatabaseName("ix_case_search_presets_organisation_id_user_id_name");
 
                     b.ToTable("case_search_presets", (string)null);
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseStage2Data", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BioPsychoSocialAssessment")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("bio_psycho_social_assessment");
+
+                    b.Property<Guid>("CaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("case_id");
+
+                    b.Property<string>("CommunityProgramAttendance")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("community_program_attendance");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("GroupWork")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("group_work");
+
+                    b.Property<string>("IcpRecords")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("icp_records");
+
+                    b.Property<string>("LifeSkillTraining")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("life_skill_training");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organisation_id");
+
+                    b.Property<string>("OverallProgress")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("overall_progress");
+
+                    b.Property<string>("ParentManagement")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("parent_management");
+
+                    b.Property<string>("PmaStatus")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("pma_status");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_case_stage2_data");
+
+                    b.HasIndex("CaseId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_case_stage2_data_case_id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_case_stage2_data_created_by_user_id");
+
+                    b.ToTable("case_stage2_data", (string)null);
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseStage3Support", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("case_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organisation_id");
+
+                    b.Property<bool>("ProvidedStatus")
+                        .HasColumnType("boolean")
+                        .HasColumnName("provided_status");
+
+                    b.Property<string>("ProviderName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("provider_name");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bytea")
+                        .HasColumnName("row_version");
+
+                    b.Property<string>("SupportType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("support_type");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_case_stage3_supports");
+
+                    b.HasIndex("CaseId")
+                        .HasDatabaseName("ix_case_stage3_supports_case_id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_case_stage3_supports_created_by_user_id");
+
+                    b.ToTable("case_stage3_supports", (string)null);
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseStage4Placement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("address");
+
+                    b.Property<Guid>("CaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("case_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("InstitutionName")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("institution_name");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organisation_id");
+
+                    b.Property<string>("PlacementType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("placement_type");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_case_stage4_placement");
+
+                    b.HasIndex("CaseId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_case_stage4_placement_case_id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_case_stage4_placement_created_by_user_id");
+
+                    b.ToTable("case_stage4_placement", (string)null);
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseStage5Reintegration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("case_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("InstitutionDetails")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("institution_details");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organisation_id");
+
+                    b.Property<string>("ReintegrationLevel")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("reintegration_level");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_case_stage5_reintegration");
+
+                    b.HasIndex("CaseId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_case_stage5_reintegration_case_id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_case_stage5_reintegration_created_by_user_id");
+
+                    b.ToTable("case_stage5_reintegration", (string)null);
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseStage6TerminationExclusion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("case_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("ExclusionReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("exclusion_reason");
+
+                    b.Property<string>("JjbDetails")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("jjb_details");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organisation_id");
+
+                    b.Property<Guid?>("ReportAttachmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("report_attachment_id");
+
+                    b.Property<string>("TerminationExclusionType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("termination_exclusion_type");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_case_stage6_termination_exclusion");
+
+                    b.HasIndex("CaseId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_case_stage6_termination_exclusion_case_id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_case_stage6_termination_exclusion_created_by_user_id");
+
+                    b.HasIndex("ReportAttachmentId")
+                        .HasDatabaseName("ix_case_stage6_termination_exclusion_report_attachment_id");
+
+                    b.ToTable("case_stage6_termination_exclusion", (string)null);
                 });
 
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseStageTransition", b =>
@@ -1213,6 +1721,86 @@ namespace MidiKaval.Api.Migrations
                     b.ToTable("legend_visit_outcomes", (string)null);
                 });
 
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.ProjectBudget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ApprovalStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("approval_status");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by_user_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DecidedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at_utc");
+
+                    b.Property<string>("DecisionComment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("decision_comment");
+
+                    b.Property<DateOnly>("FinancialYearEnd")
+                        .HasColumnType("date")
+                        .HasColumnName("financial_year_end");
+
+                    b.Property<DateOnly>("FinancialYearStart")
+                        .HasColumnType("date")
+                        .HasColumnName("financial_year_start");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organisation_id");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("source");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_budgets");
+
+                    b.HasIndex("ApprovedByUserId")
+                        .HasDatabaseName("ix_project_budgets_approved_by_user_id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_project_budgets_created_by_user_id");
+
+                    b.HasIndex("OrganisationId")
+                        .HasDatabaseName("ix_project_budgets_organisation_id");
+
+                    b.HasIndex("OrganisationId", "FinancialYearStart", "Source")
+                        .IsUnique()
+                        .HasDatabaseName("ix_project_budgets_organisation_id_financial_year_start_source");
+
+                    b.ToTable("project_budgets", (string)null);
+                });
+
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.ReportExportJob", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1747,6 +2335,43 @@ namespace MidiKaval.Api.Migrations
                     b.Navigation("SubjectUser");
                 });
 
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.BudgetLineItem", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.ProjectBudget", null)
+                        .WithMany("BudgetLineItems")
+                        .HasForeignKey("ProjectBudgetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_budget_line_items_project_budgets_project_budget_id");
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.BudgetUtilization", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.BudgetLineItem", "BudgetLineItem")
+                        .WithMany()
+                        .HasForeignKey("BudgetLineItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_budget_utilizations_budget_line_items_budget_line_item_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Case", "Case")
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_budget_utilizations_cases_case_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_budget_utilizations_users_created_by_user_id");
+
+                    b.Navigation("BudgetLineItem");
+
+                    b.Navigation("Case");
+                });
+
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.Case", b =>
                 {
                     b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
@@ -1754,6 +2379,22 @@ namespace MidiKaval.Api.Migrations
                         .HasForeignKey("AssignedWorkerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_cases_users_assigned_worker_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Legends.EducationLevel", "EducationLevel")
+                        .WithMany()
+                        .HasForeignKey("EducationLevelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_cases_education_levels_education_level_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Legends.Occupation", "Occupation")
+                        .WithMany()
+                        .HasForeignKey("OccupationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_cases_occupations_occupation_id");
+
+                    b.Navigation("EducationLevel");
+
+                    b.Navigation("Occupation");
                 });
 
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseNote", b =>
@@ -1771,6 +2412,121 @@ namespace MidiKaval.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_case_notes_cases_case_id");
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseRelatedCase", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Case", null)
+                        .WithMany()
+                        .HasForeignKey("CaseIdA")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_related_cases_cases_case_id_a");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Case", null)
+                        .WithMany()
+                        .HasForeignKey("CaseIdB")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_related_cases_cases_case_id_b");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_related_cases_users_created_by_user_id");
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseStage2Data", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Case", null)
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_stage2_data_cases_case_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_stage2_data_users_created_by_user_id");
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseStage3Support", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Case", null)
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_stage3_supports_cases_case_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_stage3_supports_users_created_by_user_id");
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseStage4Placement", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Case", null)
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_stage4_placement_cases_case_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_stage4_placement_users_created_by_user_id");
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseStage5Reintegration", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Case", null)
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_stage5_reintegration_cases_case_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_stage5_reintegration_users_created_by_user_id");
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CaseStage6TerminationExclusion", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Case", null)
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_stage6_termination_exclusion_cases_case_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_stage6_termination_exclusion_users_created_by_user_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Attachment", null)
+                        .WithMany()
+                        .HasForeignKey("ReportAttachmentId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_case_stage6_termination_exclusion_attachments_report_attach");
                 });
 
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.CourtSitting", b =>
@@ -1824,6 +2580,22 @@ namespace MidiKaval.Api.Migrations
                         .HasConstraintName("fk_interventions_users_created_by_user_id");
                 });
 
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.ProjectBudget", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_project_budgets_users_approved_by_user_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_budgets_users_created_by_user_id");
+                });
+
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.TravelClaim", b =>
                 {
                     b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
@@ -1865,6 +2637,11 @@ namespace MidiKaval.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_user_devices_users_user_id");
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.ProjectBudget", b =>
+                {
+                    b.Navigation("BudgetLineItems");
                 });
 #pragma warning restore 612, 618
         }

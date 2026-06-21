@@ -17,6 +17,11 @@ public static class CaseExcelExporter
         "Gender",
         "Family Type",
         "Economic Status",
+        "Occupation",
+        "Education Level",
+        "Family History of Crime",
+        "Recidivism (Before)",
+        "Recidivism (After)",
         "Visits",
         "Next Visit Due (UTC)",
         "Updated (UTC)",
@@ -49,9 +54,14 @@ public static class CaseExcelExporter
             worksheet.Cell(excelRow, 8).Value = row.Gender ?? string.Empty;
             worksheet.Cell(excelRow, 9).Value = row.FamilyType ?? string.Empty;
             worksheet.Cell(excelRow, 10).Value = row.EconomicStatus ?? string.Empty;
-            worksheet.Cell(excelRow, 11).Value = row.VisitCount;
-            worksheet.Cell(excelRow, 12).Value = row.NextVisitDueAtUtc?.ToString("O") ?? string.Empty;
-            worksheet.Cell(excelRow, 13).Value = row.UpdatedAtUtc.ToString("O");
+            worksheet.Cell(excelRow, 11).Value = row.Occupation ?? string.Empty;
+            worksheet.Cell(excelRow, 12).Value = row.EducationLevel ?? string.Empty;
+            worksheet.Cell(excelRow, 13).Value = row.FamilyHistoryOfCrime ? "Yes" : "No";
+            worksheet.Cell(excelRow, 14).Value = row.RecidivismBeforeCount?.ToString() ?? string.Empty;
+            worksheet.Cell(excelRow, 15).Value = row.RecidivismAfterCount?.ToString() ?? string.Empty;
+            worksheet.Cell(excelRow, 16).Value = row.VisitCount;
+            worksheet.Cell(excelRow, 17).Value = row.NextVisitDueAtUtc?.ToString("O") ?? string.Empty;
+            worksheet.Cell(excelRow, 18).Value = row.UpdatedAtUtc.ToString("O");
         }
 
         worksheet.Columns().AdjustToContents();

@@ -13,6 +13,11 @@ public sealed class CreateCaseRequest
     public string? Gender { get; set; }
     public string? FamilyType { get; set; }
     public string? EconomicStatus { get; set; }
+    public Guid? OccupationId { get; set; }
+    public Guid? EducationLevelId { get; set; }
+    public bool? FamilyHistoryOfCrime { get; set; }
+    public int? RecidivismBeforeCount { get; set; }
+    public int? RecidivismAfterCount { get; set; }
     public bool? IsFirstTimeOffender { get; set; }
     public string? SensitivityLevel { get; set; }
 }
@@ -64,6 +69,14 @@ public sealed class CaseDetailDto
     public string? Gender { get; set; }
     public string? FamilyType { get; set; }
     public string? EconomicStatus { get; set; }
+    public Guid? OccupationId { get; set; }
+    public string? OccupationName { get; set; }
+    public Guid? EducationLevelId { get; set; }
+    public string? EducationLevelName { get; set; }
+    public bool FamilyHistoryOfCrime { get; set; }
+    public int? RecidivismBeforeCount { get; set; }
+    public int? RecidivismAfterCount { get; set; }
+    public IReadOnlyList<RelatedCaseDto> RelatedCases { get; set; } = Array.Empty<RelatedCaseDto>();
 }
 
 public sealed class FieldWorkerUserDto
@@ -107,6 +120,13 @@ public sealed class CaseDto
     public string? Gender { get; set; }
     public string? FamilyType { get; set; }
     public string? EconomicStatus { get; set; }
+    public Guid? OccupationId { get; set; }
+    public string? OccupationName { get; set; }
+    public Guid? EducationLevelId { get; set; }
+    public string? EducationLevelName { get; set; }
+    public bool FamilyHistoryOfCrime { get; set; }
+    public int? RecidivismBeforeCount { get; set; }
+    public int? RecidivismAfterCount { get; set; }
 }
 
 public sealed class CaseSummaryDto
@@ -133,6 +153,13 @@ public sealed class CaseSummaryDto
     public string? Gender { get; set; }
     public string? FamilyType { get; set; }
     public string? EconomicStatus { get; set; }
+    public Guid? OccupationId { get; set; }
+    public string? OccupationName { get; set; }
+    public Guid? EducationLevelId { get; set; }
+    public string? EducationLevelName { get; set; }
+    public bool FamilyHistoryOfCrime { get; set; }
+    public int? RecidivismBeforeCount { get; set; }
+    public int? RecidivismAfterCount { get; set; }
 }
 
 public sealed class CaseSearchResultDto
@@ -152,6 +179,8 @@ public sealed class CaseSearchFiltersDto
     public string? Gender { get; set; }
     public string? FamilyType { get; set; }
     public string? EconomicStatus { get; set; }
+    public Guid? OccupationId { get; set; }
+    public Guid? EducationLevelId { get; set; }
     public Guid? CreatedByUserId { get; set; }
     public Guid? AssignedWorkerUserId { get; set; }
     public bool? Overdue { get; set; }

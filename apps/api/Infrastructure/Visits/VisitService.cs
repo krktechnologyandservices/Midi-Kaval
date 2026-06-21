@@ -67,7 +67,10 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
     {
         var organisationId = ResolveOrganisationId();
 
-        var caseEntity = await db.Cases.SingleOrDefaultAsync(
+        var caseEntity = await db.Cases
+            .Include(c => c.Occupation)
+            .Include(c => c.EducationLevel)
+            .SingleOrDefaultAsync(
             c => c.Id == caseId && c.OrganisationId == organisationId,
             cancellationToken);
 
@@ -135,7 +138,10 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
 
         var (organisationId, actorUserId) = ResolveActorContext();
 
-        var caseEntity = await db.Cases.SingleOrDefaultAsync(
+        var caseEntity = await db.Cases
+            .Include(c => c.Occupation)
+            .Include(c => c.EducationLevel)
+            .SingleOrDefaultAsync(
             c => c.Id == caseId && c.OrganisationId == organisationId,
             cancellationToken);
 

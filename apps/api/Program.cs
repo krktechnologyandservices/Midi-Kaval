@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Infrastructure;
+using MidiKaval.Api.Infrastructure.Budgets;
 using MidiKaval.Api.Infrastructure.Cases;
 using MidiKaval.Api.Infrastructure.Visits;
 using MidiKaval.Api.Infrastructure.Sync;
@@ -40,6 +41,11 @@ builder.Services.AddControllers(options =>
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -112,6 +118,14 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<SyncPushService>();
     builder.Services.AddScoped<CaseSearchPresetService>();
     builder.Services.AddScoped<UserQueryService>();
+    builder.Services.AddScoped<CaseStage2DataService>();
+    builder.Services.AddScoped<CaseStage3DataService>();
+    builder.Services.AddScoped<CaseStage4DataService>();
+    builder.Services.AddScoped<CaseStage5DataService>();
+    builder.Services.AddScoped<CaseStage6DataService>();
+    builder.Services.AddScoped<CaseRelatedCasesService>();
+    builder.Services.AddScoped<BudgetService>();
+    builder.Services.AddScoped<BudgetUtilizationService>();
     builder.Services.AddBlobStorage(builder.Configuration);
     builder.Services.AddMidiKavalAuth(builder.Configuration);
     builder.Services.AddMidiKavalCors(builder.Configuration, builder.Environment);

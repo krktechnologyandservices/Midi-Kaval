@@ -130,25 +130,25 @@ development_status:
 
   epic-11: in-progress
   11-1-gender-family-type-economic-status-on-case: done
-  11-2-occupation-and-education-level-on-case: backlog
-  11-3-recidivism-and-family-history-tracking: backlog
+  11-2-occupation-and-education-level-on-case: done
+  11-3-recidivism-and-family-history-tracking: done
   epic-11-retrospective: optional
 
-  epic-12: backlog
-  12-1-stage-2-maintain-and-development-sub-step-data: backlog
-  12-2-stage-3-inter-sectoral-approach-support-tracking: backlog
-  12-3-stage-4-rehabilitation-placement-records: backlog
-  12-4-stage-5-reintegration-records: backlog
-  12-5-stage-6-termination-and-exclusion-records: backlog
+  epic-12: in-progress
+  12-1-stage-2-maintain-and-development-sub-step-data: done
+  12-2-stage-3-inter-sectoral-approach-support-tracking: done
+  12-3-stage-4-rehabilitation-placement-records: done
+  12-4-stage-5-reintegration-records: done
+  12-5-stage-6-termination-and-exclusion-records: done
   epic-12-retrospective: optional
 
-  epic-13: backlog
-  13-1-related-cases-data-model-and-api: backlog
+  epic-13: in-progress
+  13-1-related-cases-data-model-and-api: done
   epic-13-retrospective: optional
 
-  epic-14: backlog
-  14-1-budget-crud-api-and-db-schema: backlog
-  14-2-budget-utilization-tracking-api: backlog
+  epic-14: in-progress
+  14-1-budget-crud-api-and-db-schema: done
+  14-2-budget-utilization-tracking-api: done
   14-3-budget-web-ui: backlog
   14-4-budget-expenditure-report: backlog
   epic-14-retrospective: optional

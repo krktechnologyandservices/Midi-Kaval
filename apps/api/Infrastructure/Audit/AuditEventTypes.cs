@@ -47,4 +47,25 @@ public static class AuditEventTypes
     public const string MigrationValidationRun = "migration.validation_run";
     public const string CaseImported = "case.imported";
     public const string MigrationImportCompleted = "migration.import_completed";
+    public const string Stage2DataCreated = "case.stage2_data.created";
+    public const string Stage2DataUpdated = "case.stage2_data.updated";
+    public const string Stage3DataCreated = "case.stage3_data.created";
+    public const string Stage3DataUpdated = "case.stage3_data.updated";
+    public const string Stage4PlacementCreated = "case.stage4_placement.created";
+    public const string Stage4PlacementUpdated = "case.stage4_placement.updated";
+    public const string Stage5ReintegrationCreated = "case.stage5_reintegration.created";
+    public const string Stage5ReintegrationUpdated = "case.stage5_reintegration.updated";
+    public const string Stage6TerminationExclusionCreated = "case.stage6_termination_exclusion.created";
+    public const string Stage6TerminationExclusionUpdated = "case.stage6_termination_exclusion.updated";
+    public const string CaseLinked = "case.related.created";
+    public const string CaseUnlinked = "case.related.deleted";
+    public const string BudgetCreated = "budget.created";
+    public const string BudgetUpdated = "budget.updated";
+    public const string BudgetProposed = "budget.proposed";
+    public const string BudgetApproved = "budget.approved";
+    public const string BudgetReturned = "budget.returned";
+    public const string BudgetExecuted = "budget.executed";
+    public const string BudgetUtilizationCreated = "budget.utilization.created";
+    public const string BudgetUtilizationUpdated = "budget.utilization.updated";
+    public const string BudgetUtilizationDeleted = "budget.utilization.deleted";
 }

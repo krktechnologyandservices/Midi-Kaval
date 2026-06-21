@@ -1,0 +1,687 @@
+================================================================================
+STORY 13.1: RELATED CASES DATA MODEL AND API — FOCUSED DIFF
+================================================================================
+
+NEW FILES:
+----------
+
+--- a/apps/api/Domain/Enums/RelationshipType.cs
++++ b/apps/api/Domain/Enums/RelationshipType.cs
+@@ -0,0 +1,8 @@
++namespace MidiKaval.Api.Domain.Enums;
++
++public enum RelationshipType
++{
++    Sibling,
++    CoAccused,
++    LinkedChild,
++}
+
+--- a/apps/api/Domain/Entities/CaseRelatedCase.cs
++++ b/apps/api/Domain/Entities/CaseRelatedCase.cs
+@@ -0,0 +1,13 @@
++using MidiKaval.Api.Domain.Enums;
++
++namespace MidiKaval.Api.Domain.Entities;
++
++public sealed class CaseRelatedCase
++{
++    public Guid Id { get; set; }
++    public Guid CaseIdA { get; set; }
++    public Guid CaseIdB { get; set; }
++    public RelationshipType RelationshipType { get; set; }
++    public Guid CreatedByUserId { get; set; }
++    public DateTime CreatedAtUtc { get; set; }
++}
+
+--- a/apps/api/Infrastructure/Persistence/CaseRelatedCaseConfiguration.cs
++++ b/apps/api/Infrastructure/Persistence/CaseRelatedCaseConfiguration.cs
+@@ -0,0 +1,41 @@
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Metadata.Builders;
++using MidiKaval.Api.Domain.Entities;
++
++namespace MidiKaval.Api.Infrastructure.Persistence;
++
++public sealed class CaseRelatedCaseConfiguration : IEntityTypeConfiguration<CaseRelatedCase>
++{
++    public void Configure(EntityTypeBuilder<CaseRelatedCase> builder)
++    {
++        builder.ToTable("case_related_cases");
++        builder.HasKey(d => d.Id);
++        builder.Property(d => d.RelationshipType)
++            .HasConversion<string>()
++            .HasMaxLength(32)
++            .IsRequired();
++        builder.Property(d => d.CreatedAtUtc)
++            .IsRequired();
++        builder.HasOne<Case>()
++            .WithMany()
++            .HasForeignKey(d => d.CaseIdA)
++            .OnDelete(DeleteBehavior.Restrict);
++        builder.HasOne<Case>()
++            .WithMany()
++            .HasForeignKey(d => d.CaseIdB)
++            .OnDelete(DeleteBehavior.Restrict);
++        builder.HasOne<User>()
++            .WithMany()
++            .HasForeignKey(d => d.CreatedByUserId)
++            .OnDelete(DeleteBehavior.Restrict);
++        builder.HasIndex(d => new { d.CaseIdA, d.CaseIdB })
++            .IsUnique();
++    }
++}
+
+--- a/apps/api/Models/Cases/CaseRelatedDtos.cs
++++ b/apps/api/Models/Cases/CaseRelatedDtos.cs
+@@ -0,0 +1,23 @@
++using System.ComponentModel.DataAnnotations;
++
++namespace MidiKaval.Api.Models.Cases;
++
++public sealed class RelatedCaseDto
++{
++    public Guid CaseId { get; set; }
++    public string CrimeNumber { get; set; } = string.Empty;
++    public string StNumber { get; set; } = string.Empty;
++    public string BeneficiaryName { get; set; } = string.Empty;
++    public string CurrentStage { get; set; } = string.Empty;
++    public string RelationshipType { get; set; } = string.Empty;
++}
++
++public sealed class LinkRelatedCaseRequest
++{
++    [Required(AllowEmptyStrings = false)]
++    public Guid RelatedCaseId { get; set; }
++
++    [Required(AllowEmptyStrings = false)]
++    [MaxLength(32)]
++    public string RelationshipType { get; set; } = string.Empty;
++}
+
+MODIFIED FILES (Story 13.1 additions only):
+------------------------------------------
+
+--- a/apps/api/Infrastructure/Persistence/AppDbContext.cs
++++ b/apps/api/Infrastructure/Persistence/AppDbContext.cs
+@@ -41,6 +41,7 @@
++    public DbSet<CaseRelatedCase> CaseRelatedCases => Set<CaseRelatedCase>();
+
+
+--- a/apps/api/Infrastructure/Audit/AuditEventTypes.cs
++++ b/apps/api/Infrastructure/Audit/AuditEventTypes.cs
+@@ -59,3 +59,5 @@
++    public const string CaseLinked = "case.related.created";
++    public const string CaseUnlinked = "case.related.deleted";
+
+
+--- a/apps/api/Models/Cases/CaseDtos.cs
++++ b/apps/api/Models/Cases/CaseDtos.cs
+@@ -78,6 +78,7 @@
++    public IReadOnlyList<RelatedCaseDto> RelatedCases { get; set; } = Array.Empty<RelatedCaseDto>();
+
+
+--- a/apps/api/Infrastructure/Cases/CaseService.cs
++++ b/apps/api/Infrastructure/Cases/CaseService.cs
+@@ -1409,6 +1409,8 @@
++        // Fetch related cases
++        var relatedCaseDtos = await BuildRelatedCaseDtosAsync(entity.Id, entity.OrganisationId, cancellationToken);
++
+@@ -1443,6 +1446,7 @@
++            RelatedCases = relatedCaseDtos,
++
+@@ -1450,6 +1455,28 @@
++    private async Task<List<RelatedCaseDto>> BuildRelatedCaseDtosAsync(
++        Guid caseId, Guid organisationId, CancellationToken ct)
++    {
++        var raw = await db.Set<CaseRelatedCase>()
++            .Where(r => r.CaseIdA == caseId || r.CaseIdB == caseId)
++            .Join(
++                db.Cases.Where(c => c.OrganisationId == organisationId),
++                r => r.CaseIdA == caseId ? r.CaseIdB : r.CaseIdA,
++                c => c.Id,
++                (r, c) => new { r.RelationshipType, c.Id, c.CrimeNumber, c.StNumber, c.BeneficiaryName, c.CurrentStage })
++            .ToListAsync(ct);
++
++        return raw.Select(x => new RelatedCaseDto
++        {
++            CaseId = x.Id,
++            CrimeNumber = x.CrimeNumber,
++            StNumber = x.StNumber,
++            BeneficiaryName = x.BeneficiaryName,
++            CurrentStage = x.CurrentStage.ToString(),
++            RelationshipType = x.RelationshipType.ToString(),
++        }).ToList();
++    }
+
+
+--- a/apps/api/Program.cs
++++ b/apps/api/Program.cs
+@@ -119,6 +119,7 @@
++    builder.Services.AddScoped<CaseRelatedCasesService>();
+
+
+--- a/apps/api/Migrations/20260621095803_AddCaseRelatedCases.cs
++++ b/apps/api/Migrations/20260621095803_AddCaseRelatedCases.cs
+@@ -0,0 +1,72 @@
++using System;
++using Microsoft.EntityFrameworkCore.Migrations;
++
++#nullable disable
++
++namespace MidiKaval.Api.Migrations
++{
++    public partial class AddCaseRelatedCases : Migration
++    {
++        protected override void Up(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.CreateTable(
++                name: "case_related_cases",
++                columns: table => new
++                {
++                    id = table.Column<Guid>(type: "uuid", nullable: false),
++                    case_id_a = table.Column<Guid>(type: "uuid", nullable: false),
++                    case_id_b = table.Column<Guid>(type: "uuid", nullable: false),
++                    relationship_type = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
++                    created_by_user_id = table.Column<Guid>(type: "uuid", nullable: false),
++                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
++                },
++                constraints: table =>
++                {
++                    table.PrimaryKey("pk_case_related_cases", x => x.id);
++                    table.ForeignKey(name: "fk_case_related_cases_cases_case_id_a", column: x => x.case_id_a, principalTable: "cases", principalColumn: "id", onDelete: ReferentialAction.Restrict);
++                    table.ForeignKey(name: "fk_case_related_cases_cases_case_id_b", column: x => x.case_id_b, principalTable: "cases", principalColumn: "id", onDelete: ReferentialAction.Restrict);
++                    table.ForeignKey(name: "fk_case_related_cases_users_created_by_user_id", column: x => x.created_by_user_id, principalTable: "users", principalColumn: "id", onDelete: ReferentialAction.Restrict);
++                });
++
++            migrationBuilder.CreateIndex(name: "ix_case_related_cases_case_id_a_case_id_b", table: "case_related_cases", columns: new[] { "case_id_a", "case_id_b" }, unique: true);
++            migrationBuilder.CreateIndex(name: "ix_case_related_cases_case_id_b", table: "case_related_cases", column: "case_id_b");
++            migrationBuilder.CreateIndex(name: "ix_case_related_cases_created_by_user_id", table: "case_related_cases", column: "created_by_user_id");
++        }
++
++        protected override void Down(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.DropTable(name: "case_related_cases");
++        }
++    }
++}
+
+
+================================================================================
+FULL NEW FILES (verbatim):
+================================================================================
+
+FILE: apps/api/Domain/Enums/RelationshipType.cs
+--------
+namespace MidiKaval.Api.Domain.Enums;
+
+public enum RelationshipType
+{
+    Sibling,
+    CoAccused,
+    LinkedChild,
+}
+--------
+
+FILE: apps/api/Domain/Entities/CaseRelatedCase.cs
+--------
+using MidiKaval.Api.Domain.Enums;
+
+namespace MidiKaval.Api.Domain.Entities;
+
+public sealed class CaseRelatedCase
+{
+    public Guid Id { get; set; }
+    public Guid CaseIdA { get; set; }
+    public Guid CaseIdB { get; set; }
+    public RelationshipType RelationshipType { get; set; }
+    public Guid CreatedByUserId { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+}
+--------
+
+FILE: apps/api/Infrastructure/Persistence/CaseRelatedCaseConfiguration.cs
+--------
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using MidiKaval.Api.Domain.Entities;
+
+namespace MidiKaval.Api.Infrastructure.Persistence;
+
+public sealed class CaseRelatedCaseConfiguration : IEntityTypeConfiguration<CaseRelatedCase>
+{
+    public void Configure(EntityTypeBuilder<CaseRelatedCase> builder)
+    {
+        builder.ToTable("case_related_cases");
+        builder.HasKey(d => d.Id);
+        builder.Property(d => d.RelationshipType)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .IsRequired();
+        builder.Property(d => d.CreatedAtUtc)
+            .IsRequired();
+        builder.HasOne<Case>()
+            .WithMany()
+            .HasForeignKey(d => d.CaseIdA)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Case>()
+            .WithMany()
+            .HasForeignKey(d => d.CaseIdB)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(d => d.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(d => new { d.CaseIdA, d.CaseIdB })
+            .IsUnique();
+    }
+}
+--------
+
+FILE: apps/api/Models/Cases/CaseRelatedDtos.cs
+--------
+using System.ComponentModel.DataAnnotations;
+
+namespace MidiKaval.Api.Models.Cases;
+
+public sealed class RelatedCaseDto
+{
+    public Guid CaseId { get; set; }
+    public string CrimeNumber { get; set; } = string.Empty;
+    public string StNumber { get; set; } = string.Empty;
+    public string BeneficiaryName { get; set; } = string.Empty;
+    public string CurrentStage { get; set; } = string.Empty;
+    public string RelationshipType { get; set; } = string.Empty;
+}
+
+public sealed class LinkRelatedCaseRequest
+{
+    [Required(AllowEmptyStrings = false)]
+    public Guid RelatedCaseId { get; set; }
+
+    [Required(AllowEmptyStrings = false)]
+    [MaxLength(32)]
+    public string RelationshipType { get; set; } = string.Empty;
+}
+--------
+
+FILE: apps/api/Infrastructure/Cases/CaseRelatedCasesService.cs
+--------
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using MidiKaval.Api.Domain.Entities;
+using MidiKaval.Api.Domain.Enums;
+using MidiKaval.Api.Infrastructure.Audit;
+using MidiKaval.Api.Infrastructure.Auth;
+using MidiKaval.Api.Infrastructure.Persistence;
+using MidiKaval.Api.Models.Cases;
+
+namespace MidiKaval.Api.Infrastructure.Cases;
+
+public sealed class CaseRelatedCasesService(
+    AppDbContext db,
+    IHttpContextAccessor httpContextAccessor)
+{
+    public async Task<List<RelatedCaseDto>> GetAsync(Guid caseId, CancellationToken ct)
+    {
+        var (organisationId, _) = ResolveActorContext();
+
+        var caseExists = await db.Cases.AnyAsync(c => c.Id == caseId && c.OrganisationId == organisationId, ct);
+        if (!caseExists)
+            throw new CaseNotFoundException();
+
+        var links = await db.Set<CaseRelatedCase>()
+            .Where(r => r.CaseIdA == caseId || r.CaseIdB == caseId)
+            .Join(
+                db.Cases,
+                r => r.CaseIdA == caseId ? r.CaseIdB : r.CaseIdA,
+                c => c.Id,
+                (r, c) => new { r.RelationshipType, c.Id, c.CrimeNumber, c.StNumber, c.BeneficiaryName, c.CurrentStage })
+            .ToListAsync(ct);
+
+        var dtos = links.Select(l => new RelatedCaseDto
+        {
+            CaseId = l.Id,
+            CrimeNumber = l.CrimeNumber,
+            StNumber = l.StNumber,
+            BeneficiaryName = l.BeneficiaryName,
+            CurrentStage = l.CurrentStage.ToString(),
+            RelationshipType = l.RelationshipType.ToString(),
+        }).ToList();
+
+        return dtos;
+    }
+
+    public async Task<RelatedCaseDto> LinkAsync(
+        Guid caseId, LinkRelatedCaseRequest request, CancellationToken ct)
+    {
+        var (organisationId, actorUserId) = ResolveActorContext();
+
+        if (request.RelatedCaseId == caseId)
+            throw new CaseBusinessRuleException("A case cannot be linked to itself.");
+
+        var relationshipType = ValidateRelationshipType(request.RelationshipType);
+
+        var caseIds = new[] { caseId, request.RelatedCaseId };
+        var existingCases = await db.Cases
+            .Where(c => caseIds.Contains(c.Id) && c.OrganisationId == organisationId)
+            .Select(c => new { c.Id, c.CrimeNumber, c.StNumber, c.BeneficiaryName, c.CurrentStage })
+            .ToListAsync(ct);
+
+        if (existingCases.Count != 2)
+            throw new CaseNotFoundException();
+
+        var targetCase = existingCases.First(c => c.Id == request.RelatedCaseId);
+
+        var (caseIdA, caseIdB) = OrderGuids(caseId, request.RelatedCaseId);
+
+        var existingLink = await db.Set<CaseRelatedCase>()
+            .AnyAsync(r => r.CaseIdA == caseIdA && r.CaseIdB == caseIdB, ct);
+
+        if (existingLink)
+            throw new CaseBusinessRuleException("Cases are already linked.");
+
+        var now = DateTime.UtcNow;
+        var link = new CaseRelatedCase
+        {
+            Id = Guid.NewGuid(),
+            CaseIdA = caseIdA,
+            CaseIdB = caseIdB,
+            RelationshipType = relationshipType,
+            CreatedByUserId = actorUserId,
+            CreatedAtUtc = now,
+        };
+
+        db.Add(link);
+
+        db.AuditEvents.Add(new AuditEvent
+        {
+            Id = Guid.NewGuid(),
+            OrganisationId = organisationId,
+            ActorUserId = actorUserId,
+            SubjectUserId = null,
+            EventType = AuditEventTypes.CaseLinked,
+            MetadataJson = JsonSerializer.Serialize(
+                new Dictionary<string, object?>
+                {
+                    ["caseId"] = caseId.ToString("D"),
+                    ["relatedCaseId"] = request.RelatedCaseId.ToString("D"),
+                    ["relationshipType"] = relationshipType.ToString(),
+                }, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            CreatedAtUtc = now,
+        });
+
+        await db.SaveChangesAsync(ct);
+
+        return new RelatedCaseDto
+        {
+            CaseId = targetCase.Id,
+            CrimeNumber = targetCase.CrimeNumber,
+            StNumber = targetCase.StNumber,
+            BeneficiaryName = targetCase.BeneficiaryName,
+            CurrentStage = targetCase.CurrentStage.ToString(),
+            RelationshipType = relationshipType.ToString(),
+        };
+    }
+
+    public async Task UnlinkAsync(Guid caseId, Guid relatedCaseId, CancellationToken ct)
+    {
+        var (organisationId, actorUserId) = ResolveActorContext();
+
+        var (caseIdA, caseIdB) = OrderGuids(caseId, relatedCaseId);
+
+        var link = await db.Set<CaseRelatedCase>()
+            .FirstOrDefaultAsync(r => r.CaseIdA == caseIdA && r.CaseIdB == caseIdB, ct);
+
+        if (link is null)
+            throw new CaseNotFoundException();
+
+        db.Remove(link);
+
+        db.AuditEvents.Add(new AuditEvent
+        {
+            Id = Guid.NewGuid(),
+            OrganisationId = organisationId,
+            ActorUserId = actorUserId,
+            SubjectUserId = null,
+            EventType = AuditEventTypes.CaseUnlinked,
+            MetadataJson = JsonSerializer.Serialize(
+                new Dictionary<string, object?>
+                {
+                    ["caseId"] = caseId.ToString("D"),
+                    ["relatedCaseId"] = relatedCaseId.ToString("D"),
+                }, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static RelationshipType ValidateRelationshipType(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            throw new CaseBusinessRuleException("RelationshipType is required.");
+
+        if (!Enum.TryParse<RelationshipType>(value.Trim(), ignoreCase: true, out var parsed))
+            throw new CaseBusinessRuleException($"'{value}' is not a valid RelationshipType. Must be one of: Sibling, CoAccused, LinkedChild.");
+
+        if (!Enum.IsDefined(parsed))
+            throw new CaseBusinessRuleException($"'{value}' is not a valid named RelationshipType.");
+
+        return parsed;
+    }
+
+    private static (Guid caseIdA, Guid caseIdB) OrderGuids(Guid a, Guid b)
+    {
+        if (string.Compare(a.ToString("D"), b.ToString("D"), StringComparison.Ordinal) < 0)
+            return (a, b);
+        return (b, a);
+    }
+
+    private (Guid OrganisationId, Guid ActorUserId) ResolveActorContext()
+    {
+        var httpContext = httpContextAccessor.HttpContext
+            ?? throw new InvalidOperationException("HTTP context is required.");
+
+        var principal = httpContext.User;
+        var organisationClaim = principal.FindFirst(AuthClaimTypes.OrganisationId)?.Value;
+        var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+        if (!Guid.TryParse(organisationClaim, out var organisationId)
+            || !Guid.TryParse(userIdClaim, out var actorUserId))
+        {
+            throw new InvalidOperationException("Authenticated user claims are missing or invalid.");
+        }
+
+        return (organisationId, actorUserId);
+    }
+}
+--------
+
+FILE: apps/api/Controllers/V1/CaseRelatedCasesController.cs
+--------
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using MidiKaval.Api.Infrastructure.Auth;
+using MidiKaval.Api.Infrastructure.Cases;
+using MidiKaval.Api.Models.Cases;
+
+namespace MidiKaval.Api.Controllers.V1;
+
+[ApiController]
+[Route("api/v1/cases/{caseId:guid}/related-cases")]
+public sealed class CaseRelatedCasesController(
+    CaseRelatedCasesService relatedCasesService) : ControllerBase
+{
+    [HttpGet]
+    [Authorize(Policy = Policies.CoordinatorOrAbove)]
+    [ProducesResponseType(typeof(List<RelatedCaseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Get(
+        Guid caseId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var dtos = await relatedCasesService.GetAsync(caseId, cancellationToken);
+            return Ok(dtos);
+        }
+        catch (CaseNotFoundException)
+        {
+            return NotFoundProblem("Case not found.");
+        }
+        catch (InvalidOperationException)
+        {
+            return UnauthorizedProblem();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+    }
+
+    [HttpPost]
+    [Authorize(Policy = Policies.CoordinatorOrAbove)]
+    [ProducesResponseType(typeof(RelatedCaseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> Link(
+        Guid caseId,
+        [FromBody] LinkRelatedCaseRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequestProblem("Request body is required.");
+        }
+
+        try
+        {
+            var dto = await relatedCasesService.LinkAsync(caseId, request, cancellationToken);
+            return Ok(dto);
+        }
+        catch (CaseNotFoundException)
+        {
+            return NotFoundProblem("One or both cases not found.");
+        }
+        catch (CaseBusinessRuleException ex)
+        {
+            return UnprocessableProblem(ex.Message);
+        }
+        catch (InvalidOperationException)
+        {
+            return UnauthorizedProblem();
+        }
+        catch (DbUpdateException)
+        {
+            return ConflictProblem("Link already exists or concurrent conflict.");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+    }
+
+    [HttpDelete("{relatedCaseId:guid}")]
+    [Authorize(Policy = Policies.CoordinatorOrAbove)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Unlink(
+        Guid caseId,
+        Guid relatedCaseId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await relatedCasesService.UnlinkAsync(caseId, relatedCaseId, cancellationToken);
+            return NoContent();
+        }
+        catch (CaseNotFoundException)
+        {
+            return NotFoundProblem("Link not found.");
+        }
+        catch (InvalidOperationException)
+        {
+            return UnauthorizedProblem();
+        }
+        catch (DbUpdateException)
+        {
+            return ConflictProblem("Concurrent conflict.");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+    }
+
+    private IActionResult BadRequestProblem(string detail) =>
+        Problem(detail: detail, statusCode: StatusCodes.Status400BadRequest, title: "Bad Request");
+    private IActionResult NotFoundProblem(string detail) =>
+        Problem(detail: detail, statusCode: StatusCodes.Status404NotFound, title: "Not Found");
+    private IActionResult UnprocessableProblem(string detail) =>
+        Problem(detail: detail, statusCode: StatusCodes.Status422UnprocessableEntity, title: "Unprocessable Entity");
+    private IActionResult ConflictProblem(string detail) =>
+        Problem(detail: detail, statusCode: StatusCodes.Status409Conflict, title: "Conflict");
+    private IActionResult UnauthorizedProblem() =>
+        Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
+}
+--------
+
+FILE: apps/api/Migrations/20260621095803_AddCaseRelatedCases.cs
+--------
+using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace MidiKaval.Api.Migrations
+{
+    public partial class AddCaseRelatedCases : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.CreateTable(
+                name: "case_related_cases",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    case_id_a = table.Column<Guid>(type: "uuid", nullable: false),
+                    case_id_b = table.Column<Guid>(type: "uuid", nullable: false),
+                    relationship_type = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    created_by_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_case_related_cases", x => x.id);
+                    table.ForeignKey(name: "fk_case_related_cases_cases_case_id_a", column: x => x.case_id_a, principalTable: "cases", principalColumn: "id", onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(name: "fk_case_related_cases_cases_case_id_b", column: x => x.case_id_b, principalTable: "cases", principalColumn: "id", onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(name: "fk_case_related_cases_users_created_by_user_id", column: x => x.created_by_user_id, principalTable: "users", principalColumn: "id", onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateIndex(name: "ix_case_related_cases_case_id_a_case_id_b", table: "case_related_cases", columns: new[] { "case_id_a", "case_id_b" }, unique: true);
+            migrationBuilder.CreateIndex(name: "ix_case_related_cases_case_id_b", table: "case_related_cases", column: "case_id_b");
+            migrationBuilder.CreateIndex(name: "ix_case_related_cases_created_by_user_id", table: "case_related_cases", column: "created_by_user_id");
+        }
+
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(name: "case_related_cases");
+        }
+    }
+}
+--------

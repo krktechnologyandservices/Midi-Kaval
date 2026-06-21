@@ -34,6 +34,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Area> Areas => Set<Area>();
     public DbSet<Designation> Designations => Set<Designation>();
     public DbSet<PoliceStation> PoliceStations => Set<PoliceStation>();
+    public DbSet<CaseStage2Data> CaseStage2Data => Set<CaseStage2Data>();
+    public DbSet<CaseStage3Support> CaseStage3Supports => Set<CaseStage3Support>();
+    public DbSet<CaseStage4Placement> CaseStage4Placements => Set<CaseStage4Placement>();
+    public DbSet<CaseStage5Reintegration> CaseStage5Reintegrations => Set<CaseStage5Reintegration>();
+    public DbSet<CaseStage6TerminationExclusion> CaseStage6TerminationExclusions => Set<CaseStage6TerminationExclusion>();
+    public DbSet<CaseRelatedCase> CaseRelatedCases => Set<CaseRelatedCase>();
+    public DbSet<ProjectBudget> ProjectBudgets => Set<ProjectBudget>();
+    public DbSet<BudgetLineItem> BudgetLineItems => Set<BudgetLineItem>();
+    public DbSet<BudgetUtilization> BudgetUtilizations => Set<BudgetUtilization>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

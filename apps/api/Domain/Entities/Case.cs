@@ -1,3 +1,4 @@
+using MidiKaval.Api.Domain.Entities.Legends;
 using MidiKaval.Api.Domain.Enums;
 
 namespace MidiKaval.Api.Domain.Entities;
@@ -17,6 +18,15 @@ public sealed class Case
     public Gender? Gender { get; set; }
     public FamilyType? FamilyType { get; set; }
     public EconomicStatus? EconomicStatus { get; set; }
+    public Guid? OccupationId { get; set; }
+    public Guid? EducationLevelId { get; set; }
+
+    // Navigation properties
+    public Occupation? Occupation { get; set; }
+    public EducationLevel? EducationLevel { get; set; }
+    public bool FamilyHistoryOfCrime { get; set; } = false;
+    public int? RecidivismBeforeCount { get; set; }
+    public int? RecidivismAfterCount { get; set; }
     public bool IsFirstTimeOffender { get; set; } = true;
     public CaseStage CurrentStage { get; set; } = CaseStage.ProcessInitiation;
     public int VisitCount { get; set; }

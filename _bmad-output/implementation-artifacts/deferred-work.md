@@ -359,3 +359,77 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - **PII redaction gap: demographic fields not redacted for field workers on POCSO cases** — BeneficiaryName is redacted via BeneficiaryDisplayFormatter for field workers on POCSO cases, but Gender, FamilyType, and EconomicStatus are written unconditionally. Potential privacy policy violation. Deferred: pre-existing POCSO redaction concern, not introduced by this story.
 
 - **Inconsistent null-handling patterns** — Some paths use ternary (`c.Gender != null ? c.Gender.ToString()! : null`) while others use null-conditional (`entity.Gender?.ToString()`). Maintenance hazard for future extensions. Deferred: low severity, both produce correct results.
+
+## Deferred from: code review of 11-2-occupation-and-education-level-on-case.md (2026-06-21)
+
+- **TOCTOU race in legend reference validation** — ValidateIntakeRequestAsync checks IsActive for Occupation/EducationLevel, then SaveChangesAsync commits in a separate implicit transaction. Between check and commit, another session could deactivate the referenced row. Pre-existing across the codebase.
+- **Brittle hard-coded Excel column indices** — Cell writes in CaseExcelExporter use magic numbers (11, 12, 13, 14, 15) that must be manually kept in sync with the headers array. A mismatch compiles silently. Pre-existing pattern; global refactor needed.
+- **Two different name-resolution strategies (search vs export)** — Search uses explicit ToDictionaryAsync + manual loop, export uses navigation property access directly in Select. Intentional optimization choice.
+- **No support for null search filters** — Cannot search for cases where OccupationId is explicitly unset/null. Feature request; not introduced by this story.
+- **Duplicated LoadAsync blocks in CreateAsync and MergeAsync** — Identical 7-line navigation-loading block copy-pasted. Minor DRY concern; acceptable for now.
+
+## Deferred from: code review of 12-2-stage-3-inter-sectoral-approach-support-tracking.md (2026-06-21)
+
+- **`DbUpdateException` mapped to 409 without concurrency token** — Adding proper concurrency token/row version is a larger design decision beyond this story's scope. The atomic-replace pattern in `CaseStage3DataService.UpsertAsync` can race under concurrent requests.
+- **No index on `OrganisationId` on `case_stage3_supports`** — Pre-existing pattern; not unique to this story. The `OrganisationId` column has no dedicated index.
+- **Missing `OrganisationId` FK constraint** — Organisation entity/table doesn't exist yet. Deferred per project-wide pattern ("organisations schema is a later epic"). `CaseStage3SupportConfiguration.cs`
+
+## Deferred from: code review of 11-3-recidivism-and-family-history-tracking.md (2026-06-21)
+
+- **Hardcoded Excel column indices extended from 15 to 18 columns** — Cell writes in CaseExcelExporter use magic numbers (13, 14, 15, 16, 17, 18) that must be manually kept in sync with headers array. Pre-existing pattern; global refactor needed.
+- **No DB-level CHECK constraint for non-negative recidivism** — Application-level validation in ValidateIntakeRequestAsync, but no database CHECK constraint. Pre-existing pattern across codebase.
+- **No support for null search filters** — Cannot search for cases where OccupationId/EducationLevelId is explicitly unset. Pre-existing limitation noted in previous review.
+
+## Deferred from: code review of 12-1-stage-2-maintain-and-development-sub-step-data.md (2026-06-21)
+
+- **Concurrency unsafety — race condition on upsert** — Read-then-write pattern with no row version or concurrency token. Two concurrent requests can both see `existing is null`. Pre-existing pattern across the codebase.
+- **`ValidateFieldLengths` repetitive maintenance liability** — 8 fields checked with copy-paste manual code. Adding a new text field requires edits in 5 places: entity, DTO, request DTO, EF configuration, service validation. Pre-existing pattern.
+- **No input sanitization on text fields** — All 8 text fields accept arbitrary string content with no character restrictions, XSS prevention, or structural validation. Cross-cutting concern affecting the entire API.
+- **Search filters accept inactive legend IDs but intake endpoint rejects them** — `ApplySearchFilters` doesn't filter by `IsActive`, while `ValidateIntakeRequestAsync` checks `o.IsActive` and `el.IsActive`. Behavioral inconsistency that could confuse users.
+- **Duplicate DTO-mapping surface area across 5+ locations** — Same new fields (OccupationId, OccupationName, EducationLevelId, EducationLevelName, FamilyHistoryOfCrime, RecidivismBeforeCount, RecidivismAfterCount) mapped in `CaseDtoMapper`, `ToDto`, `BuildDetailDtoAsync`, `SearchCasesAsync` projection, and `ExportAsync` projection. Adding or renaming a field requires edits in all five places.
+
+## Deferred from: code review of 12-3-stage-4-rehabilitation-placement-records.md (2026-06-21)
+
+- **Organisation-scoped read guard** — `GetAsync` doesn't verify the returned placement's `OrganisationId` matches the caller's organisation. Cross-cutting concern; Organisation entity doesn't exist yet.
+- **No concurrency control on placement entity** — Read-then-write without row versioning. Pre-existing pattern across the codebase.
+
+## Deferred from: code review of 12-4-stage-5-reintegration-records.md (2026-06-21)
+
+- **No `None`/`Unset` sentinel in `ReintegrationLevel` enum** — pre-existing design pattern matching `PlacementType`, `SupportType`.
+- **Missing `OrganisationId` FK constraint** — Organisation entity/table doesn't exist yet (project-wide deferral: "organisations schema is a later epic").
+- **`HasOne<User>()` FK assumption without verifying `User` entity mapping** — pre-existing pattern used across all stages.
+- **Audit events record only `caseId` and `actorUserId` metadata, not value deltas** — pre-existing pattern across all stage services.
+- **`JsonSerializerDefaults.Web` choice on dictionary serialization** — functionally correct but stylistically questionable; pre-existing pattern.
+- **`DbUpdateException` catch → 409 too broad** (FK violations, deadlocks all mapped as "conflict") — pre-existing pattern in all previous stage controllers.
+- **No `RowVersion` concurrency token** — pre-existing pattern matching Stage 2 and Stage 4 (only Stage 3 was patched to add one).
+- **`OrganisationId` denormalized without cross-reference check against `Case.OrganisationId`** — pre-existing pattern across all stage entities.
+- **Integer enum values (e.g., `"0"`, `"1"`) bypass string validation via `Enum.TryParse`** — pre-existing behavior across all stage services.
+- **`MaxInstitutionDetailsLength` constant (2000) duplicated across service, DTO annotation, and EF config** — pre-existing pattern.
+- **`RequestSizeLimit(16_384)` without `413 PayloadTooLarge` in `ProducesResponseType`** — pre-existing pattern in all stage controllers.
+- **`WithMany()` without inverse navigation property on `Case`** — pre-existing pattern matching all previous stage configurations.
+- **TOCTOU race: stage check to `SaveChangesAsync` window** — case could transition out of Stage 5 between verification and persistence; pre-existing pattern across all stage services.
+- **`[ApiController]` auto-400 short-circuits before service validation can produce the AC-required 422** — pre-existing pattern affecting all stage controllers.
+
+## Deferred from: code review of 12-5-stage-6-termination-and-exclusion-records.md (2026-06-21)
+
+- **No `OrganisationId` FK constraint** — Organisation entity/table doesn't exist yet (project-wide deferral).
+- **No `RowVersion` concurrency token** — pre-existing pattern matching Stage 2/4/5.
+- **Audit events record only `caseId` and `actorUserId` metadata, not value deltas** — pre-existing pattern across all stage services.
+- **`DbUpdateException` catch → 409 too broad** (FK violations, deadlocks all mapped as "conflict") — pre-existing pattern in all stage controllers.
+- **401 vs 403 semantics conflated** — `InvalidOperationException` from claim resolution mapped to 401 even for role failures; pre-existing pattern.
+- **`[ApiController]` auto-400 short-circuits before service validation can produce the AC-required 422** for field length violations — pre-existing pattern.
+- **TOCTOU race: stage check to `SaveChangesAsync` window** — case could transition out of Stage 6 between verification and persistence; pre-existing pattern.
+- **`MaxTextFieldLength` constant (2000) duplicated across service, DTO annotation, and EF config** — pre-existing pattern.
+- **No input trimming on `JjbDetails`/`ExclusionReason` string fields** — pre-existing pattern matching all stage services.
+- **`Enum.ToString()` on response path is brittle** — renaming enum members breaks clients; pre-existing pattern.
+- **`OperationCanceledException` catch rethrows immediately** — intentionally prevents other catch blocks from swallowing it; accepted pattern from Story 12.4.
+- **Integer enum values (e.g., `"0"`, `"1"`) bypass string validation via `Enum.TryParse`** — pre-existing behavior across all stage services.
+
+## Deferred from: code review of 13-1-related-cases-data-model-and-api.md (2026-06-21)
+
+- **`[Required]` on non-nullable `Guid` struct** — dead metadata on value type; pre-existing project-wide pattern.
+- **LINQ ternary in EF Core join** — EF Core 8 translates this correctly; no actionable issue.
+- **`InvalidOperationException` used for auth failures (wide catch trap)** — pre-existing pattern across all services.
+- **`IHttpContextAccessor` coupling in service** — pre-existing architectural pattern across the codebase.
+- **Manual dictionary-based audit event construction** — pre-existing pattern across all service classes.
+- **Enum-as-string at API boundary** — pre-existing project convention matching all stage services.

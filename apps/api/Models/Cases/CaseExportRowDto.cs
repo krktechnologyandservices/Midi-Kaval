@@ -12,6 +12,11 @@ public sealed class CaseExportRowDto
     public string? Gender { get; init; }
     public string? FamilyType { get; init; }
     public string? EconomicStatus { get; init; }
+    public string? Occupation { get; init; }
+    public string? EducationLevel { get; init; }
+    public bool FamilyHistoryOfCrime { get; init; }
+    public int? RecidivismBeforeCount { get; init; }
+    public int? RecidivismAfterCount { get; init; }
     public int VisitCount { get; init; }
     public DateTime? NextVisitDueAtUtc { get; init; }
     public DateTime UpdatedAtUtc { get; init; }

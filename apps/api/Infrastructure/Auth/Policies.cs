@@ -9,6 +9,8 @@ public static class Policies
     public const string Coordinator = nameof(Coordinator);
     public const string SocialWorker = nameof(SocialWorker);
     public const string CaseWorker = nameof(CaseWorker);
+    public const string Accountant = nameof(Accountant);
+    public const string AccountantOrAbove = nameof(AccountantOrAbove);
 
     public const string ForbiddenByRoleMessage =
         "You do not have permission to perform this action.";

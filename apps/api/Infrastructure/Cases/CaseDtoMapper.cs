@@ -29,5 +29,12 @@ public static class CaseDtoMapper
         Gender = entity.Gender?.ToString(),
         FamilyType = entity.FamilyType?.ToString(),
         EconomicStatus = entity.EconomicStatus?.ToString(),
+        OccupationId = entity.OccupationId,
+        OccupationName = entity.Occupation?.Name,
+        EducationLevelId = entity.EducationLevelId,
+        EducationLevelName = entity.EducationLevel?.Name,
+        FamilyHistoryOfCrime = entity.FamilyHistoryOfCrime,
+        RecidivismBeforeCount = entity.RecidivismBeforeCount,
+        RecidivismAfterCount = entity.RecidivismAfterCount,
     };
 }
