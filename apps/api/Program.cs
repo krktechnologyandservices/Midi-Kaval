@@ -16,6 +16,7 @@ using MidiKaval.Api.Infrastructure.TravelClaims;
 using MidiKaval.Api.Infrastructure.Users;
 using MidiKaval.Api.Infrastructure.Notifications;
 using MidiKaval.Api.Infrastructure.Email;
+using MidiKaval.Api.Infrastructure.Migration;
 using MidiKaval.Api.Jobs;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Infrastructure.Seed;
@@ -96,6 +97,9 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<DashboardService>();
     builder.Services.AddScoped<ReportGenerationService>();
     builder.Services.AddScoped<ReportExportJobRunner>();
+    builder.Services.AddScoped<MappingSpecLoader>();
+    builder.Services.AddScoped<MigrationImportService>();
+    builder.Services.Configure<MappingSpecOptions>(builder.Configuration.GetSection(MappingSpecOptions.SectionName));
     if (!builder.Environment.IsDevelopment())
     {
         builder.Services.AddHostedService<InterventionOverdueBackgroundService>();

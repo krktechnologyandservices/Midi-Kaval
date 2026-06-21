@@ -14,6 +14,9 @@ public sealed class Case
     public string TypeOfOffence { get; set; } = string.Empty;
     public OffenceClassification OffenceClassification { get; set; }
     public Domicile Domicile { get; set; }
+    public Gender? Gender { get; set; }
+    public FamilyType? FamilyType { get; set; }
+    public EconomicStatus? EconomicStatus { get; set; }
     public bool IsFirstTimeOffender { get; set; } = true;
     public CaseStage CurrentStage { get; set; } = CaseStage.ProcessInitiation;
     public int VisitCount { get; set; }

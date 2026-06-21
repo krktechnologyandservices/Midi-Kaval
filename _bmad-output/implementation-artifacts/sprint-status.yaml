@@ -1,5 +1,5 @@
 # generated: 2026-06-13
-# last_updated: 2026-06-20
+# last_updated: 2026-06-21
 # project: Midi-Kaval
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-13
-last_updated: 2026-06-20
+last_updated: 2026-06-21
 project: Midi-Kaval
 project_key: NOKEY
 tracking_system: file-system
@@ -123,7 +123,40 @@ development_status:
   9-4-angular-material-theme-from-design-tokens: done
   epic-9-retrospective: optional
 
-  epic-10: backlog
-  10-1-excel-column-mapping-specification-and-validation: backlog
-  10-2-one-time-import-tool-api-and-admin-ui: backlog
+  epic-10: in-progress
+  10-1-excel-column-mapping-specification-and-validation: done
+  10-2-one-time-import-tool-api-and-admin-ui: done
   epic-10-retrospective: optional
+
+  epic-11: in-progress
+  11-1-gender-family-type-economic-status-on-case: done
+  11-2-occupation-and-education-level-on-case: backlog
+  11-3-recidivism-and-family-history-tracking: backlog
+  epic-11-retrospective: optional
+
+  epic-12: backlog
+  12-1-stage-2-maintain-and-development-sub-step-data: backlog
+  12-2-stage-3-inter-sectoral-approach-support-tracking: backlog
+  12-3-stage-4-rehabilitation-placement-records: backlog
+  12-4-stage-5-reintegration-records: backlog
+  12-5-stage-6-termination-and-exclusion-records: backlog
+  epic-12-retrospective: optional
+
+  epic-13: backlog
+  13-1-related-cases-data-model-and-api: backlog
+  epic-13-retrospective: optional
+
+  epic-14: backlog
+  14-1-budget-crud-api-and-db-schema: backlog
+  14-2-budget-utilization-tracking-api: backlog
+  14-3-budget-web-ui: backlog
+  14-4-budget-expenditure-report: backlog
+  epic-14-retrospective: optional
+
+  epic-15: backlog
+  15-1-socio-demographic-profile-report-generation: backlog
+  epic-15-retrospective: optional
+
+  epic-16: backlog
+  16-1-update-migration-spec-with-new-fields: backlog
+  epic-16-retrospective: optional

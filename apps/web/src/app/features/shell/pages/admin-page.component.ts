@@ -17,6 +17,7 @@ import { MatCardModule } from '@angular/material/card';
           <a mat-stroked-button routerLink="/admin/audit">Audit Log</a>
           <a mat-stroked-button routerLink="/admin/staff">Staff Directory</a>
           <a mat-stroked-button routerLink="/admin/travel-claims">Travel claims approval</a>
+          <a mat-stroked-button routerLink="/admin/import">Legacy Import</a>
         </nav>
       </mat-card-content>
     </mat-card>

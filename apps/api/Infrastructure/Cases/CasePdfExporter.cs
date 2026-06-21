@@ -16,6 +16,9 @@ public static class CasePdfExporter
         "Offence Type",
         "Classification",
         "Area (domicile)",
+        "Gender",
+        "Family Type",
+        "Economic Status",
         "Visits",
         "Next Visit Due (UTC)",
         "Updated (UTC)",
@@ -60,6 +63,9 @@ public static class CasePdfExporter
                         table.Cell().Padding(2).Text(row.TypeOfOffence);
                         table.Cell().Padding(2).Text(row.OffenceClassification);
                         table.Cell().Padding(2).Text(row.Domicile);
+                        table.Cell().Padding(2).Text(row.Gender ?? string.Empty);
+                        table.Cell().Padding(2).Text(row.FamilyType ?? string.Empty);
+                        table.Cell().Padding(2).Text(row.EconomicStatus ?? string.Empty);
                         table.Cell().Padding(2).Text(row.VisitCount.ToString());
                         table.Cell().Padding(2).Text(row.NextVisitDueAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? string.Empty);
                         table.Cell().Padding(2).Text(row.UpdatedAtUtc.ToString("yyyy-MM-dd HH:mm"));

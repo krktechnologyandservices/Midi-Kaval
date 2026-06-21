@@ -44,4 +44,7 @@ public static class AuditEventTypes
     public const string StaffDeactivated = "staff.deactivated";
     public const string StaffReactivated = "staff.reactivated";
     public const string StaffForceReset = "staff.force-reset";
+    public const string MigrationValidationRun = "migration.validation_run";
+    public const string CaseImported = "case.imported";
+    public const string MigrationImportCompleted = "migration.import_completed";
 }

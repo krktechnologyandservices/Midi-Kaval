@@ -351,3 +351,11 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - **F5: LegendsController file minified to single line** — 438-character single line; unreviewable, unblameable; pre-existing formatting
 - **F6: Claims resolution throws 500 instead of 401** — `ResolveOrganisationId()` / `ResolveUserId()` throw `InvalidOperationException` on bad claims; pre-existing pattern across all controllers
 - **F7: Legend entities lack concurrency tokens** — no row version or `UPDATE ... WHERE UpdatedAtUtc` pattern; low write contention acceptable
+
+## Deferred from: code review of 11-1-gender-family-type-economic-status-on-case.md (2026-06-21)
+
+- **Missing DB indexes on Gender, FamilyType, EconomicStatus** — `ApplySearchFilters` adds exact-match WHERE clauses for these columns. Without indexes, filtering by these fields degrades to sequential scans on large tables. Deferred: performance optimization, not a correctness bug for current data volumes.
+
+- **PII redaction gap: demographic fields not redacted for field workers on POCSO cases** — BeneficiaryName is redacted via BeneficiaryDisplayFormatter for field workers on POCSO cases, but Gender, FamilyType, and EconomicStatus are written unconditionally. Potential privacy policy violation. Deferred: pre-existing POCSO redaction concern, not introduced by this story.
+
+- **Inconsistent null-handling patterns** — Some paths use ternary (`c.Gender != null ? c.Gender.ToString()! : null`) while others use null-conditional (`entity.Gender?.ToString()`). Maintenance hazard for future extensions. Deferred: low severity, both produce correct results.

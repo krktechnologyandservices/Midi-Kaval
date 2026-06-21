@@ -14,6 +14,9 @@ public static class CaseExcelExporter
         "Offence Type",
         "Classification",
         "Area (domicile)",
+        "Gender",
+        "Family Type",
+        "Economic Status",
         "Visits",
         "Next Visit Due (UTC)",
         "Updated (UTC)",
@@ -43,9 +46,12 @@ public static class CaseExcelExporter
             worksheet.Cell(excelRow, 5).Value = row.TypeOfOffence;
             worksheet.Cell(excelRow, 6).Value = row.OffenceClassification;
             worksheet.Cell(excelRow, 7).Value = row.Domicile;
-            worksheet.Cell(excelRow, 8).Value = row.VisitCount;
-            worksheet.Cell(excelRow, 9).Value = row.NextVisitDueAtUtc?.ToString("O") ?? string.Empty;
-            worksheet.Cell(excelRow, 10).Value = row.UpdatedAtUtc.ToString("O");
+            worksheet.Cell(excelRow, 8).Value = row.Gender ?? string.Empty;
+            worksheet.Cell(excelRow, 9).Value = row.FamilyType ?? string.Empty;
+            worksheet.Cell(excelRow, 10).Value = row.EconomicStatus ?? string.Empty;
+            worksheet.Cell(excelRow, 11).Value = row.VisitCount;
+            worksheet.Cell(excelRow, 12).Value = row.NextVisitDueAtUtc?.ToString("O") ?? string.Empty;
+            worksheet.Cell(excelRow, 13).Value = row.UpdatedAtUtc.ToString("O");
         }
 
         worksheet.Columns().AdjustToContents();

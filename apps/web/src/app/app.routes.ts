@@ -143,6 +143,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'admin/import',
+        canActivate: [directorGuard],
+        loadComponent: () =>
+          import('./features/shell/pages/import-page.component').then(
+            (m) => m.ImportPageComponent,
+          ),
+      },
+      {
         path: 'admin/travel-claims',
         canActivate: [directorGuard],
         loadComponent: () =>

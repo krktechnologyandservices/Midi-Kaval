@@ -1,0 +1,30 @@
+{
+  "columnMappings": [
+    { "legacyColumn": "CR Number", "targetField": "crimeNumber", "transform": "trimUpper", "fieldType": "string", "isRequired": true, "maxLength": "64", "notes": "Trim + ToUpperInvariant. Unique per org." },
+    { "legacyColumn": "ST Number", "targetField": "stNumber", "transform": "trimUpper", "fieldType": "string", "isRequired": true, "maxLength": "64", "notes": "Trim + ToUpperInvariant. Unique per org." },
+    { "legacyColumn": "Beneficiary Name", "targetField": "beneficiaryName", "transform": "direct", "fieldType": "string", "isRequired": true, "maxLength": "256" },
+    { "legacyColumn": "Age", "targetField": "beneficiaryAge", "transform": "parseInt", "fieldType": "int", "isRequired": false, "nullDefault": "null" },
+    { "legacyColumn": "Contact No", "targetField": "beneficiaryContact", "transform": "truncate", "fieldType": "string", "isRequired": false, "maxLength": "32", "nullDefault": "null" },
+    { "legacyColumn": "Type of Offence", "targetField": "typeOfOffence", "transform": "direct", "fieldType": "string", "isRequired": true, "maxLength": "128" },
+    { "legacyColumn": "Classification", "targetField": "offenceClassification", "transform": "enum", "fieldType": "enum", "isRequired": true, "enumValues": "Petty,Serious,Heinous" },
+    { "legacyColumn": "Domicile/Area", "targetField": "domicile", "transform": "enum", "fieldType": "enum", "isRequired": true, "enumValues": "Urban,Rural,Coastal,Tribal,Slum" },
+    { "legacyColumn": "First Offender", "targetField": "isFirstTimeOffender", "transform": "boolYesNo", "fieldType": "bool", "isRequired": false, "nullDefault": "true" }
+  ],
+  "enumMappings": [
+    { "targetField": "offenceClassification", "legacyValue": "Petty", "kavalValue": "Petty" },
+    { "targetField": "offenceClassification", "legacyValue": "Minor", "kavalValue": "Petty" },
+    { "targetField": "offenceClassification", "legacyValue": "Serious", "kavalValue": "Serious" },
+    { "targetField": "offenceClassification", "legacyValue": "Grave", "kavalValue": "Serious" },
+    { "targetField": "offenceClassification", "legacyValue": "Heinous", "kavalValue": "Heinous" },
+    { "targetField": "offenceClassification", "legacyValue": "Heinous/Grave", "kavalValue": "Heinous" },
+    { "targetField": "domicile", "legacyValue": "Urban", "kavalValue": "Urban" },
+    { "targetField": "domicile", "legacyValue": "City", "kavalValue": "Urban" },
+    { "targetField": "domicile", "legacyValue": "Rural", "kavalValue": "Rural" },
+    { "targetField": "domicile", "legacyValue": "Village", "kavalValue": "Rural" },
+    { "targetField": "domicile", "legacyValue": "Coastal", "kavalValue": "Coastal" },
+    { "targetField": "domicile", "legacyValue": "Coastal Area", "kavalValue": "Coastal" },
+    { "targetField": "domicile", "legacyValue": "Tribal", "kavalValue": "Tribal" },
+    { "targetField": "domicile", "legacyValue": "Tribal Area", "kavalValue": "Tribal" },
+    { "targetField": "domicile", "legacyValue": "Slum", "kavalValue": "Slum" }
+  ]
+}

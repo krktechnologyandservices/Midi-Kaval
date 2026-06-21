@@ -47,6 +47,9 @@ public sealed class CaseService(
             TypeOfOffence = validated.TypeOfOffence,
             OffenceClassification = validated.OffenceClassification,
             Domicile = validated.Domicile,
+            Gender = validated.Gender,
+            FamilyType = validated.FamilyType,
+            EconomicStatus = validated.EconomicStatus,
             IsFirstTimeOffender = validated.IsFirstTimeOffender,
             SensitivityLevel = validated.SensitivityLevel,
             CurrentStage = CaseStage.ProcessInitiation,
@@ -280,6 +283,24 @@ public sealed class CaseService(
             fieldsChanged = true;
         }
 
+        if (entity.Gender is null && validated.Gender is not null)
+        {
+            entity.Gender = validated.Gender;
+            fieldsChanged = true;
+        }
+
+        if (entity.FamilyType is null && validated.FamilyType is not null)
+        {
+            entity.FamilyType = validated.FamilyType;
+            fieldsChanged = true;
+        }
+
+        if (entity.EconomicStatus is null && validated.EconomicStatus is not null)
+        {
+            entity.EconomicStatus = validated.EconomicStatus;
+            fieldsChanged = true;
+        }
+
         var now = DateTime.UtcNow;
         if (fieldsChanged)
         {
@@ -308,6 +329,9 @@ public sealed class CaseService(
                         ["typeOfOffence"] = validated.TypeOfOffence,
                         ["offenceClassification"] = validated.OffenceClassification.ToString(),
                         ["domicile"] = validated.Domicile.ToString(),
+                        ["gender"] = validated.Gender?.ToString(),
+                        ["familyType"] = validated.FamilyType?.ToString(),
+                        ["economicStatus"] = validated.EconomicStatus?.ToString(),
                         ["isFirstTimeOffender"] = validated.IsFirstTimeOffender,
                     },
                 },
@@ -685,6 +709,9 @@ public sealed class CaseService(
                 Longitude = c.Longitude,
                 Landmark = c.Landmark,
                 SensitivityLevel = c.SensitivityLevel.ToString(),
+                Gender = c.Gender != null ? c.Gender.ToString()! : null,
+                FamilyType = c.FamilyType != null ? c.FamilyType.ToString()! : null,
+                EconomicStatus = c.EconomicStatus != null ? c.EconomicStatus.ToString()! : null,
             })
             .ToListAsync(cancellationToken);
 
@@ -736,6 +763,9 @@ public sealed class CaseService(
                 VisitCount = c.VisitCount,
                 NextVisitDueAtUtc = c.NextVisitDueAtUtc,
                 UpdatedAtUtc = c.UpdatedAtUtc,
+                Gender = c.Gender != null ? c.Gender.ToString()! : null,
+                FamilyType = c.FamilyType != null ? c.FamilyType.ToString()! : null,
+                EconomicStatus = c.EconomicStatus != null ? c.EconomicStatus.ToString()! : null,
             })
             .ToListAsync(cancellationToken);
 
@@ -772,7 +802,10 @@ public sealed class CaseService(
     private sealed record ParsedSearchFilters(
         CaseStage? CurrentStage,
         OffenceClassification? OffenceClassification,
-        Domicile? Domicile);
+        Domicile? Domicile,
+        Gender? Gender,
+        FamilyType? FamilyType,
+        EconomicStatus? EconomicStatus);
 
     private static ParsedSearchFilters ValidateSearchFilters(CaseSearchQuery query)
     {
@@ -812,7 +845,40 @@ public sealed class CaseService(
             domicile = parsedDomicile;
         }
 
-        return new ParsedSearchFilters(currentStage, offenceClassification, domicile);
+        Gender? gender = null;
+        if (!string.IsNullOrWhiteSpace(query.Gender))
+        {
+            if (!TryParseEnum(query.Gender, out Gender parsedGender))
+            {
+                throw new CaseValidationException(
+                    "gender must be one of: Male, Female, Transgender.");
+            }
+            gender = parsedGender;
+        }
+
+        FamilyType? familyType = null;
+        if (!string.IsNullOrWhiteSpace(query.FamilyType))
+        {
+            if (!TryParseEnum(query.FamilyType, out FamilyType parsedFamilyType))
+            {
+                throw new CaseValidationException(
+                    "familyType must be one of: Joint, Nuclear, SingleParent, Others.");
+            }
+            familyType = parsedFamilyType;
+        }
+
+        EconomicStatus? economicStatus = null;
+        if (!string.IsNullOrWhiteSpace(query.EconomicStatus))
+        {
+            if (!TryParseEnum(query.EconomicStatus, out EconomicStatus parsedEs))
+            {
+                throw new CaseValidationException(
+                    "economicStatus must be one of: APL, BPL.");
+            }
+            economicStatus = parsedEs;
+        }
+
+        return new ParsedSearchFilters(currentStage, offenceClassification, domicile, gender, familyType, economicStatus);
     }
 
     private static IQueryable<Case> ApplySearchFilters(
@@ -856,6 +922,21 @@ public sealed class CaseService(
         if (parsed.Domicile is not null)
         {
             cases = cases.Where(c => c.Domicile == parsed.Domicile);
+        }
+
+        if (parsed.Gender is not null)
+        {
+            cases = cases.Where(c => c.Gender == parsed.Gender);
+        }
+
+        if (parsed.FamilyType is not null)
+        {
+            cases = cases.Where(c => c.FamilyType == parsed.FamilyType);
+        }
+
+        if (parsed.EconomicStatus is not null)
+        {
+            cases = cases.Where(c => c.EconomicStatus == parsed.EconomicStatus);
         }
 
         if (query.AssignedWorkerUserId is not null)
@@ -975,6 +1056,39 @@ public sealed class CaseService(
                 "domicile must be one of: Urban, Rural, Coastal, Tribal, Slum.");
         }
 
+        Gender? gender = null;
+        if (!string.IsNullOrWhiteSpace(request.Gender))
+        {
+            if (!TryParseEnum(request.Gender, out Gender parsedGender))
+            {
+                throw new CaseValidationException(
+                    "gender must be one of: Male, Female, Transgender.");
+            }
+            gender = parsedGender;
+        }
+
+        FamilyType? familyType = null;
+        if (!string.IsNullOrWhiteSpace(request.FamilyType))
+        {
+            if (!TryParseEnum(request.FamilyType, out FamilyType parsedFt))
+            {
+                throw new CaseValidationException(
+                    "familyType must be one of: Joint, Nuclear, SingleParent, Others.");
+            }
+            familyType = parsedFt;
+        }
+
+        EconomicStatus? economicStatus = null;
+        if (!string.IsNullOrWhiteSpace(request.EconomicStatus))
+        {
+            if (!TryParseEnum(request.EconomicStatus, out EconomicStatus parsedEs))
+            {
+                throw new CaseValidationException(
+                    "economicStatus must be one of: APL, BPL.");
+            }
+            economicStatus = parsedEs;
+        }
+
         var sensitivityLevel = SensitivityLevel.Standard;
         if (!string.IsNullOrWhiteSpace(request.SensitivityLevel))
         {
@@ -997,7 +1111,10 @@ public sealed class CaseService(
             offenceClassification,
             domicile,
             request.IsFirstTimeOffender ?? true,
-            sensitivityLevel);
+            sensitivityLevel,
+            gender,
+            familyType,
+            economicStatus);
     }
 
     private static string NormalizeRequiredIdentifier(string? value, string fieldName)
@@ -1059,6 +1176,9 @@ public sealed class CaseService(
         CurrentStage = entity.CurrentStage.ToString(),
         VisitCount = entity.VisitCount,
         CreatedAtUtc = entity.CreatedAtUtc,
+        Gender = entity.Gender?.ToString(),
+        FamilyType = entity.FamilyType?.ToString(),
+        EconomicStatus = entity.EconomicStatus?.ToString(),
     };
 
     private async Task<CaseDetailDto> BuildDetailDtoAsync(
@@ -1117,6 +1237,9 @@ public sealed class CaseService(
             GpsVerifiedByUserId = entity.GpsVerifiedByUserId,
             HandoffWhisper = whisper,
             SensitivityLevel = entity.SensitivityLevel.ToString(),
+            Gender = entity.Gender?.ToString(),
+            FamilyType = entity.FamilyType?.ToString(),
+            EconomicStatus = entity.EconomicStatus?.ToString(),
         };
     }
 
@@ -1179,7 +1302,10 @@ public sealed class CaseService(
         OffenceClassification OffenceClassification,
         Domicile Domicile,
         bool IsFirstTimeOffender,
-        SensitivityLevel SensitivityLevel);
+        SensitivityLevel SensitivityLevel,
+        Gender? Gender,
+        FamilyType? FamilyType,
+        EconomicStatus? EconomicStatus);
 }
 
 public sealed class CaseValidationException(string message) : Exception(message);

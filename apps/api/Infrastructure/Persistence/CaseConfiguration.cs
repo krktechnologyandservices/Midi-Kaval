@@ -42,6 +42,18 @@ public sealed class CaseConfiguration : IEntityTypeConfiguration<Case>
             .HasMaxLength(32)
             .IsRequired();
 
+        builder.Property(c => c.Gender)
+            .HasConversion<string>()
+            .HasMaxLength(16);
+
+        builder.Property(c => c.FamilyType)
+            .HasConversion<string>()
+            .HasMaxLength(32);
+
+        builder.Property(c => c.EconomicStatus)
+            .HasConversion<string>()
+            .HasMaxLength(16);
+
         builder.Property(c => c.CurrentStage)
             .HasConversion<string>()
             .HasMaxLength(64)

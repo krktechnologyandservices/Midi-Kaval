@@ -145,6 +145,12 @@ FR-23: Epic 9 — Legends administration
 FR-24: Epic 9 — Staff directory
 FR-25: Epic 9 — Audit log
 Excel migration: Epic 10 — One-time legacy import
+New fields: Epic 11 — Enhanced Case socio-demographic fields
+Stage data: Epic 12 — Case stage sub-step data models
+Cross-links: Epic 13 — Case cross-linking
+Budget: Epic 14 — Budget allocation and utilization
+Profile report: Epic 15 — Socio-demographic profile report
+Migration update: Epic 16 — Excel migration mapping update
 
 ## Epic List
 
@@ -187,6 +193,30 @@ Coordinators manage master data; Directors manage users and view audit trail.
 ### Epic 10: Legacy Excel Migration
 Organisation migrates historical Cases from Excel once with no ongoing sync.
 **FRs covered:** MVP §6.1 one-time import
+
+### Epic 11: Enhanced Case Socio-Demographic Fields
+Extend the Case entity with Gender, Family Type, Economic Status, Occupation, Education Level, Recidivism, and Family History fields required for the socio-demographic profile report.
+**FRs covered:** New requirements from KAVAL User Story document
+
+### Epic 12: Case Stage Sub-Step Data Models
+Add detailed sub-step tracking tables for Stages 2–6 of the case lifecycle.
+**FRs covered:** New requirements from KAVAL User Story document
+
+### Epic 13: Case Cross-Linking (Related Cases)
+Link related cases to show connections between siblings, co-accused, or linked children.
+**FRs covered:** New requirements from KAVAL User Story document
+
+### Epic 14: Budget Allocation and Utilization Module
+Budget planning, expenditure tracking, and reporting for the project.
+**FRs covered:** New requirements from KAVAL User Story document
+
+### Epic 15: Socio-Demographic Profile Report
+Generate monthly socio-demographic profile report matching the KavalSample.xlsx format.
+**FRs covered:** New requirements from KAVAL User Story document
+
+### Epic 16: Excel Migration Mapping Update
+Update the legacy Excel import to support the new socio-demographic fields.
+**FRs covered:** Epic 10 follow-up
 
 ---
 
@@ -967,4 +997,234 @@ So that cloud becomes source of truth (MVP §6.1, addendum).
 **When** Director runs import from Admin
 **Then** Cases created with duplicate check per Crime/ST; import summary shows success/skipped/errors
 **And** import is idempotent-safe via dry-run mode; post-migration Excel exports are read-only from Kaval only; WhatsApp remains non-integration per addendum
+
+---
+
+## Epic 11: Enhanced Case Socio-Demographic Fields
+
+Extend the Case entity with Gender, Family Type, Economic Status, Occupation, Education Level, Recidivism, and Family History fields required for the socio-demographic profile report.
+
+### Story 11.1: Gender, Family Type & Economic Status on Case
+
+As a **Project Coordinator**,
+I want to record Gender, Family Type, and Economic Status for each child,
+So that the socio-demographic profile report is complete.
+
+**Acceptance Criteria:**
+
+**Given** the Case entity
+**When** creating/updating a Case
+**Then** the following enum fields are available:
+- `Gender` — Male / Female / Transgender
+- `FamilyType` — Joint / Nuclear / SingleParent / Others
+- `EconomicStatus` — APL / BPL
+**And** each field has a corresponding DB column with enum-to-string conversion
+**And** each new field is nullable for backward compatibility
+
+**Given** existing Cases
+**When** EF Core migration runs
+**Then** existing rows get default/null values for new columns, no data loss
+
+### Story 11.2: Occupation and Education Level on Case
+
+As a **Project Coordinator**,
+I want the Occupation and Education Level of each child stored on the Case record,
+So that the socio-demographic profile can be aggregated.
+
+**Acceptance Criteria:**
+
+**Given** the `occupations` and `education_levels` Legend tables already exist
+**When** I create/update a Case
+**Then** I can set `OccupationId` and `EducationLevelId` as optional FK references
+**And** invalid FK values return referential integrity error
+
+### Story 11.3: Recidivism and Family History Tracking
+
+As a **Project Coordinator**,
+I want to track history of crime in family and recidivism counts,
+So that the profile report shows repeat/first-time and recidivism data.
+
+**Acceptance Criteria:**
+
+**Given** the Case entity
+**When** viewing/editing a Case
+**Then** the following fields are available:
+- `FamilyHistoryOfCrime` — bool (default false)
+- `RecidivismBeforeCount` — int? (number of re-offences before intervention)
+- `RecidivismAfterCount` — int? (number of re-offences after intervention)
+**And** `IsFirstTimeOffender` (existing field) maps to "Frequency of offences: Repeat/First time"
+
+---
+
+## Epic 12: Case Stage Sub-Step Data Models
+
+Add detailed sub-step tracking tables for Stages 2–6 of the case lifecycle.
+
+### Story 12.1: Stage 2 Maintain & Development Sub-Step Data
+
+As a **Project Coordinator**,
+I want to record bio-psycho-social assessment, ICP, life skill training, PMA, and related data for Stage 2,
+So that case development is tracked per the workflow.
+
+**Acceptance Criteria:**
+
+**Given** a Case in Stage 2 (MaintainAndDevelopment)
+**When** I view the stage details
+**Then** I can see and edit bio-psycho assessments and ICP records with life skill, parent management, group work, community program attendance tracking, and PMA status
+
+### Story 12.2: Stage 3 Inter-Sectoral Approach Support Tracking
+
+As a **Project Coordinator**,
+I want to record which types of inter-sectoral support are provided to each child,
+So that legal, police, education, and other supports are tracked.
+
+**Acceptance Criteria:**
+
+**Given** a Case in Stage 3 (InterSectoralApproach)
+**When** I view the stage details
+**Then** I can see and edit support records with type (Legal/Police/Education/Vocational/Psychological/Deaddiction/MaterialFinancial/Medical), provided status, notes, and provider details
+
+### Story 12.3: Stage 4 Rehabilitation Placement Records
+
+As a **Project Coordinator**,
+I want to record where a child is placed during rehabilitation,
+So that placement type and institution details are documented.
+
+**Acceptance Criteria:**
+
+**Given** a Case in Stage 4 (Rehabilitation)
+**When** I view the stage details
+**Then** I can see and edit placement type (InHome/ObservationHome/SpecialHome), institution name, address, and start date
+
+### Story 12.4: Stage 5 Reintegration Records
+
+As a **Project Coordinator**,
+I want to record reintegration level and institution details,
+So that the child's reintegration path is documented.
+
+**Acceptance Criteria:**
+
+**Given** a Case in Stage 5 (Reintegration)
+**When** I view the stage details
+**Then** I can see and edit level (Community/Institutional) and institution details
+
+### Story 12.5: Stage 6 Termination/Exclusion Records
+
+As a **Project Coordinator**,
+I want to record termination from JJB or exclusion with reason and report attachment,
+So that case closure is fully documented.
+
+**Acceptance Criteria:**
+
+**Given** a Case in Stage 6 (TerminationExclusion)
+**When** I view the stage details
+**Then** I can see and edit type (Termination/Exclusion), JJB details, exclusion reason, and optional report attachment
+
+---
+
+## Epic 13: Case Cross-Linking (Related Cases)
+
+### Story 13.1: Related Cases Data Model and API
+
+As a **Project Coordinator**,
+I want to link related cases (cross-links),
+So that I can see connections between siblings, co-accused, or linked children.
+
+**Acceptance Criteria:**
+
+**Given** the `CaseRelatedCase` join table
+**When** I link two cases
+**Then** a bidirectional relationship is stored with a `RelationshipType` label
+**And** viewing a Case detail shows related cases with Crime/ST numbers and relationship type
+
+---
+
+## Epic 14: Budget Allocation and Utilization Module
+
+Enable budget planning, expenditure tracking, and reporting for the project.
+
+### Story 14.1: Budget CRUD API and DB Schema
+
+As a **Project Director**,
+I want to create and manage budgets for the project,
+So that financial allocation is tracked.
+
+**Acceptance Criteria:**
+
+**Given** the `budgets` table
+**When** Director creates a budget
+**Then** it stores: OrganisationId, FinancialYear, TotalAllocated, Description
+**And** Director can edit and deactivate budgets
+
+### Story 14.2: Budget Utilization Tracking API
+
+As a **Project Coordinator**,
+I want to record budget utilization entries linked to Cases or general expenses,
+So that expenditure is tracked against allocation.
+
+**Acceptance Criteria:**
+
+**Given** the `budget_utilizations` table
+**When** Coordinator adds a utilization entry
+**Then** it stores: BudgetId, CaseId? (optional), AmountUtilized, UtilizationDate, Category, Notes
+**And** remaining balance is computed
+
+### Story 14.3: Budget Web UI
+
+As a **Project Director/Coordinator**,
+I want a web page to manage budgets and view utilization,
+So that I can track finances without Excel.
+
+**Acceptance Criteria:**
+
+**Given** the Admin sidebar
+**When** Director clicks "Budgets"
+**Then** list view shows budgets with allocated vs utilized amounts, and detail shows utilization entries
+
+### Story 14.4: Budget Expenditure Report
+
+As a **Project Director**,
+I want to export a budget vs utilization report as Excel,
+So that funders receive financial reports.
+
+**Acceptance Criteria:**
+
+**Given** budgets and utilization data
+**When** Director exports budget report
+**Then** Excel file is generated with allocation, utilization, and balance columns
+
+---
+
+## Epic 15: Socio-Demographic Profile Report
+
+### Story 15.1: Socio-Demographic Profile Report Generation
+
+As a **Project Coordinator**,
+I want to generate the monthly socio-demographic profile report matching the KavalSample.xlsx format,
+So that DCPU receives the required reporting.
+
+**Acceptance Criteria:**
+
+**Given** Cases exist with the new socio-demographic fields
+**When** I generate the report for a given month/year
+**Then** the Excel output has two sections matching the sample:
+- Section 1: List of children with Sl No, Name, Age, Contact, Case Committed, Crime Number, Status, Present Stage
+- Section 2: Cross-tabulation count table with Gender, Age Group, Occupation, Domicile, Education, Family Type, Economic Status, Frequency, Family History, Recidivism, Nature of Offence
+
+---
+
+## Epic 16: Excel Migration Mapping Update
+
+### Story 16.1: Update Migration Spec with New Fields
+
+As a **Project Director**,
+I want the legacy Excel import to support the new socio-demographic fields,
+So that historical data for these fields can be imported.
+
+**Acceptance Criteria:**
+
+**Given** the new Case fields are added
+**When** I view `mapping-spec.json`
+**Then** it includes mapping rules for Gender, FamilyType, EconomicStatus, Occupation, EducationLevel, Recidivism fields, FamilyHistoryOfCrime
+**And** the import maps and stores them correctly when using the updated spec
 

@@ -10,6 +10,9 @@ public sealed class CreateCaseRequest
     public string? TypeOfOffence { get; set; }
     public string? OffenceClassification { get; set; }
     public string? Domicile { get; set; }
+    public string? Gender { get; set; }
+    public string? FamilyType { get; set; }
+    public string? EconomicStatus { get; set; }
     public bool? IsFirstTimeOffender { get; set; }
     public string? SensitivityLevel { get; set; }
 }
@@ -58,6 +61,9 @@ public sealed class CaseDetailDto
     public Guid? GpsVerifiedByUserId { get; set; }
     public HandoffWhisperDto? HandoffWhisper { get; set; }
     public string SensitivityLevel { get; set; } = "Standard";
+    public string? Gender { get; set; }
+    public string? FamilyType { get; set; }
+    public string? EconomicStatus { get; set; }
 }
 
 public sealed class FieldWorkerUserDto
@@ -98,6 +104,9 @@ public sealed class CaseDto
     public string CurrentStage { get; set; } = string.Empty;
     public int VisitCount { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+    public string? Gender { get; set; }
+    public string? FamilyType { get; set; }
+    public string? EconomicStatus { get; set; }
 }
 
 public sealed class CaseSummaryDto
@@ -121,6 +130,9 @@ public sealed class CaseSummaryDto
     public decimal? Longitude { get; set; }
     public string? Landmark { get; set; }
     public string SensitivityLevel { get; set; } = "Standard";
+    public string? Gender { get; set; }
+    public string? FamilyType { get; set; }
+    public string? EconomicStatus { get; set; }
 }
 
 public sealed class CaseSearchResultDto
@@ -137,6 +149,9 @@ public sealed class CaseSearchFiltersDto
     public string? TypeOfOffence { get; set; }
     public string? OffenceClassification { get; set; }
     public string? Domicile { get; set; }
+    public string? Gender { get; set; }
+    public string? FamilyType { get; set; }
+    public string? EconomicStatus { get; set; }
     public Guid? CreatedByUserId { get; set; }
     public Guid? AssignedWorkerUserId { get; set; }
     public bool? Overdue { get; set; }

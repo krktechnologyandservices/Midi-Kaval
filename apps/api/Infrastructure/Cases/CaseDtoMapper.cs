@@ -26,5 +26,8 @@ public static class CaseDtoMapper
         Longitude = entity.Longitude,
         Landmark = entity.Landmark,
         SensitivityLevel = entity.SensitivityLevel.ToString(),
+        Gender = entity.Gender?.ToString(),
+        FamilyType = entity.FamilyType?.ToString(),
+        EconomicStatus = entity.EconomicStatus?.ToString(),
     };
 }
