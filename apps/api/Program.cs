@@ -126,6 +126,9 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<CaseRelatedCasesService>();
     builder.Services.AddScoped<BudgetService>();
     builder.Services.AddScoped<BudgetUtilizationService>();
+    builder.Services.AddScoped<IBudgetReportExportService, BudgetReportExcelService>();
+    builder.Services.AddScoped<SocioDemographicProfileService>();
+    builder.Services.AddScoped<SocioDemographicProfileExcelService>();
     builder.Services.AddBlobStorage(builder.Configuration);
     builder.Services.AddMidiKavalAuth(builder.Configuration);
     builder.Services.AddMidiKavalCors(builder.Configuration, builder.Environment);

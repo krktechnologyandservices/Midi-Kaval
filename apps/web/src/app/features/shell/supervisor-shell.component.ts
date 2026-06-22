@@ -22,6 +22,7 @@ export class SupervisorShellComponent {
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Cases', path: '/cases' },
     { label: 'Reports', path: '/reports' },
+    { label: 'Budgets', path: '/budgets' },
     { label: 'Legends', path: '/legends' },
     { label: 'Admin', path: '/admin', requiresDirector: true },
   ];

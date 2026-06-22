@@ -1,6 +1,7 @@
 export enum AppRole {
   Director = 'Director',
   Coordinator = 'Coordinator',
+  Accountant = 'Accountant',
   SocialWorker = 'SocialWorker',
   CaseWorker = 'CaseWorker',
 }

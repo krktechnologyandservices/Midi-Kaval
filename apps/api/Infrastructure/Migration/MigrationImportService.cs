@@ -294,6 +294,15 @@ public sealed class MigrationImportService(
             OffenceClassification = ParseEnum<OffenceClassification>(caseValues.GetValueOrDefault("offenceClassification")?.ToString()),
             Domicile = ParseEnum<Domicile>(caseValues.GetValueOrDefault("domicile")?.ToString()),
             IsFirstTimeOffender = caseValues.GetValueOrDefault("isFirstTimeOffender") as bool? ?? true,
+            // New socio-demographic fields (Epic 11)
+            Gender = ParseNullableEnum<Gender>(caseValues.GetValueOrDefault("gender")?.ToString()),
+            FamilyType = ParseNullableEnum<FamilyType>(caseValues.GetValueOrDefault("familyType")?.ToString()),
+            EconomicStatus = ParseNullableEnum<EconomicStatus>(caseValues.GetValueOrDefault("economicStatus")?.ToString()),
+            OccupationId = null,
+            EducationLevelId = null,
+            RecidivismBeforeCount = caseValues.GetValueOrDefault("recidivismBeforeCount") as int?,
+            RecidivismAfterCount = caseValues.GetValueOrDefault("recidivismAfterCount") as int?,
+            FamilyHistoryOfCrime = caseValues.GetValueOrDefault("familyHistoryOfCrime") as bool? ?? false,
             CurrentStage = CaseStage.ProcessInitiation,
             VisitCount = 0,
             CreatedByUserId = actorUserId,
@@ -379,7 +388,7 @@ public sealed class MigrationImportService(
             "truncate" when rule.MaxLength is not null && int.TryParse(rule.MaxLength, out var maxLen)
                 => trimmed.Length > maxLen ? trimmed[..maxLen] : trimmed,
             "truncate" => trimmed,
-            "boolYesNo" => trimmed.Equals("Yes", StringComparison.OrdinalIgnoreCase),
+            "boolYesNo" => trimmed.Equals("Yes", StringComparison.OrdinalIgnoreCase) || trimmed.Equals("Y", StringComparison.OrdinalIgnoreCase) || trimmed.Equals("True", StringComparison.OrdinalIgnoreCase),
             _ => trimmed,
         };
     }
@@ -402,7 +411,11 @@ public sealed class MigrationImportService(
         if (enumValues.Contains(trimmedValue))
             return trimmedValue;
 
-        // Unmapped value — add warning instead of silently defaulting
+        // For optional fields, unrecognised values silently produce null (not a rejection)
+        if (!rule.IsRequired)
+            return null;
+
+        // Unmapped value on required field — add warning (row will be rejected)
         warnings.Add($"Column '{rule.LegacyColumn}' has unrecognised value '{trimmedValue}'. Expected one of: {string.Join(", ", enumValues)}");
         return null;
     }
@@ -411,6 +424,12 @@ public sealed class MigrationImportService(
     {
         if (value is null) return default;
         return Enum.TryParse<T>(value, ignoreCase: true, out var result) ? result : default;
+    }
+
+    private static T? ParseNullableEnum<T>(string? value) where T : struct, Enum
+    {
+        if (value is null) return null;
+        return Enum.TryParse<T>(value, ignoreCase: true, out var result) ? result : null;
     }
 
     private static bool IsUniqueViolation(DbUpdateException ex)

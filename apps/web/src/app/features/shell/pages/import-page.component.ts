@@ -109,7 +109,7 @@ import { ImportApiService, MigrationImportResult } from '../services/import-api.
           <mat-card-title>Import Results</mat-card-title>
           <mat-card-subtitle>
             {{ result()!.importedAtUtc | date: 'medium' }}
-            @if (dryRun) {
+            @if (dryRun()) {
               <span class="dry-run-badge">Dry Run</span>
             }
           </mat-card-subtitle>

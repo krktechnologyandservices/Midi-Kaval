@@ -1,5 +1,5 @@
 # generated: 2026-06-13
-# last_updated: 2026-06-21
+# last_updated: 2026-06-22
 # project: Midi-Kaval
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-13
-last_updated: 2026-06-21
+last_updated: 2026-06-22
 project: Midi-Kaval
 project_key: NOKEY
 tracking_system: file-system
@@ -149,14 +149,42 @@ development_status:
   epic-14: in-progress
   14-1-budget-crud-api-and-db-schema: done
   14-2-budget-utilization-tracking-api: done
-  14-3-budget-web-ui: backlog
-  14-4-budget-expenditure-report: backlog
+  14-3-budget-web-ui: done
+  14-4-budget-expenditure-report: done
   epic-14-retrospective: optional
 
-  epic-15: backlog
-  15-1-socio-demographic-profile-report-generation: backlog
+  epic-15: done
+  15-1-socio-demographic-profile-report-generation: done
   epic-15-retrospective: optional
 
-  epic-16: backlog
-  16-1-update-migration-spec-with-new-fields: backlog
+  epic-16: done
+  16-1-update-migration-spec-with-new-fields: done
   epic-16-retrospective: optional
+
+  epic-17: in-progress
+  17-1-implement-column-level-pii-encryption: ready-for-dev
+  epic-17-retrospective: optional
+
+  epic-18: backlog
+  18-1-audit-log-pii-redaction: backlog
+  epic-18-retrospective: optional
+
+  epic-19: backlog
+  19-1-content-security-policy: backlog
+  epic-19-retrospective: optional
+
+  epic-20: backlog
+  20-1-rate-limiting-for-data-endpoints: backlog
+  epic-20-retrospective: optional
+
+  epic-21: backlog
+  21-1-data-retention-anonymization: backlog
+  epic-21-retrospective: optional
+
+  epic-22: backlog
+  22-1-erasure-and-portability: backlog
+  epic-22-retrospective: optional
+
+  epic-23: backlog
+  23-1-import-file-validation: backlog
+  epic-23-retrospective: optional

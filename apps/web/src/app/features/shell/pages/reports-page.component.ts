@@ -6,12 +6,14 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { ReportsApiService } from '../services/reports-api.service';
+import { SocioDemographicReportDialogComponent } from '../../reports/socio-demographic-report-dialog.component';
 import {
   REPORT_TYPES,
   ReportExportJobDto,
@@ -33,6 +35,7 @@ const SKELETON_ROW_COUNT = 5;
     MatButtonToggleModule,
     MatCardModule,
     MatDatepickerModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
     MatPaginatorModule,
@@ -44,6 +47,7 @@ const SKELETON_ROW_COUNT = 5;
 })
 export class ReportsPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(ReportsApiService);
+  private readonly dialog = inject(MatDialog);
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private loadingGuard = false;
 
@@ -154,6 +158,12 @@ export class ReportsPageComponent implements OnInit, OnDestroy {
     } finally {
       this.exporting.set(false);
     }
+  }
+
+  openSocioDemographicDialog(): void {
+    this.dialog.open(SocioDemographicReportDialogComponent, {
+      width: '450px',
+    });
   }
 
   downloadJob(job: ReportExportJobDto): void {

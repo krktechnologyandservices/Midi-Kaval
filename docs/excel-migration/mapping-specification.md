@@ -29,6 +29,14 @@ their current case tracking data exported from their legacy spreadsheet system.
 | 13 | Assigned Worker | — *(legacy-only)* | — | string | No | Ignored | Historical assignment; not imported. Case is unassigned in Kaval on import |
 | 14 | Date Registered | — *(legacy-only)* | — | date | No | Ignored | For reference only. Kaval uses import timestamp as `CreatedAtUtc` |
 | 15 | Remarks | — *(legacy-only)* | — | string | No | Ignored | Free-text notes from legacy system. Not imported (Kaval notes system in Epic 4) |
+| 16 | Gender | `gender` | Map text → enum (Male/Female/Transgender + variations) | enum / Gender? | No | Set to `null` if blank | Nullable on Case entity (Epic 11.1) |
+| 17 | Family Type | `familyType` | Map text → enum (Joint/Nuclear/SingleParent/Others + variations) | enum / FamilyType? | No | Set to `null` if blank | Nullable on Case entity (Epic 11.1) |
+| 18 | Economic Status | `economicStatus` | Map text → enum (APL/BPL + variations) | enum / EconomicStatus? | No | Set to `null` if blank | Nullable on Case entity (Epic 11.1) |
+| 19 | Occupation | `occupationText` *(informational)* | Direct copy, trimmed | string | No | Ignored — not stored on Case | Free text — not mapped to legend FK. Post-migration cross-reference to `occupations` legend table required |
+| 20 | Education Level | `educationLevelText` *(informational)* | Direct copy, trimmed | string | No | Ignored — not stored on Case | Free text — not mapped to legend FK. Post-migration cross-reference to `education_levels` legend table required |
+| 21 | Recidivism Before | `recidivismBeforeCount` | Parse int | int? | No | Set to `null` if blank | Number of re-offences before Kaval intervention |
+| 22 | Recidivism After | `recidivismAfterCount` | Parse int | int? | No | Set to `null` if blank | Number of re-offences after Kaval intervention |
+| 23 | Family History of Crime | `familyHistoryOfCrime` | Map "Yes"/"Y"/"True" → `true`; else `false` | bool | No | Default to `false` if blank | |
 
 ### Enum Value Mapping — Offence Classification
 
@@ -57,6 +65,44 @@ their current case tracking data exported from their legacy spreadsheet system.
 | Slum | `Slum` | Yes | |
 | *Any other value* | **Reject** | — | Row must be flagged as unmappable |
 
+### Enum Value Mapping — Gender
+
+| Legacy Value | Kaval Enum | Case-Insensitive? | Notes |
+|-------------|------------|-------------------|-------|
+| Male | `Male` | Yes | |
+| M | `Male` | Yes | Abbreviation |
+| Female | `Female` | Yes | |
+| F | `Female` | Yes | Abbreviation |
+| Transgender | `Transgender` | Yes | |
+| TG | `Transgender` | Yes | Abbreviation |
+| Trans | `Transgender` | Yes | Abbreviation |
+| *Blank / missing* | **null** | — | Field is nullable on Case |
+| *Any other value* | **null** | — | Unrecognised value defaults to null (not a mapping error, since field is optional) |
+
+### Enum Value Mapping — Family Type
+
+| Legacy Value | Kaval Enum | Case-Insensitive? | Notes |
+|-------------|------------|-------------------|-------|
+| Joint | `Joint` | Yes | |
+| Nuclear | `Nuclear` | Yes | |
+| Single Parent | `SingleParent` | Yes | |
+| SingleParent | `SingleParent` | Yes | No-space variant |
+| Others | `Others` | Yes | |
+| Other | `Others` | Yes | Variant |
+| *Blank / missing* | **null** | — | Field is nullable on Case |
+| *Any other value* | **null** | — | Unrecognised value defaults to null |
+
+### Enum Value Mapping — Economic Status
+
+| Legacy Value | Kaval Enum | Case-Insensitive? | Notes |
+|-------------|------------|-------------------|-------|
+| APL | `APL` | Yes | Above Poverty Line |
+| BPL | `BPL` | Yes | Below Poverty Line |
+| Below Poverty Line | `BPL` | Yes | Full form |
+| Above Poverty Line | `APL` | Yes | Full form |
+| *Blank / missing* | **null** | — | Field is nullable on Case |
+| *Any other value* | **null** | — | Unrecognised value defaults to null |
+
 ## System-Generated Fields (Not from Legacy Excel)
 
 The following Case fields are populated by the system at import time and have no source in the legacy Excel:
@@ -84,6 +130,7 @@ These must be captured fresh in Kaval post-migration:
 - **Historical assignment records** — Re-assignment happens in Kaval post-migration
 - **Beneficiary address** — Not in v1 Case schema
 - **Remarks / free-text notes** — Not imported; use Kaval note system instead
+- **Occupation / Education Level text** — Free-text values from legacy (columns 19–20) are read during import for column-matching purposes but are NOT stored on the Case entity. The Case has FK references to `occupations` and `education_levels` legend tables; these require post-migration manual cross-referencing
 
 ## Validation Rules Summary
 
@@ -94,3 +141,5 @@ These must be captured fresh in Kaval post-migration:
 | Enum parity | `offenceClassification` and `domicile` values match known enum mapping | Skip row, report unmappable value |
 | Age range | `age` 0–120 if present | Flag warning if out of range; skip if non-numeric |
 | Unique constraint | `crimeNumber` and `stNumber` unique per org | Skip duplicate row, report as skipped |
+| Optional field mapping | Gender, FamilyType, EconomicStatus, RecidivismBeforeCount, RecidivismAfterCount, FamilyHistoryOfCrime | Missing/new columns silently produce null/default — no error |
+| Unrecognised optional enum | Gender, FamilyType, EconomicStatus values not in known mapping | Set to `null` (not an error — field is optional) |

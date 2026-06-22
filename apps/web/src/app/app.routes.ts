@@ -119,6 +119,20 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'budgets',
+        loadComponent: () =>
+          import('./features/budgets/budgets-list-page.component').then(
+            (m) => m.BudgetsListPageComponent,
+          ),
+      },
+      {
+        path: 'budgets/:id',
+        loadComponent: () =>
+          import('./features/budgets/budget-detail-page.component').then(
+            (m) => m.BudgetDetailPageComponent,
+          ),
+      },
+      {
         path: 'admin',
         canActivate: [directorGuard],
         loadComponent: () =>

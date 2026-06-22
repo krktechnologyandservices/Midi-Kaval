@@ -16,11 +16,16 @@ public class BudgetsController : ControllerBase
 {
     private readonly BudgetService budgetService;
     private readonly BudgetUtilizationService budgetUtilizationService;
+    private readonly IBudgetReportExportService budgetReportExcelService;
 
-    public BudgetsController(BudgetService budgetService, BudgetUtilizationService budgetUtilizationService)
+    public BudgetsController(
+        BudgetService budgetService,
+        BudgetUtilizationService budgetUtilizationService,
+        IBudgetReportExportService budgetReportExcelService)
     {
         this.budgetService = budgetService;
         this.budgetUtilizationService = budgetUtilizationService;
+        this.budgetReportExcelService = budgetReportExcelService;
     }
 
     /// <summary>
@@ -474,6 +479,56 @@ public class BudgetsController : ControllerBase
         catch (BudgetNotFoundException)
         {
             return NotFound();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Export budget report as Excel.
+    /// </summary>
+    [HttpGet("report/export")]
+    [Authorize(Policy = Policies.Director)]
+    [Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ExportReport(
+        [FromQuery] string frequency = "Quarterly",
+        [FromQuery] int year = 2026,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (!Enum.TryParse<BudgetReportFrequency>(frequency, ignoreCase: true, out var parsedFrequency)
+                || !Enum.IsDefined(parsedFrequency)
+                || !Enum.GetName(parsedFrequency)!.Equals(frequency, StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { error = $"'{frequency}' is not a valid frequency. Must be one of: Monthly, Quarterly, HalfYearly, Annually." });
+            }
+
+            if (year < 2000 || year > 2100)
+            {
+                return BadRequest(new { error = "Year must be between 2000 and 2100." });
+            }
+
+            var report = await budgetService.GetReportAsync(parsedFrequency, year, ct);
+            var bytes = budgetReportExcelService.Generate(report);
+            var fileName = $"Budget-Report-{frequency}-{year}.xlsx";
+            return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+        catch (BudgetNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (BudgetBusinessRuleException ex)
+        {
+            return UnprocessableEntity(new { error = ex.Message });
         }
         catch (OperationCanceledException)
         {

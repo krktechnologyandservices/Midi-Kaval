@@ -433,3 +433,20 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - **`IHttpContextAccessor` coupling in service** — pre-existing architectural pattern across the codebase.
 - **Manual dictionary-based audit event construction** — pre-existing pattern across all service classes.
 - **Enum-as-string at API boundary** — pre-existing project convention matching all stage services.
+
+## Deferred from: code review of 14-3-budget-web-ui.md (2026-06-21)
+
+- **Role cast `as AppRole | undefined` hides upstream type mismatch** (`budgets-list-page.component.ts`, `budget-detail-page.component.ts`) — `currentUser()?.role` has a wider type than `AppRole`. The cast silences the compiler rather than fixing upstream. Deferred: pre-existing upstream type issue.
+- **Hardcoded status colors break theme/dark-mode support** (`budget.models.ts`) — Status colors are hardcoded hex values. Dark-mode theming would require duplicating overrides. Deferred: design system concern beyond this feature; per spec requirements.
+- **No tests across ~1400 new lines** — Six new files (models, service, 4 components) with zero tests. Deferred: testing is a separate activity; tests to be written in a follow-up story.
+- **Create/Edit dialogs use plain properties instead of signals** (`budget-create-dialog.component.ts`, `budget-edit-dialog.component.ts`) — Spec recommends signals for local state, but dialogs use plain properties. Deferred: style convention, not functional; no runtime impact.
+
+## Deferred from: code review of 14-4-budget-expenditure-report.md (2026-06-21)
+
+- **No column min/max width constraints** (`BudgetReportExcelService.cs:72`) — `AdjustToContents()` alone can produce extremely narrow or wide columns. Deferred: nice-to-have formatting enhancement.
+- **No identity metadata in Excel (generated-by user, request ID)** — Beyond story scope; pre-existing pattern across the project.
+
+## Deferred from: code review of 16-1-update-migration-spec-with-new-fields.md (2026-06-22)
+
+- **Occupation/Education text values silently discarded** — No persistence mechanism exists on the Case entity for raw occupation/education text values. Post-migration cross-referencing to legend tables requires the original Excel file. By-design per AC2/AC4; no architectural change to Case entity planned.
+- **Triple redundancy of mapping definitions (JSON/C#/markdown)** — The same mapping rules and enum values are duplicated across `mapping-spec.json`, `MappingSpecLoader.cs`, and `mapping-specification.md`. No validation gate detects drift between them. Pre-existing design pattern from Epic 10; a JSON-schema-based consistency check would be a separate improvement.

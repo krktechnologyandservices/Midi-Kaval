@@ -44,6 +44,15 @@ public sealed class MappingSpecLoader
                 new MappingRule { LegacyColumn = "Classification", TargetField = "offenceClassification", Transform = "enum", FieldType = "enum", IsRequired = true, EnumValues = "Petty,Serious,Heinous" },
                 new MappingRule { LegacyColumn = "Domicile/Area", TargetField = "domicile", Transform = "enum", FieldType = "enum", IsRequired = true, EnumValues = "Urban,Rural,Coastal,Tribal,Slum" },
                 new MappingRule { LegacyColumn = "First Offender", TargetField = "isFirstTimeOffender", Transform = "boolYesNo", FieldType = "bool", IsRequired = false, NullDefault = "true" },
+                // New socio-demographic fields (Epic 11)
+                new MappingRule { LegacyColumn = "Gender", TargetField = "gender", Transform = "enum", FieldType = "enum", IsRequired = false, NullDefault = "null" },
+                new MappingRule { LegacyColumn = "Family Type", TargetField = "familyType", Transform = "enum", FieldType = "enum", IsRequired = false, NullDefault = "null" },
+                new MappingRule { LegacyColumn = "Economic Status", TargetField = "economicStatus", Transform = "enum", FieldType = "enum", IsRequired = false, NullDefault = "null" },
+                new MappingRule { LegacyColumn = "Occupation", TargetField = "occupationText", Transform = "direct", FieldType = "string", IsRequired = false, Notes = "Informational only — not stored on Case. Post-migration legend cross-referencing needed." },
+                new MappingRule { LegacyColumn = "Education Level", TargetField = "educationLevelText", Transform = "direct", FieldType = "string", IsRequired = false, Notes = "Informational only — not stored on Case. Post-migration legend cross-referencing needed." },
+                new MappingRule { LegacyColumn = "Recidivism Before", TargetField = "recidivismBeforeCount", Transform = "parseInt", FieldType = "int", IsRequired = false, NullDefault = "null" },
+                new MappingRule { LegacyColumn = "Recidivism After", TargetField = "recidivismAfterCount", Transform = "parseInt", FieldType = "int", IsRequired = false, NullDefault = "null" },
+                new MappingRule { LegacyColumn = "Family History of Crime", TargetField = "familyHistoryOfCrime", Transform = "boolYesNo", FieldType = "bool", IsRequired = false, NullDefault = "false" },
             ],
             EnumMappings =
             [
@@ -62,6 +71,26 @@ public sealed class MappingSpecLoader
                 new EnumMapping { TargetField = "domicile", LegacyValue = "Tribal", KavalValue = "Tribal" },
                 new EnumMapping { TargetField = "domicile", LegacyValue = "Tribal Area", KavalValue = "Tribal" },
                 new EnumMapping { TargetField = "domicile", LegacyValue = "Slum", KavalValue = "Slum" },
+                // New enum mappings (Epic 11 — Gender)
+                new EnumMapping { TargetField = "gender", LegacyValue = "Male", KavalValue = "Male" },
+                new EnumMapping { TargetField = "gender", LegacyValue = "M", KavalValue = "Male" },
+                new EnumMapping { TargetField = "gender", LegacyValue = "Female", KavalValue = "Female" },
+                new EnumMapping { TargetField = "gender", LegacyValue = "F", KavalValue = "Female" },
+                new EnumMapping { TargetField = "gender", LegacyValue = "Transgender", KavalValue = "Transgender" },
+                new EnumMapping { TargetField = "gender", LegacyValue = "TG", KavalValue = "Transgender" },
+                new EnumMapping { TargetField = "gender", LegacyValue = "Trans", KavalValue = "Transgender" },
+                // New enum mappings (Epic 11 — FamilyType)
+                new EnumMapping { TargetField = "familyType", LegacyValue = "Joint", KavalValue = "Joint" },
+                new EnumMapping { TargetField = "familyType", LegacyValue = "Nuclear", KavalValue = "Nuclear" },
+                new EnumMapping { TargetField = "familyType", LegacyValue = "Single Parent", KavalValue = "SingleParent" },
+                new EnumMapping { TargetField = "familyType", LegacyValue = "SingleParent", KavalValue = "SingleParent" },
+                new EnumMapping { TargetField = "familyType", LegacyValue = "Others", KavalValue = "Others" },
+                new EnumMapping { TargetField = "familyType", LegacyValue = "Other", KavalValue = "Others" },
+                // New enum mappings (Epic 11 — EconomicStatus)
+                new EnumMapping { TargetField = "economicStatus", LegacyValue = "APL", KavalValue = "APL" },
+                new EnumMapping { TargetField = "economicStatus", LegacyValue = "BPL", KavalValue = "BPL" },
+                new EnumMapping { TargetField = "economicStatus", LegacyValue = "Below Poverty Line", KavalValue = "BPL" },
+                new EnumMapping { TargetField = "economicStatus", LegacyValue = "Above Poverty Line", KavalValue = "APL" },
             ],
         };
     }

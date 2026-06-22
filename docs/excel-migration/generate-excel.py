@@ -9,21 +9,30 @@ ws.title = "Cases"
 
 # ── Column headers ──
 headers = [
-    "Case ID",          # A
-    "CR Number",        # B  -> crimeNumber
-    "ST Number",        # C  -> stNumber
-    "Beneficiary Name", # D  -> beneficiaryName
-    "Age",              # E  -> beneficiaryAge
-    "Contact No",       # F  -> beneficiaryContact
-    "Address",          # G  -> LEGACY ONLY
-    "Type of Offence",  # H  -> typeOfOffence
-    "Classification",   # I  -> offenceClassification
-    "Domicile/Area",    # J  -> domicile
-    "First Offender",   # K  -> isFirstTimeOffender
-    "Stage",            # L  -> LEGACY ONLY
-    "Assigned Worker",  # M  -> LEGACY ONLY
-    "Date Registered",  # N  -> LEGACY ONLY
-    "Remarks",          # O  -> LEGACY ONLY
+    "Case ID",               # A  -> LEGACY ONLY
+    "CR Number",             # B  -> crimeNumber
+    "ST Number",             # C  -> stNumber
+    "Beneficiary Name",      # D  -> beneficiaryName
+    "Age",                   # E  -> beneficiaryAge
+    "Contact No",            # F  -> beneficiaryContact
+    "Address",               # G  -> LEGACY ONLY
+    "Type of Offence",       # H  -> typeOfOffence
+    "Classification",        # I  -> offenceClassification
+    "Domicile/Area",         # J  -> domicile
+    "First Offender",        # K  -> isFirstTimeOffender
+    "Stage",                 # L  -> LEGACY ONLY
+    "Assigned Worker",       # M  -> LEGACY ONLY
+    "Date Registered",       # N  -> LEGACY ONLY
+    "Remarks",               # O  -> LEGACY ONLY
+    # New socio-demographic columns (Epic 11)
+    "Gender",                # P  -> gender
+    "Family Type",           # Q  -> familyType
+    "Economic Status",       # R  -> economicStatus
+    "Occupation",            # S  -> occupationText (informational)
+    "Education Level",       # T  -> educationLevelText (informational)
+    "Recidivism Before",     # U  -> recidivismBeforeCount
+    "Recidivism After",      # V  -> recidivismAfterCount
+    "Family History of Crime", # W -> familyHistoryOfCrime
 ]
 
 header_font = Font(name="Calibri", bold=True, color="FFFFFF", size=11)
@@ -44,25 +53,26 @@ for col_idx, header in enumerate(headers, 1):
     cell.border = thin_border
 
 # ── Data rows (realistic juvenile justice NGO cases) ──
+# Columns: CaseID, CR, ST, Name, Age, Contact, Address, Offence, Class, Domicile, FirstOff, Stage, Worker, DateReg, Remarks,
+#           Gender, FamilyType, EconomicStatus, Occupation, EducationLevel, RecidivismBefore, RecidivismAfter, FamilyHistoryOfCrime
 data = [
-    # (CaseID, CR, ST, Name, Age, Contact, Address, Offence, Class, Domicile, FirstOff, Stage, Worker, DateReg, Remarks)
-    ("KAV-2024-001", "CR-2024-001234", "ST-2024-5678",  "Ravi Kumar",       17, "9876543210", "123 MG Road, Bangalore",          "Theft",                    "Petty",   "Urban",  "Yes", "Initial Assessment",  "Anita Sharma",   "2024-01-15", ""),
-    ("KAV-2024-002", "CR-2024-001235", "ST-2024-5679",  "Sunita Devi",       15, "9876543211", "Village P.O. Barabanki, UP",      "Pickpocketing",            "Petty",   "Rural",  "Yes", "Social Investigation","Rajesh Patel",   "2024-01-20", "First-time offender, family cooperative"),
-    ("KAV-2024-003", "CR-2024-001236", "ST-2024-5680",  "Mohammad Salim",    16, "9876543212", "56 Zakir Nagar, Delhi",            "Chain Snatching",          "Serious", "Urban",  "No",  "Counseling",        "Fatima Khan",    "2024-02-01", "Repeat offender — previous case closed"),
-    ("KAV-2024-004", "CR-2024-001237", "ST-2024-5681",  "Lakshmi Priya",     14, "9876543213", "Coastal Village, Puri, Odisha",    "Theft",                    "Petty",   "Coastal","Yes", "Probation",        "Prakash Rao",    "2024-02-10", ""),
-    ("KAV-2024-005", "CR-2024-001238", "ST-2024-5682",  "Arjun Singh",       16, "9876543214", "Tribal Hamlet, Jhabua, MP",        "Assault",                  "Grave",   "Tribal", "Yes", "Institutional Care", "Meena Verma",    "2024-03-05", "Tribal welfare board involved"),
-    ("KAV-2024-006", "CR-2024-001239", "ST-2024-5683",  "Priya Sharma",       12, "",            "Dharavi Slum, Mumbai",             "Begging",                  "Petty",   "Slum",   "Yes", "Rehabilitation",   "Suresh Iyer",    "2024-03-12", "Child in need of care — POCSO flagged"),
-    ("KAV-2024-007", "CR-2024-001240", "ST-2024-5684",  "Deepak Yadav",       17, "9876543215", "456 Civil Lines, Lucknow",         "Robbery",                  "Serious", "Urban",  "No",  "Judicial Process",  "Anita Sharma",   "2024-03-20", ""),
-    ("KAV-2024-008", "CR-2024-001241", "ST-2024-5685",  "Geeta Kumari",       15, "9876543216", "Main Bazaar, Patna",              "Theft",                    "Minor",   "Urban",  "Yes", "Social Investigation","Rajesh Patel",  "2024-04-01", ""),
-    ("KAV-2024-009", "CR-2024-001242", "ST-2024-5686",  "Suresh Naik",        16, "9876543217", "Hill Colony, Ooty, Tamil Nadu",    "Criminal Trespass",        "Grave",   "Rural",  "No",  "Counseling",        "Prakash Rao",    "2024-04-15", "Land dispute related"),
-    ("KAV-2024-010", "CR-2024-001243", "ST-2024-5687",  "Aisha Begum",        14, "9876543218", "22 Old City, Hyderabad",           "Pickpocketing",            "Petty",   "Urban",  "Yes", "Probation",        "Fatima Khan",    "2024-05-01", ""),
-    ("KAV-2024-011", "CR-2024-001244", "ST-2024-5688",  "Mohan Das",          17, "",            "Riverbank Settlement, Guwahati",   "Armed Robbery",             "Heinous/Grave","Coastal","No", "Institutional Care","Meena Verma",  "2024-05-10", "Weapon involved — high risk"),
-    ("KAV-2024-012", "CR-2024-001245", "ST-2024-5689",  "Rekha Devi",         13, "9876543219", "Slum Colony, Chennai",             "Begging",                  "Petty",   "Slum",   "Yes", "Rehabilitation",   "Suresh Iyer",    "2024-05-20", "Child labour rescue case"),
-    ("KAV-2024-013", "CR-2024-001246", "ST-2024-5690",  "Vijay Kumar",        16, "9876543220", "Mountain Village, Shimla",         "Assault",                  "Grave",   "Rural",  "No",  "Judicial Process",  "Anita Sharma",   "2024-06-01", ""),
-    ("KAV-2024-014", "CR-2024-001247", "ST-2024-5691",  "Sita Devi",          14, "9876543221", "Coastal Village, Kanyakumari",     "Theft of Livestock",       "Petty",   "Coastal","Yes", "Initial Assessment", "Rajesh Patel",  "2024-06-10", ""),
-    ("KAV-2024-015", "CR-2024-001248", "ST-2024-5692",  "Amit Jha",           17, "9876543222", "Tribal Settlement, Ranchi",        "Hurt/Grievous Hurt",       "Serious", "Tribal", "Yes", "Social Investigation","Prakash Rao",  "2024-06-15", "First offence, tribal council mediation"),
-    ("KAV-2024-016", "CR-2024-001249", "ST-2024-5693",  "Kavita Sharma",      "",  "9876543223", "Sector 12, Noida",                "Cyber Crime",              "Serious", "Urban",  "Yes", "Counseling",        "Fatima Khan",    "2024-07-01", "Online fraud — digital literacy case"),
-    ("KAV-2024-017", "CR-2024-001250", "ST-2024-5694",  "Bhola Ram",          15,  "",            "Desert Village, Jaisalmer",        "Theft of Cattle",          "Minor",   "Rural",  "Yes", "Probation",        "Suresh Iyer",    "2024-07-15", ""),
+    ("KAV-2024-001", "CR-2024-001234", "ST-2024-5678",  "Ravi Kumar",       17, "9876543210", "123 MG Road, Bangalore",          "Theft",                    "Petty",   "Urban",  "Yes", "Initial Assessment",  "Anita Sharma",   "2024-01-15", "", "Male",    "Joint",       "APL", "Student",      "Class 10", "",   "",  "No"),
+    ("KAV-2024-002", "CR-2024-001235", "ST-2024-5679",  "Sunita Devi",       15, "9876543211", "Village P.O. Barabanki, UP",      "Pickpocketing",            "Petty",   "Rural",  "Yes", "Social Investigation","Rajesh Patel",   "2024-01-20", "First-time offender, family cooperative", "Female", "Nuclear", "BPL", "Labourer",     "Class 8",  "",   "",  "No"),
+    ("KAV-2024-003", "CR-2024-001236", "ST-2024-5680",  "Mohammad Salim",    16, "9876543212", "56 Zakir Nagar, Delhi",            "Chain Snatching",          "Serious", "Urban",  "No",  "Counseling",        "Fatima Khan",    "2024-02-01", "Repeat offender — previous case closed", "Male", "SingleParent", "BPL", "Unemployed",   "Class 5",  "1",  "0",  "Yes"),
+    ("KAV-2024-004", "CR-2024-001237", "ST-2024-5681",  "Lakshmi Priya",     14, "9876543213", "Coastal Village, Puri, Odisha",    "Theft",                    "Petty",   "Coastal","Yes", "Probation",        "Prakash Rao",    "2024-02-10", "", "Female",  "Joint",       "APL", "Student",      "Class 9",  "",   "",  "No"),
+    ("KAV-2024-005", "CR-2024-001238", "ST-2024-5682",  "Arjun Singh",       16, "9876543214", "Tribal Hamlet, Jhabua, MP",        "Assault",                  "Grave",   "Tribal", "Yes", "Institutional Care", "Meena Verma",    "2024-03-05", "Tribal welfare board involved", "Male", "Nuclear", "BPL", "Labourer",     "Class 6",  "2",  "1",  "Yes"),
+    ("KAV-2024-006", "CR-2024-001239", "ST-2024-5683",  "Priya Sharma",       12, "",            "Dharavi Slum, Mumbai",             "Begging",                  "Petty",   "Slum",   "Yes", "Rehabilitation",   "Suresh Iyer",    "2024-03-12", "Child in need of care — POCSO flagged", "Female", "SingleParent","BPL", "Domestic Help","Class 4",  "",   "",  "No"),
+    ("KAV-2024-007", "CR-2024-001240", "ST-2024-5684",  "Deepak Yadav",       17, "9876543215", "456 Civil Lines, Lucknow",         "Robbery",                  "Serious", "Urban",  "No",  "Judicial Process",  "Anita Sharma",   "2024-03-20", "", "Male",    "Joint",       "APL", "Student",      "Class 11", "",   "",  "No"),
+    ("KAV-2024-008", "CR-2024-001241", "ST-2024-5685",  "Geeta Kumari",       15, "9876543216", "Main Bazaar, Patna",              "Theft",                    "Minor",   "Urban",  "Yes", "Social Investigation","Rajesh Patel",  "2024-04-01", "", "Female",  "Nuclear",     "APL", "Student",      "Class 10", "",   "",  "No"),
+    ("KAV-2024-009", "CR-2024-001242", "ST-2024-5686",  "Suresh Naik",        16, "9876543217", "Hill Colony, Ooty, Tamil Nadu",    "Criminal Trespass",        "Grave",   "Rural",  "No",  "Counseling",        "Prakash Rao",    "2024-04-15", "Land dispute related", "Male", "Nuclear", "BPL", "Unemployed",   "Class 8",  "1",  "0",  "No"),
+    ("KAV-2024-010", "CR-2024-001243", "ST-2024-5687",  "Aisha Begum",        14, "9876543218", "22 Old City, Hyderabad",           "Pickpocketing",            "Petty",   "Urban",  "Yes", "Probation",        "Fatima Khan",    "2024-05-01", "", "Female",  "Joint",       "BPL", "Domestic Help","Class 7",  "",   "",  "No"),
+    ("KAV-2024-011", "CR-2024-001244", "ST-2024-5688",  "Mohan Das",          17, "",            "Riverbank Settlement, Guwahati",   "Armed Robbery",             "Heinous/Grave","Coastal","No", "Institutional Care","Meena Verma",  "2024-05-10", "Weapon involved — high risk", "Male", "SingleParent","BPL", "Unemployed",   "Class 5",  "3",  "2",  "Yes"),
+    ("KAV-2024-012", "CR-2024-001245", "ST-2024-5689",  "Rekha Devi",         13, "9876543219", "Slum Colony, Chennai",             "Begging",                  "Petty",   "Slum",   "Yes", "Rehabilitation",   "Suresh Iyer",    "2024-05-20", "Child labour rescue case", "Female", "Nuclear", "BPL", "Labourer",     "Class 3",  "",   "",  "No"),
+    ("KAV-2024-013", "CR-2024-001246", "ST-2024-5690",  "Vijay Kumar",        16, "9876543220", "Mountain Village, Shimla",         "Assault",                  "Grave",   "Rural",  "No",  "Judicial Process",  "Anita Sharma",   "2024-06-01", "", "Male",    "Joint",       "APL", "Student",      "Class 12", "",   "",  "No"),
+    ("KAV-2024-014", "CR-2024-001247", "ST-2024-5691",  "Sita Devi",          14, "9876543221", "Coastal Village, Kanyakumari",     "Theft of Livestock",       "Petty",   "Coastal","Yes", "Initial Assessment", "Rajesh Patel",  "2024-06-10", "", "Female",  "Nuclear",     "BPL", "Student",      "Class 9",  "",   "",  "No"),
+    ("KAV-2024-015", "CR-2024-001248", "ST-2024-5692",  "Amit Jha",           17, "9876543222", "Tribal Settlement, Ranchi",        "Hurt/Grievous Hurt",       "Serious", "Tribal", "Yes", "Social Investigation","Prakash Rao",  "2024-06-15", "First offence, tribal council mediation", "Male", "Nuclear", "BPL", "Labourer",     "Class 6",  "1",  "0",  "Yes"),
+    ("KAV-2024-016", "CR-2024-001249", "ST-2024-5693",  "Kavita Sharma",      "",  "9876543223", "Sector 12, Noida",                "Cyber Crime",              "Serious", "Urban",  "Yes", "Counseling",        "Fatima Khan",    "2024-07-01", "Online fraud — digital literacy case", "Female", "Joint", "APL", "Student",      "Class 10", "",   "",  "No"),
+    ("KAV-2024-017", "CR-2024-001250", "ST-2024-5694",  "Bhola Ram",          15,  "",            "Desert Village, Jaisalmer",        "Theft of Cattle",          "Minor",   "Rural",  "Yes", "Probation",        "Suresh Iyer",    "2024-07-15", "", "Male", "Joint", "APL", "Student",      "Class 8",  "",   "",  "No"),
 ]
 
 data_font = Font(name="Calibri", size=10)
@@ -76,7 +86,8 @@ for row_idx, row_data in enumerate(data, 2):
         cell.border = thin_border
 
 # ── Column widths ──
-col_widths = [16, 18, 18, 22, 6, 14, 28, 22, 16, 16, 14, 20, 18, 16, 40]
+col_widths = [16, 18, 18, 22, 6, 14, 28, 22, 16, 16, 14, 20, 18, 16, 40,
+              12, 14, 16, 16, 16, 16, 14, 22]
 for i, width in enumerate(col_widths, 1):
     ws.column_dimensions[get_column_letter(i)].width = width
 
@@ -84,7 +95,7 @@ for i, width in enumerate(col_widths, 1):
 ws.freeze_panes = "A2"
 
 # ── Auto-filter ──
-ws.auto_filter.ref = f"A1:O{len(data) + 1}"
+ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{len(data) + 1}"
 
 # ── Legend / Notes sheet ──
 ws2 = wb.create_sheet("Legend")
@@ -103,6 +114,14 @@ legend_data = [
     ("Classification", "offenceClassification", "IMPORTED (enum mapped)"),
     ("Domicile/Area", "domicile", "IMPORTED (enum mapped)"),
     ("First Offender", "isFirstTimeOffender", "IMPORTED (optional)"),
+    ("Gender", "gender", "IMPORTED (enum mapped)"),
+    ("Family Type", "familyType", "IMPORTED (enum mapped)"),
+    ("Economic Status", "economicStatus", "IMPORTED (enum mapped)"),
+    ("Occupation", "occupationText", "INFORMATIONAL ONLY"),
+    ("Education Level", "educationLevelText", "INFORMATIONAL ONLY"),
+    ("Recidivism Before", "recidivismBeforeCount", "IMPORTED (optional)"),
+    ("Recidivism After", "recidivismAfterCount", "IMPORTED (optional)"),
+    ("Family History of Crime", "familyHistoryOfCrime", "IMPORTED (optional)"),
     ("Case ID", "—", "LEGACY ONLY"),
     ("Address", "—", "LEGACY ONLY"),
     ("Stage", "—", "LEGACY ONLY"),
@@ -111,25 +130,28 @@ legend_data = [
     ("Remarks", "—", "LEGACY ONLY"),
 ]
 
-green_fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
-amber_fill = PatternFill(start_color="FFF8E1", end_color="FFF8E1", fill_type="solid")
-grey_fill  = PatternFill(start_color="F5F5F5", end_color="F5F5F5", fill_type="solid")
+green_fill  = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+amber_fill  = PatternFill(start_color="FFF8E1", end_color="FFF8E1", fill_type="solid")
+grey_fill   = PatternFill(start_color="F5F5F5", end_color="F5F5F5", fill_type="solid")
+blue_fill   = PatternFill(start_color="E3F2FD", end_color="E3F2FD", fill_type="solid")
 
 for i, (legacy, target, status) in enumerate(legend_data, 4):
     ws2.cell(row=i, column=1, value=legacy).border = thin_border
     ws2.cell(row=i, column=2, value=target).border = thin_border
     c = ws2.cell(row=i, column=3, value=status)
     c.border = thin_border
-    if status == "IMPORTED":
+    if status == "IMPORTED" or status.startswith("IMPORTED "):
         c.fill = green_fill
-    elif "(optional)" in status or "enum" in status:
+    elif "enum" in status:
         c.fill = amber_fill
+    elif status == "INFORMATIONAL ONLY":
+        c.fill = blue_fill
     else:
         c.fill = grey_fill
 
-ws2.column_dimensions["A"].width = 20
+ws2.column_dimensions["A"].width = 24
 ws2.column_dimensions["B"].width = 30
-ws2.column_dimensions["C"].width = 22
+ws2.column_dimensions["C"].width = 24
 
 # ── Save ──
 filepath = "docs/excel-migration/legacy-cases-export.xlsx"
