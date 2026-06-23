@@ -9,7 +9,7 @@ public sealed class Case
     public Guid OrganisationId { get; set; }
     public string CrimeNumber { get; set; } = string.Empty;
     public string StNumber { get; set; } = string.Empty;
-    public string BeneficiaryName { get; set; } = string.Empty;
+    public string? BeneficiaryName { get; set; }
     public int? BeneficiaryAge { get; set; }
     public string? BeneficiaryContact { get; set; }
     public string TypeOfOffence { get; set; } = string.Empty;
@@ -44,4 +44,5 @@ public sealed class Case
     public Guid? GpsVerifiedByUserId { get; set; }
     public SensitivityLevel SensitivityLevel { get; set; } = SensitivityLevel.Standard;
     public DateTime? CourtMissFlaggedAtUtc { get; set; }
+    public bool ActiveLegalStay { get; set; }
 }

@@ -8,11 +8,13 @@ using MidiKaval.Api.Infrastructure.TravelClaims;
 using MidiKaval.Api.Models;
 using MidiKaval.Api.Models.Supervisor;
 using MidiKaval.Api.Models.TravelClaims;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MidiKaval.Api.Controllers.V1;
 
 /// <summary>Supervisor crisis queue (court-miss rows in v1).</summary>
 [ApiController]
+[EnableRateLimiting("data-read")]
 [Route("api/v1/supervisor")]
 public sealed class SupervisorController(
     CrisisQueueService crisisQueueService,

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MidiKaval.Api.Infrastructure.Budgets;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Models.Budgets;
@@ -36,6 +37,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(typeof(PaginatedResult<BudgetListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> List(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -61,6 +63,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
     {
         try
@@ -89,6 +92,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Create([FromBody] CreateBudgetRequest request, CancellationToken ct = default)
     {
         try
@@ -121,6 +125,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBudgetRequest request, CancellationToken ct = default)
     {
         try
@@ -156,6 +161,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Propose(Guid id, CancellationToken ct = default)
     {
         try
@@ -187,6 +193,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveBudgetRequest request, CancellationToken ct = default)
     {
         try
@@ -219,6 +226,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Return(Guid id, [FromBody] ReturnBudgetRequest request, CancellationToken ct = default)
     {
         try
@@ -250,6 +258,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Execute(Guid id, CancellationToken ct = default)
     {
         try
@@ -281,6 +290,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ListUtilizations(
         Guid budgetId,
         [FromQuery] DateOnly? fromDate,
@@ -317,6 +327,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> GetUtilizationSummary(Guid budgetId, CancellationToken ct = default)
     {
         try
@@ -346,6 +357,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> CreateUtilization(
         Guid budgetId,
         [FromBody] CreateBudgetUtilizationRequest request,
@@ -385,6 +397,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> UpdateUtilization(
         Guid budgetId,
         Guid id,
@@ -421,6 +434,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> DeleteUtilization(
         Guid budgetId,
         Guid id,
@@ -459,6 +473,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> Report(
         [FromQuery] string frequency = "Quarterly",
         [FromQuery] int year = 2026,
@@ -498,6 +513,7 @@ public class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ExportReport(
         [FromQuery] string frequency = "Quarterly",
         [FromQuery] int year = 2026,

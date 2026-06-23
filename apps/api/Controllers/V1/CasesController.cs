@@ -31,6 +31,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> Export(
         [FromQuery] string? format,
         [FromQuery] CaseSearchQuery query,
@@ -60,6 +61,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> Search(
         [FromQuery] CaseSearchQuery query,
         CancellationToken cancellationToken)
@@ -85,6 +87,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(IReadOnlyList<CaseSearchPresetDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ListSearchPresets(CancellationToken cancellationToken)
     {
         var presets = await presetService.ListAsync(cancellationToken);
@@ -98,6 +101,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> CreateSearchPreset(
         [FromBody] CreateCaseSearchPresetRequest? request,
         CancellationToken cancellationToken)
@@ -132,6 +136,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> DeleteSearchPreset(Guid id, CancellationToken cancellationToken)
     {
         try
@@ -150,6 +155,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ApiResponse<CaseSearchResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ListAssigned(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
@@ -178,6 +184,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ListCaseVisits(Guid id, CancellationToken cancellationToken)
     {
         try
@@ -205,6 +212,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> ScheduleVisit(
         Guid id,
         [FromBody] ScheduleVisitRequest? request,
@@ -240,6 +248,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         try
@@ -264,6 +273,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ListNotes(Guid id, CancellationToken cancellationToken)
     {
         try
@@ -290,6 +300,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> CreateNote(
         Guid id,
         [FromBody] CreateCaseNoteRequest? request,
@@ -330,6 +341,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ListInterventions(Guid id, CancellationToken cancellationToken)
     {
         try
@@ -354,6 +366,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> GetIntervention(
         Guid id,
         Guid interventionId,
@@ -383,6 +396,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> CreateIntervention(
         Guid id,
         [FromBody] CreateInterventionRequest? request,
@@ -425,6 +439,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> UpdateIntervention(
         Guid id,
         Guid interventionId,
@@ -466,6 +481,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ListCourtSittings(Guid id, CancellationToken cancellationToken)
     {
         try
@@ -490,6 +506,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> GetCourtSitting(
         Guid id,
         Guid sittingId,
@@ -519,6 +536,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> CreateCourtSitting(
         Guid id,
         [FromBody] CreateCourtSittingRequest? request,
@@ -561,6 +579,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> UpdateCourtSitting(
         Guid id,
         Guid sittingId,
@@ -603,6 +622,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> VerifyGps(
         Guid id,
         [FromBody] VerifyCaseGpsRequest? request,
@@ -674,6 +694,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Transfer(
         Guid id,
         [FromBody] TransferCaseRequest? request,
@@ -711,6 +732,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Create(
         [FromBody] CreateCaseRequest? request,
         CancellationToken cancellationToken)
@@ -745,6 +767,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> CheckDuplicate(
         [FromBody] CheckCaseDuplicateRequest? request,
         CancellationToken cancellationToken)
@@ -773,6 +796,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> TransitionStage(
         Guid id,
         [FromBody] TransitionCaseStageRequest? request,
@@ -811,6 +835,7 @@ public sealed class CasesController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Merge(
         Guid id,
         [FromBody] CreateCaseRequest? request,
@@ -846,6 +871,48 @@ public sealed class CasesController(
         {
             return ConflictProblem("A case with this crime number or ST number already exists in your organisation.");
         }
+    }
+
+    /// <summary>Erases PII for a case. Director-only. Idempotent.</summary>
+    [HttpDelete("{caseId:guid}/personal-data")]
+    [Authorize(Policy = Policies.DirectorOnly)]
+    [EnableRateLimiting("data-write")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ErasePersonalData(Guid caseId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await caseService.ErasePersonalDataAsync(caseId, cancellationToken);
+            if (result is null) return NotFoundProblem("Case not found.");
+            return Ok(new { nullifiedFields = result });
+        }
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        {
+            return ConflictProblem(ex.Message);
+        }
+    }
+
+    /// <summary>Exports PII for a case as JSON. Director-only.</summary>
+    [HttpGet("{caseId:guid}/personal-data")]
+    [Authorize(Policy = Policies.DirectorOnly)]
+    [EnableRateLimiting("data-read")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ExportPersonalData(Guid caseId, CancellationToken cancellationToken)
+    {
+        var result = await caseService.GetPersonalDataAsync(caseId, cancellationToken);
+        if (result is null) return NotFoundProblem("Case not found.");
+
+        if (!HttpContext.Response.HasStarted)
+        {
+            Response.Headers["Content-Disposition"] = $"attachment; filename=\"case-{caseId:D}-personal-data.json\"";
+        }
+        return Ok(result);
     }
 
     private static bool IsUniqueViolation(DbUpdateException ex)

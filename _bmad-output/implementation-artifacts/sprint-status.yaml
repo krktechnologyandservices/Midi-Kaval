@@ -1,5 +1,5 @@
 # generated: 2026-06-13
-# last_updated: 2026-06-22
+# last_updated: 2026-06-23
 # project: Midi-Kaval
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-13
-last_updated: 2026-06-22
+last_updated: 2026-06-23
 project: Midi-Kaval
 project_key: NOKEY
 tracking_system: file-system
@@ -162,29 +162,29 @@ development_status:
   epic-16-retrospective: optional
 
   epic-17: in-progress
-  17-1-implement-column-level-pii-encryption: ready-for-dev
+  17-1-implement-column-level-pii-encryption: done
   epic-17-retrospective: optional
 
-  epic-18: backlog
-  18-1-audit-log-pii-redaction: backlog
+  epic-18: in-progress
+  18-1-audit-log-pii-redaction: done
   epic-18-retrospective: optional
 
-  epic-19: backlog
-  19-1-content-security-policy: backlog
+  epic-19: done
+  19-1-content-security-policy: done
   epic-19-retrospective: optional
 
-  epic-20: backlog
-  20-1-rate-limiting-for-data-endpoints: backlog
+  epic-20: in-progress
+  20-1-rate-limiting-for-data-endpoints: done
   epic-20-retrospective: optional
 
-  epic-21: backlog
-  21-1-data-retention-anonymization: backlog
+  epic-21: in-progress
+  21-1-data-retention-anonymization: done
   epic-21-retrospective: optional
 
-  epic-22: backlog
-  22-1-erasure-and-portability: backlog
+  epic-22: in-progress
+  22-1-erasure-and-portability: done
   epic-22-retrospective: optional
 
-  epic-23: backlog
-  23-1-import-file-validation: backlog
+  epic-23: in-progress
+  23-1-import-file-validation: done
   epic-23-retrospective: optional

@@ -2,10 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Reports;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MidiKaval.Api.Controllers.V1;
 
 [ApiController]
+[EnableRateLimiting("data-read")]
 [Route("api/v1/reports")]
 [Authorize]
 [Produces("application/json")]

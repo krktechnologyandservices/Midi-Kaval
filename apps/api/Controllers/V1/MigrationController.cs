@@ -10,11 +10,13 @@ using MidiKaval.Api.Infrastructure.Cases;
 using MidiKaval.Api.Infrastructure.Migration;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Models.Migration;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MidiKaval.Api.Controllers.V1;
 
 /// <summary>Legacy Excel migration endpoints — validate and import.</summary>
 [ApiController]
+[EnableRateLimiting("data-write")]
 [Authorize(Policy = Policies.DirectorOnly)]
 [Route("api/v1/migration")]
 [Produces("application/json")]
@@ -61,12 +63,12 @@ public sealed class MigrationController(
             await file.CopyToAsync(stream, cancellationToken);
             stream.Position = 0;
 
+            MigrationImportService.ValidateFileFormat(stream);
+
             using var workbook = new XLWorkbook(stream);
             var spec = specLoader.Load();
             var validator = new ColumnMappingValidator(spec);
             var result = validator.Validate(workbook);
-
-            // Write audit event for the validation run
             var (organisationId, actorUserId) = ResolveActorContext();
             var now = DateTime.UtcNow;
             db.AuditEvents.Add(new AuditEvent
@@ -100,7 +102,7 @@ public sealed class MigrationController(
         }
         catch (CaseValidationException ex)
         {
-            logger.LogWarning(ex, "Migration validation failed due to actor context: {Message}", ex.Message);
+            logger.LogWarning(ex, "Migration validation failed: {Message}", ex.Message);
             return Problem(
                 detail: ex.Message,
                 statusCode: StatusCodes.Status400BadRequest,
@@ -154,6 +156,8 @@ public sealed class MigrationController(
             await file.CopyToAsync(stream, cancellationToken);
             stream.Position = 0;
 
+            MigrationImportService.ValidateFileFormat(stream);
+
             using var workbook = new XLWorkbook(stream);
             var (organisationId, actorUserId) = ResolveActorContext();
             var result = await importService.ImportAsync(
@@ -167,7 +171,7 @@ public sealed class MigrationController(
         }
         catch (CaseValidationException ex)
         {
-            logger.LogWarning(ex, "Migration import failed due to actor context: {Message}", ex.Message);
+            logger.LogWarning(ex, "Migration import failed: {Message}", ex.Message);
             return Problem(
                 detail: ex.Message,
                 statusCode: StatusCodes.Status400BadRequest,

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Domain.Enums;
 using MidiKaval.Api.Infrastructure.Audit;
+using MidiKaval.Api.Infrastructure.Cases;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Models.Migration;
 
@@ -440,5 +441,34 @@ public sealed class MigrationImportService(
                 return true;
         }
         return false;
+    }
+
+    /// <summary>Validates that the stream contains a valid .xlsx file by checking PK\x03\x04 magic bytes.
+    /// Must be called after CopyToAsync — stream must be at position 0 and fully buffered in memory.</summary>
+    private static readonly byte[] XlsxMagicBytes = [0x50, 0x4B, 0x03, 0x04];
+
+    internal static void ValidateFileFormat(Stream stream)
+    {
+        if (stream is null)
+            throw new ArgumentNullException(nameof(stream));
+
+        if (!stream.CanSeek)
+            throw new ArgumentException("Stream must support seeking.", nameof(stream));
+
+        try
+        {
+            if (stream.Length < 4)
+                throw new CaseValidationException("Invalid file format. Please upload a .xlsx file.");
+
+            Span<byte> header = stackalloc byte[4];
+            var read = stream.Read(header);
+
+            if (read < 4 || !header.SequenceEqual(XlsxMagicBytes))
+                throw new CaseValidationException("Invalid file format. Please upload a .xlsx file.");
+        }
+        finally
+        {
+            stream.Position = 0;
+        }
     }
 }

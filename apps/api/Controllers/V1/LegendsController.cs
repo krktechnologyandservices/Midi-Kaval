@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Domain.Entities.Legends;
@@ -40,6 +41,7 @@ public sealed class LegendsController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> List(
         string type,
         [FromQuery] bool includeInactive = false,
@@ -84,6 +86,7 @@ public sealed class LegendsController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> Get(
         string type,
         Guid id,
@@ -113,6 +116,7 @@ public sealed class LegendsController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Create(
         string type,
         LegendCreateRequest request,
@@ -184,6 +188,7 @@ public sealed class LegendsController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Update(
         string type,
         Guid id,
@@ -271,6 +276,7 @@ public sealed class LegendsController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Deactivate(
         string type,
         Guid id,
@@ -337,6 +343,7 @@ public sealed class LegendsController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Reactivate(
         string type,
         Guid id,

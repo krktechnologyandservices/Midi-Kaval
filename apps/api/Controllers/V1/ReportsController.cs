@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using MidiKaval.Api.Domain.Entities;
@@ -31,6 +32,7 @@ public sealed class ReportsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> StartExport(
         string type,
         ReportExportRequest request,
@@ -89,6 +91,7 @@ public sealed class ReportsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> GetExportStatus(
         Guid jobId,
         CancellationToken cancellationToken)
@@ -144,6 +147,7 @@ public sealed class ReportsController(
     [ProducesResponseType(typeof(ApiResponse<ReportExportListResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ListExports(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,

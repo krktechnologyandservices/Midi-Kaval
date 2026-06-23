@@ -267,6 +267,10 @@ namespace MidiKaval.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("ActiveLegalStay")
+                        .HasColumnType("boolean")
+                        .HasColumnName("active_legal_stay");
+
                     b.Property<DateTime?>("AssignedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("assigned_at_utc");
@@ -279,15 +283,13 @@ namespace MidiKaval.Api.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("beneficiary_age");
 
-                    b.Property<string>("BeneficiaryContact")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
+                    b.Property<byte[]>("BeneficiaryContact")
+                        .HasMaxLength(2048)
+                        .HasColumnType("bytea")
                         .HasColumnName("beneficiary_contact");
 
-                    b.Property<string>("BeneficiaryName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                    b.Property<byte[]>("BeneficiaryName")
+                        .HasColumnType("bytea")
                         .HasColumnName("beneficiary_name");
 
                     b.Property<DateTime?>("CourtMissFlaggedAtUtc")
@@ -363,19 +365,17 @@ namespace MidiKaval.Api.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_first_time_offender");
 
-                    b.Property<string>("Landmark")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                    b.Property<byte[]>("Landmark")
+                        .HasMaxLength(4096)
+                        .HasColumnType("bytea")
                         .HasColumnName("landmark");
 
-                    b.Property<decimal?>("Latitude")
-                        .HasPrecision(9, 6)
-                        .HasColumnType("numeric(9,6)")
+                    b.Property<byte[]>("Latitude")
+                        .HasColumnType("bytea")
                         .HasColumnName("latitude");
 
-                    b.Property<decimal?>("Longitude")
-                        .HasPrecision(9, 6)
-                        .HasColumnType("numeric(9,6)")
+                    b.Property<byte[]>("Longitude")
+                        .HasColumnType("bytea")
                         .HasColumnName("longitude");
 
                     b.Property<DateTime?>("NextVisitDueAtUtc")

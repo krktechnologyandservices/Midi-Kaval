@@ -371,11 +371,11 @@ public sealed class CaseService(
                     ["draftCrimeNumber"] = validated.CrimeNumber,
                     ["draftStNumber"] = validated.StNumber,
                     ["actorUserId"] = actorUserId.ToString("D"),
+                    // PII fields (beneficiaryName, beneficiaryAge, beneficiaryContact)
+                    // are intentionally excluded from this snapshot per PiiAuditEventTypes.
+                    // See Infrastructure/Audit/PiiAuditEventTypes.cs for the catalog.
                     ["draftSnapshot"] = new Dictionary<string, object?>
                     {
-                        ["beneficiaryName"] = validated.BeneficiaryName,
-                        ["beneficiaryAge"] = validated.BeneficiaryAge,
-                        ["beneficiaryContact"] = validated.BeneficiaryContact,
                         ["typeOfOffence"] = validated.TypeOfOffence,
                         ["offenceClassification"] = validated.OffenceClassification.ToString(),
                         ["domicile"] = validated.Domicile.ToString(),
@@ -1517,6 +1517,65 @@ public sealed class CaseService(
         }
 
         return trimmed;
+    }
+
+    public async Task<string[]?> ErasePersonalDataAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var (organisationId, actorUserId) = ResolveActorContext();
+
+        var entity = await db.Cases
+            .SingleOrDefaultAsync(c => c.Id == caseId && c.OrganisationId == organisationId, ct);
+
+        if (entity is null) return null;
+
+        var allFields = new[] { "beneficiaryName", "beneficiaryContact", "beneficiaryAge", "latitude", "longitude", "landmark" };
+        var anyChanged = false;
+
+        if (entity.BeneficiaryName is not null) { entity.BeneficiaryName = null; anyChanged = true; }
+        if (entity.BeneficiaryContact is not null) { entity.BeneficiaryContact = null; anyChanged = true; }
+        if (entity.BeneficiaryAge is not null) { entity.BeneficiaryAge = null; anyChanged = true; }
+        if (entity.Latitude is not null) { entity.Latitude = null; anyChanged = true; }
+        if (entity.Longitude is not null) { entity.Longitude = null; anyChanged = true; }
+        if (entity.Landmark is not null) { entity.Landmark = null; anyChanged = true; }
+
+        if (anyChanged)
+        {
+            entity.UpdatedAtUtc = DateTime.UtcNow;
+
+            db.AuditEvents.Add(new Domain.Entities.AuditEvent
+            {
+                Id = Guid.NewGuid(),
+                OrganisationId = organisationId,
+                ActorUserId = actorUserId,
+                SubjectUserId = null,
+                EventType = AuditEventTypes.CasePersonalDataErased,
+                MetadataJson = JsonSerializer.Serialize(new { nullifiedFields = allFields }, JsonOptions),
+                CreatedAtUtc = DateTime.UtcNow,
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
+        return allFields;
+    }
+
+    public async Task<object?> GetPersonalDataAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var (organisationId, _) = ResolveActorContext();
+
+        var entity = await db.Cases
+            .SingleOrDefaultAsync(c => c.Id == caseId && c.OrganisationId == organisationId, ct);
+
+        if (entity is null) return null;
+
+        return new
+        {
+            beneficiaryName = entity.BeneficiaryName,
+            beneficiaryContact = entity.BeneficiaryContact,
+            beneficiaryAge = entity.BeneficiaryAge,
+            latitude = entity.Latitude,
+            longitude = entity.Longitude,
+            landmark = entity.Landmark,
+        };
     }
 
     private sealed record ValidatedCreateCaseRequest(

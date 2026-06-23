@@ -88,7 +88,7 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 
 ## Deferred from: code review of 2-9-web-case-registry-and-detail-ui.md (2026-06-16)
 
-- **Sidebar “collapse” at 768–1023px only narrows width** (`supervisor-shell.component.scss`) — labels remain full text; icon-only or drawer pattern deferred to Epic 9 polish.
+- **Sidebar "collapse" at 768–1023px only narrows width** (`supervisor-shell.component.scss`) — labels remain full text; icon-only or drawer pattern deferred to Epic 9 polish.
 
 - **Registry assignee filter / preset `assignedWorkerUserId` UI** (`case-registry.component.ts`) — carried from 2.8 review; API contract complete; filter UI out of shell/stage scope.
 
@@ -446,7 +446,68 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - **No column min/max width constraints** (`BudgetReportExcelService.cs:72`) — `AdjustToContents()` alone can produce extremely narrow or wide columns. Deferred: nice-to-have formatting enhancement.
 - **No identity metadata in Excel (generated-by user, request ID)** — Beyond story scope; pre-existing pattern across the project.
 
+## Deferred from: code review of 17-1-implement-column-level-pii-encryption.md (2026-06-22)
+
+- **Existing plaintext data becomes orphaned after migration** — The EF migration `EncryptPiiColumns` changes column types to `bytea`, but does not migrate existing plaintext values. Existing rows will lose their data unless a data-migration script is run before the column-type change. Requires a production cut-over plan outside this story scope.
+
+- **No error handling for decryption failures** — `PiiEncryptionConverter.Decrypt` throws raw `CryptographicException` if ciphertext is tampered or key is wrong. No graceful degradation (e.g., log + return placeholder). Acceptable for v1.
+
+- **ExistingTests_PassWithEncryption test does not run full suite** — The test `ExistingTests_PassWithEncryption` is a standalone smoke check, not an invocation of the pre-existing test suite. AC 4 verification requires running all tests. Full suite execution requires Docker/Testcontainers and is a CI process concern.
+
 ## Deferred from: code review of 16-1-update-migration-spec-with-new-fields.md (2026-06-22)
 
 - **Occupation/Education text values silently discarded** — No persistence mechanism exists on the Case entity for raw occupation/education text values. Post-migration cross-referencing to legend tables requires the original Excel file. By-design per AC2/AC4; no architectural change to Case entity planned.
 - **Triple redundancy of mapping definitions (JSON/C#/markdown)** — The same mapping rules and enum values are duplicated across `mapping-spec.json`, `MappingSpecLoader.cs`, and `mapping-specification.md`. No validation gate detects drift between them. Pre-existing design pattern from Epic 10; a JSON-schema-based consistency check would be a separate improvement.
+
+## Deferred from: code review of 18-1-audit-log-pii-redaction (2026-06-22)
+
+- **Backfill SQL batching** — UPDATE without LIMIT/batching on large audit_events table could cause WAL/replication pressure. Manual maintenance-window execution documented.
+- **No PII-stripping log statement** — No warning-level log when PII is stripped from an audit event. Debugging silent breaks is harder.
+- **`DisposeAsync` no-op pattern** — `HttpClient` not disposed. Consistent with project conventions.
+- **Naming: `IntentionalPiiTypes` → `PiiAccessEventTypes`** — Cosmetic; name implies metadata carries PII values when it only logs access.
+- **SQL script PostgreSQL-only** — Project only uses PostgreSQL; no vendor guard needed yet.
+- **Stale source path comment** — `See Infrastructure/Audit/PiiAuditEventTypes.cs` not compiler-enforced; drifts on rename.
+- **`GetUserIdByEmailAsync` return not validated** — Returns `default` if user not found; pre-existing pattern across test suite.
+- **Missing backfill automated test** — Backfill is manual SQL execution; no automated test verifies correctness.
+
+## Deferred from: code review of 19-1-content-security-policy (2026-06-23)
+
+- **No rate limiting on CSP violation endpoint** — Pre-existing: the project-wide rate limiter (`FixedWindowLimiter`) added in Story 17.1 targets data endpoints (`/api/v1/.*`). The CSP violation endpoint at `/api/v1/security/csp-violation` would be captured by this policy already — no action needed.
+- **CSP report endpoint should validate known fields with FluentValidation** — No FluentValidation infrastructure exists for non-CRUD endpoints. Adding it solely for CSP reporting is disproportionate.
+- **Tests should verify CSP header on error responses** — The middleware registers after `UseExceptionHandler()`, so error pages do carry CSP headers. Adding a test for this creates a cross-cutting concern outside this story's scope.
+- **CSP policy should be configurable for multi-tenant ingress** — Multi-tenancy is tracked in Epic 20. CSP configuration should be revisited as part of that work.
+
+## Deferred from: code review of 21-1-data-retention-anonymization (2026-06-23)
+
+- **RetryAfter header hardcoded to "60" regardless of configured WindowSeconds** (`AuthServiceCollectionExtensions.cs:141`) — The `OnRejected` handler sets `RetryAfter = "60"` but DataRateLimitOptions may use a different window. Pre-existing issue from Story 20.1.
+- **case.anonymized not catalogued in PiiAuditEventTypes** — This event carries no PII in metadata (only count + cutoffDate), so it does not belong in the PII catalog. Not necessary.
+- **ActiveLegalStay bool cannot distinguish "not checked" from "no legal stay"** — Default `false` means a newly created case appears to have no legal stay even if no check was performed. Pre-existing design pattern followed by other boolean fields in the codebase.
+- **Environment variables never cleaned up between test runs** (`AuthWebApplicationFactory.cs:54-73`) — `Environment.SetEnvironmentVariable` mutates process-wide state. With parallel test execution, env vars leak between contexts. Pre-existing pattern affecting all test env vars.
+- **Initial backlog processing bottleneck on first deploy** — If 10,000+ cases become eligible on first deploy, processing 100 per day = ~100 days to clear. Mitigated by patch finding #2 (batch loop), but a one-time catch-up migration may be needed for large datasets.
+
+## Deferred from: code review of 22-1-erasure-and-portability (2026-06-23)
+
+- **No "before" snapshot in erasure audit event** — Audit event records nullified field names but not their values before erasure. Enhancement for compliance auditing beyond current AC scope.
+- **Landmark missing from audit snapshot exclusion** — `Landmark` is nullified as PII by the erasure code but was never excluded from the Merge draft snapshot comment/source. Pre-existing gap, not introduced by this story.
+- **BeneficiaryAge null JSON serialization** — `int?` with null may be omitted by JSON serializer rather than rendered as explicit null. Project-wide pattern, not specific to this change.
+- **No concurrency protection on erasure** — Two concurrent requests can both read non-null values, both nullify, and both write audit events. Pre-existing pattern matching all mutation methods in the codebase.
+- **Export content-level protection** — Export endpoint serves unencrypted PII JSON with only a Content-Disposition header. Broader architectural/security concern beyond this story's scope.
+- **Test data never cleaned up** — `DisposeAsync` is a no-op in `PersonalDataTests.cs`. Pre-existing pattern across all integration tests.
+- **Rate-limit distinction for sensitive endpoints** — Personal-data endpoints use same `data-read`/`data-write` policies as regular CRUD. Stricter policy is a broader security decision.
+
+## Deferred from: code review of story 20-1-rate-limiting-for-data-endpoints (2026-06-23)
+
+- **RemoteIpAddress null behind reverse proxy** (`AuthServiceCollectionExtensions.cs`) — Without `X-Forwarded-For` header, `RemoteIpAddress` is null behind a reverse proxy, causing each new connection to create a new partition. Pre-existing issue affecting all rate limit policies (auth + data).
+- **No observability/logging for rate-limit events** (`AuthServiceCollectionExtensions.cs`) — Administrator gets no telemetry when rate limiting activates. Enhancement beyond story scope.
+- **No distributed backplane for multi-node deployments** — Each node maintains its own counter. Behind a load balancer, limit enforcement is per-node not global. Pre-existing architecture limitation.
+- **No upper-bound validation on options** (`DataRateLimitOptions.cs`) — Validator rejects <= 0 but allows arbitrarily high limits. Enhancement beyond NFR-SEC-04 scope.
+- **Redundant config registration** (`DataRateLimitServiceCollectionExtensions.cs`, `AuthServiceCollectionExtensions.cs`) — `AddMidiKavalDataRateLimiting` binds options + validator, but `AuthServiceCollectionExtensions` reads the same config inline via `Get<DataRateLimitOptions>()`. Validator still catches bad config at startup.
+- **Integration test timing flakiness risk** (`DataRateLimitingTests.cs`) — Tests that assert 429 after N rapid requests can fail under CI load. Mitigate with retry policies if noise appears.
+
+## Deferred from: code review of 23-1-import-file-validation (2026-06-23)
+
+- **ContentType null guard** (`MigrationController.cs:49-50`) — `file.ContentType` can be null; existing guard throws `NullReferenceException` on null Content-Type. Pre-existing, not introduced by this story.
+- **Magic byte check only validates ZIP header, not Excel structure** (`MigrationImportService.cs`) — A `.zip` or `.docx` file passes the PK\x03\x04 check. Validating ZIP internals for Excel-specific XML structure is beyond AC scope.
+- **No CancellationToken support** (`MigrationImportService.cs:455`) — `ValidateFileFormat` uses synchronous `Read`; method is called from async controller context.
+- **No concurrency protection in doc comment** (`MigrationImportService.cs:448-462`) — Static method shared across requests not documented as non-thread-safe.
+- **No test for 4+ byte non-ZIP garbage** (`MigrationFileValidationTests.cs`) — Only short file (`.Length < 4`) and renamed .exe (MZ) are tested; random bytes >= 4 bytes is untested.

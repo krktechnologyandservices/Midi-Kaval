@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Infrastructure.Notifications;
 using MidiKaval.Api.Models.Notifications;
@@ -16,6 +17,7 @@ public sealed class NotificationsController(NotificationService notificationServ
     [Authorize]
     [ProducesResponseType(typeof(NotificationListResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> List(CancellationToken cancellationToken)
     {
         var dto = await notificationService.ListForCurrentUserAsync(cancellationToken);
@@ -28,6 +30,7 @@ public sealed class NotificationsController(NotificationService notificationServ
     [ProducesResponseType(typeof(UnreadCountDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> UnreadCount(CancellationToken cancellationToken)
     {
         var count = await notificationService.GetUnreadCountAsync(cancellationToken);
@@ -38,6 +41,7 @@ public sealed class NotificationsController(NotificationService notificationServ
     [Authorize]
     [ProducesResponseType(typeof(NotificationPreferencesDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [EnableRateLimiting("data-read")]
     public IActionResult Preferences()
     {
         var role = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
@@ -50,6 +54,7 @@ public sealed class NotificationsController(NotificationService notificationServ
     [ProducesResponseType(typeof(NotificationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> MarkRead(Guid id, CancellationToken cancellationToken)
     {
         try

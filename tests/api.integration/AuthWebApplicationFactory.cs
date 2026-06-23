@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -53,10 +54,22 @@ public class AuthWebApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("Jwt__SigningKey", new string('k', 32));
         Environment.SetEnvironmentVariable("Auth__RateLimitPermitLimit", "1000");
         Environment.SetEnvironmentVariable("Auth__RateLimitWindowSeconds", "60");
+        Environment.SetEnvironmentVariable("DataRateLimiting__ReadPermitLimit", "10000");
+        Environment.SetEnvironmentVariable("DataRateLimiting__WritePermitLimit", "10000");
+        Environment.SetEnvironmentVariable("DataRateLimiting__WindowSeconds", "60");
+        Environment.SetEnvironmentVariable("CaseAnonymizationJob__RetentionYears", "1");
+        Environment.SetEnvironmentVariable("CaseAnonymizationJob__BatchSize", "10");
+        Environment.SetEnvironmentVariable("CaseAnonymizationJob__IntervalHours", "24");
         Environment.SetEnvironmentVariable("Seed__Admin__Email", AuthTestData.Email);
         Environment.SetEnvironmentVariable("Seed__Admin__Password", AuthTestData.Password);
         Environment.SetEnvironmentVariable("Seed__OrganisationId", AuthTestData.OrganisationId.ToString());
         Environment.SetEnvironmentVariable("CaseExport__MaxRows", "5000");
+        Environment.SetEnvironmentVariable("EncryptionKey__Provider", "Environment");
+
+        // Generate a random 32-byte test key at runtime (not a hardcoded literal)
+        var testKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        Environment.SetEnvironmentVariable("EncryptionKey__Versions__0", testKey);
+        Environment.SetEnvironmentVariable("EncryptionKey__ActiveKeyVersion", "0");
     }
 
     private async Task StartContainersAsync()

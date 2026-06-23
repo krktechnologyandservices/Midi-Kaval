@@ -13,6 +13,7 @@ using MidiKaval.Api.Infrastructure.TravelClaims;
 using MidiKaval.Api.Models;
 
 using MidiKaval.Api.Models.TravelClaims;
+using Microsoft.AspNetCore.RateLimiting;
 
 
 
@@ -23,6 +24,7 @@ namespace MidiKaval.Api.Controllers.V1;
 /// <summary>Director travel claim review and pending list.</summary>
 
 [ApiController]
+[EnableRateLimiting("data-read")]
 
 [Route("api/v1/director/travel-claims")]
 

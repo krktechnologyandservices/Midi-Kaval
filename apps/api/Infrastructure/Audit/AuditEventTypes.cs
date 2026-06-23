@@ -68,4 +68,6 @@ public static class AuditEventTypes
     public const string BudgetUtilizationCreated = "budget.utilization.created";
     public const string BudgetUtilizationUpdated = "budget.utilization.updated";
     public const string BudgetUtilizationDeleted = "budget.utilization.deleted";
+    public const string CaseAnonymized = "case.anonymized";
+    public const string CasePersonalDataErased = "case.personal_data_erased";
 }

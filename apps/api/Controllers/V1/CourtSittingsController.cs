@@ -5,11 +5,13 @@ using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Cases;
 using MidiKaval.Api.Models;
 using MidiKaval.Api.Models.Cases;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MidiKaval.Api.Controllers.V1;
 
 /// <summary>Field-worker court sitting schedule lists.</summary>
 [ApiController]
+[EnableRateLimiting("data-read")]
 [Route("api/v1/court-sittings")]
 public sealed class CourtSittingsController(CourtSittingService courtSittingService) : ControllerBase
 {

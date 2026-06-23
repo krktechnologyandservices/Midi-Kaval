@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MidiKaval.Api.Infrastructure.Notifications;
 using MidiKaval.Api.Models.Notifications;
 
@@ -16,6 +17,7 @@ public sealed class DevicesController(UserDeviceService userDeviceService) : Con
     [ProducesResponseType(typeof(UserDeviceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> RegisterMe(
         [FromBody] RegisterUserDeviceRequest request,
         CancellationToken cancellationToken)

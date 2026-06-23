@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MidiKaval.Api.Infrastructure;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Cases;
@@ -20,6 +21,7 @@ public sealed class TravelClaimsController(TravelClaimService travelClaimService
     [ProducesResponseType(typeof(ApiResponse<TravelClaimListResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> List(CancellationToken cancellationToken)
     {
         var (result, totalCount) = await travelClaimService.ListMineAsync(cancellationToken);
@@ -39,6 +41,7 @@ public sealed class TravelClaimsController(TravelClaimService travelClaimService
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Create(
         [FromBody] CreateTravelClaimRequest? request,
         CancellationToken cancellationToken)
@@ -74,6 +77,7 @@ public sealed class TravelClaimsController(TravelClaimService travelClaimService
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken)
     {
         try
@@ -96,6 +100,7 @@ public sealed class TravelClaimsController(TravelClaimService travelClaimService
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateTravelClaimRequest? request,
@@ -137,6 +142,7 @@ public sealed class TravelClaimsController(TravelClaimService travelClaimService
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Submit(Guid id, CancellationToken cancellationToken)
     {
         try
@@ -167,6 +173,7 @@ public sealed class TravelClaimsController(TravelClaimService travelClaimService
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Approve(
         Guid id,
         [FromBody] ApproveTravelClaimRequest? request,
@@ -200,6 +207,7 @@ public sealed class TravelClaimsController(TravelClaimService travelClaimService
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Return(
         Guid id,
         [FromBody] ReturnTravelClaimRequest? request,

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PRD Validation: Role Management & Registration System for Midi-Kaval</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+    --grade-exc: #16a34a;
+    --grade-good: #65a30d;
+    --grade-fair: #d97706;
+    --grade-poor: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .grade {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: white;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .grade-fair { background: var(--grade-fair); }
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "\25B8";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+  .reviewer-source { font-size: 12px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header class="report-header">
+      <div class="title">
+        <h1>Role Management & Registration System for Midi-Kaval — Validation Report</h1>
+        <div class="subtitle">_bmad-output/planning-artifacts/prds/prd-Midi-Kaval-2026-06-23/prd.md</div>
+      </div>
+      <div class="grade grade-fair">FAIR</div>
+    </header>
+
+    <div class="synthesis">
+      <p>This PRD is a well-structured, decision-rich capability spec. Its strengths are decision-readiness, scope honesty, and downstream usability — every FR has testable consequences, the Glossary is consistent, and the decision log anchors the key trade-offs. However, the adversarial review surfaced critical gaps in data model, session management, and 2FA recovery that make this a good conversation starter rather than a buildable specification. The PRD systematically specifies UI/frontend behavior while hand-waving the backend mechanisms that make it work.</p>
+    </div>
+
+    <div class="dimension-summary">
+      <div class="dim-card">
+        <div class="dim-name">Decision-readiness</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Substance over theater</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Strategic coherence</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Done-ness clarity</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Scope honesty</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Downstream usability</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Shape fit</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+    </div>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Decision-readiness</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Decisions are stated directly, not buried. The activation-link bootstrap (FR-1), Director-propagation model (FR-5 inviting other Directors), Last-Director Protection (FR-9), and the Vendor Safety Net (FR-3) are each presented as settled choices with explicit rationales. The decision log provides 10 recorded decisions, each with a rationale — this is unusually thorough for a draft PRD. Trade-offs are surfaced honestly. Open Questions are genuinely open.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Open Question 2 is low-stakes</h3>
+              <span class="finding-location">§9 OQ #2</span>
+            </header>
+            <div class="finding-note">"Should the Vendor backstage support multiple administrators?" is relatively low-stakes and doesn't block anything in current scope.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Substance over theater</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>No persona theater. The three personas (Vendor, Director, End User) each serve distinct purposes across the FRs. No innovation theater — positioned as modernization, not novelty. No NFR theater — Security NFRs name specific mechanisms (HMAC, RFC 6238). No vision theater.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Strategic coherence</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>The thesis is present in the Vision: replace vendor-dependent config operations with a self-service, Director-owned model. Features build a coherent arc from bootstrap through ongoing management. MVP scope kind is capability/platform — appropriate.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Success Metrics do not validate the strategic thesis</h3>
+              <span class="finding-location">§8</span>
+            </header>
+            <div class="finding-note">SM-1 measures operational velocity of activation; SM-2 measures absence of support tickets. Neither measures the core bet: "Director-owned capability replaces vendor-dependent config operations." No metric tracks reduction in vendor ops intervention.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Done-ness clarity</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>The "Consequences (testable)" under each FR is an excellent structural choice. Every FR has at least one testable condition, and most have 3-5. However, several consequences use subjective or ambiguous language.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Subjective language in Consequences</h3>
+              <span class="finding-location">FR-2, FR-4, FR-8, FR-10</span>
+            </header>
+            <div class="finding-note">"Clear error page," "columns are sortable," "e.g." as example, "prompt to set up 2FA" — all underspecified for test creation. Specify exact content, which columns, whether "e.g." is the requirement or an example.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Scope honesty</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Non-Goals section lists 7 explicit items. Out-of-Scope-for-MVP lists 7 deferred items with deferral targets. [ASSUMPTION] tags appear inline. Open Questions are substantive.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Assumption vs Out-of-Scope contradiction</h3>
+              <span class="finding-location">AS-4 vs §7.2</span>
+            </header>
+            <div class="finding-note">FR-10 assumes SMS/email backup codes as secondary 2FA option (AS-4), but §7.2 explicitly defers SMS/email backup codes to v2. Direct conflict — engineer reading AS-4 would build backup codes; engineer reading §7.2 would not.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Downstream usability</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Glossary is comprehensive (16 terms). All domain nouns used in FRs appear there. FR IDs are contiguous and unique (FR-1 through FR-16). Cross-references use FR IDs rather than positional language. Downstream consumers can source-extract cleanly.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Shape fit</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>B2B capability spec for a brownfield application. Shape matches: UJs are lightweight (appropriate), SMs are operational (appropriate), brownfield context acknowledged upfront.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+        </div>
+      </details>
+    </section>
+
+    <section class="reviewer-section">
+      <details open>
+        <summary>
+          <h2>Adversarial review</h2>
+          <span class="reviewer-source">review-adversarial-general.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>This PRD is a good conversation starter but not a buildable specification. It correctly identifies a real pain point and proposes a sensible high-level architecture. However, the document has a systematic pattern of specifying UI/frontend behavior while hand-waving the backend mechanisms that make it work. The five critical findings share a common root cause: the PRD describes what should happen without specifying how it must work at the data and infrastructure level.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">No Director 2FA recovery flow</h3>
+              <span class="finding-location">FR-10, OQ #4, §7.2</span>
+            </header>
+            <div class="finding-note">2FA is mandated but SMS/email backup codes deferred to v2, and recovery process is an open question. Every 2FA loss becomes a support escalation, contradicting the PRD's goal of reducing vendor dependency.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Define the recovery path — even if it's "Director contacts Vendor support, Vendor verifies identity and resets 2FA enrollment." Document the choice.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Permanent deletion semantics are contradictory</h3>
+              <span class="finding-location">FR-8, FR-13, AS-3</span>
+            </header>
+            <div class="finding-note">FR-8 says "removed or anonymised", FR-13 requires identifying deleted users in audit events, AS-3 says anonymises. These are mutually exclusive and determine the entire data model.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Pick one path (recommended: anonymise with identity snapshot in audit event) and make it consistent across FR-8, FR-13, AS-3, and the Glossary.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Session termination for suspension has no feasible mechanism</h3>
+              <span class="finding-location">FR-6, AS-2</span>
+            </header>
+            <div class="finding-note">5-minute SLA on terminating sessions is specified without defining the session management strategy. With JWT tokens (common pattern), there's no server-side session to revoke.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Specify the session management approach (short-lived JWT with blacklist, server-side sessions, or adjust the SLA). Document architectural implications.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Vendor Backstage is a second undefined application</h3>
+              <span class="finding-location">FR-1, FR-3, §2.1, OQ #2</span>
+            </header>
+            <div class="finding-note">Treated as a minor requirement but requires its own auth, user management, UI, authorization model, and deployment — roughly half the Director dashboard scope, occupying ~10% of the PRD.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Scope the Vendor Backstage properly — define its own FRs for authentication, user management, and UI requirements, or explicitly reduce its scope to a simple CLI/admin script.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">No data model defined</h3>
+              <span class="finding-location">entire document</span>
+            </header>
+            <div class="finding-note">No entity-relationship definitions, schema, or mapping to the existing Midi-Kaval data model. Every team member will make different assumptions about how organisations, users, roles, tokens, and audit events relate.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a data model section with entity definitions, key relationships, and how they map to the existing database schema.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Rate limiting underspecified</h3>
+              <span class="finding-location">§5 Security NFR</span>
+            </header>
+            <div class="finding-note">Single sentence with no thresholds, burst handling, endpoint differentiation, or HTTP response code.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Email delivery failure handling disconnected from FRs</h3>
+              <span class="finding-location">§5, FR-1, FR-3, FR-5, FR-11, FR-12, FR-15, FR-16</span>
+            </header>
+            <div class="finding-note">Every FR assumes email delivery always works. No retry strategy per email type, no delivery status visibility, no bounce handling.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Password complexity is a dangling dependency</h3>
+              <span class="finding-location">FR-2, OQ #1</span>
+            </header>
+            <div class="finding-note">FR-2 requires "organisation-configured" policy but no configuration mechanism exists. Limbo between system-wide default and per-org config.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">No existing-user migration or cutover strategy</h3>
+              <span class="finding-location">entire document</span>
+            </header>
+            <div class="finding-note">Hardcoded accounts acknowledged in Vision but no migration path, coexistence plan, or rollback described.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Audit broadcast creates notification spam</h3>
+              <span class="finding-location">FR-15</span>
+            </header>
+            <div class="finding-note">N Directors × M actions = N*M emails with no digest, no rate limiting, no opt-out. Notification fatigue guaranteed.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">"Immutable audit log" not defined</h3>
+              <span class="finding-location">FR-13, Glossary</span>
+            </header>
+            <div class="finding-note">Implementation spectrum from plain DB table to cryptographic chain — radically different security, performance, and query properties.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">1-hour Safety Net detection too slow</h3>
+              <span class="finding-location">FR-3, AS-1</span>
+            </header>
+            <div class="finding-note">Last-Director loss means unmanaged org for up to 1 hour. Event-driven detection not considered.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">SM-2 is poorly defined</h3>
+              <span class="finding-location">§8, SM-2</span>
+            </header>
+            <div class="finding-note">"Zero support tickets" conflates product quality, documentation, user patience, and ticket classification. Incentivizes wrong behavior.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <div class="mechanical">
+      <h3>Mechanical notes</h3>
+      <ul>
+        <li>Glossary drift: "organisation" vs "organization" used inconsistently in §2.3 vs Glossary</li>
+        <li>FR/ID continuity: contiguous FR-1 through FR-16, no gaps</li>
+        <li>Assumptions Index: inline tags lack AS- prefix (e.g., <code>[ASSUMPTION: 1 hour]</code> instead of <code>[ASSUMPTION AS-1: 1 hour]</code>)</li>
+        <li>No open questions tagged with FR dependencies</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Rubric: .agents/skills/bmad-prd/assets/prd-validation-checklist.md</span>
+        <span>Generated: 2026-06-23T20:00</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

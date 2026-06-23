@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Users;
 using MidiKaval.Api.Models.Cases;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MidiKaval.Api.Controllers.V1;
 
 [ApiController]
+[EnableRateLimiting("data-read")]
 [Route("api/v1/users")]
 public sealed class UsersController(UserQueryService userQueryService) : ControllerBase
 {

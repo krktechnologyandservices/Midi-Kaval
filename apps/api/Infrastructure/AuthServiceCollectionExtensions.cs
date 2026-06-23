@@ -118,21 +118,27 @@ public static class AuthServiceCollectionExtensions
 
         var rateLimitOptions = configuration.GetSection(AuthRateLimitOptions.SectionName).Get<AuthRateLimitOptions>()
             ?? new AuthRateLimitOptions();
+        var dataRateLimitOptions = configuration.GetSection(DataRateLimitOptions.SectionName).Get<DataRateLimitOptions>()
+            ?? new DataRateLimitOptions();
 
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, cancellationToken) =>
             {
+                // Use a generic message since OnRejectedContext does not expose the policy name
+                const string detail = "Too many requests. Please try again later.";
+
                 var problem = new Microsoft.AspNetCore.Mvc.ProblemDetails
                 {
                     Status = StatusCodes.Status429TooManyRequests,
                     Title = "Too Many Requests",
-                    Detail = "Too many authentication attempts. Please try again later.",
+                    Detail = detail,
                     Type = "https://tools.ietf.org/html/rfc6585#section-4",
                 };
 
                 context.HttpContext.Response.ContentType = "application/problem+json";
+                context.HttpContext.Response.Headers.RetryAfter = "60";
                 await context.HttpContext.Response.WriteAsync(
                     JsonSerializer.Serialize(problem, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
                     cancellationToken);
@@ -146,6 +152,9 @@ public static class AuthServiceCollectionExtensions
             options.AddPolicy("auth-reset-password", CreateAuthRateLimitPartition(rateLimitOptions));
             options.AddPolicy("auth-step-up", CreateAuthRateLimitPartition(rateLimitOptions));
             options.AddPolicy("auth-verify-step-up", CreateAuthRateLimitPartition(rateLimitOptions));
+
+            options.AddPolicy("data-read", CreateDataReadRateLimitPartition(dataRateLimitOptions));
+            options.AddPolicy("data-write", CreateDataWriteRateLimitPartition(dataRateLimitOptions));
         });
 
         return services;
@@ -212,6 +221,50 @@ public static class AuthServiceCollectionExtensions
                 {
                     PermitLimit = rateLimitOptions.RateLimitPermitLimit,
                     Window = TimeSpan.FromSeconds(rateLimitOptions.RateLimitWindowSeconds),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0,
+                });
+        };
+
+    private static Func<HttpContext, RateLimitPartition<string>> CreateDataReadRateLimitPartition(
+        DataRateLimitOptions dataOptions) =>
+        httpContext =>
+        {
+            if (httpContext.User.IsInRole(UserRoles.Director))
+            {
+                return RateLimitPartition.GetNoLimiter("director-bypass");
+            }
+
+            var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? httpContext.Connection.Id;
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey,
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = dataOptions.ReadPermitLimit,
+                    Window = TimeSpan.FromSeconds(dataOptions.WindowSeconds),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0,
+                });
+        };
+
+    private static Func<HttpContext, RateLimitPartition<string>> CreateDataWriteRateLimitPartition(
+        DataRateLimitOptions dataOptions) =>
+        httpContext =>
+        {
+            if (httpContext.User.IsInRole(UserRoles.Director))
+            {
+                return RateLimitPartition.GetNoLimiter("director-bypass");
+            }
+
+            var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? httpContext.Connection.Id;
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey,
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = dataOptions.WritePermitLimit,
+                    Window = TimeSpan.FromSeconds(dataOptions.WindowSeconds),
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     QueueLimit = 0,
                 });

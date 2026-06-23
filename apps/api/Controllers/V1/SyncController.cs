@@ -6,11 +6,13 @@ using MidiKaval.Api.Infrastructure.Sync;
 using MidiKaval.Api.Infrastructure.Visits;
 using MidiKaval.Api.Models;
 using MidiKaval.Api.Models.Sync;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MidiKaval.Api.Controllers.V1;
 
 /// <summary>Mobile offline sync push endpoint.</summary>
 [ApiController]
+[EnableRateLimiting("data-write")]
 [Route("api/v1/sync")]
 public sealed class SyncController(SyncPushService syncPushService) : ControllerBase
 {

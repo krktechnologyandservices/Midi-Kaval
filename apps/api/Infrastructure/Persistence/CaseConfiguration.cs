@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Domain.Entities.Legends;
 using MidiKaval.Api.Domain.Enums;
+using MidiKaval.Api.Infrastructure.Encryption;
 
 namespace MidiKaval.Api.Infrastructure.Persistence;
 
@@ -23,11 +24,13 @@ public sealed class CaseConfiguration : IEntityTypeConfiguration<Case>
             .IsRequired();
 
         builder.Property(c => c.BeneficiaryName)
-            .HasMaxLength(256)
-            .IsRequired();
+            .HasConversion(new SearchablePiiEncryptionConverter())
+            .HasColumnType("bytea");
 
         builder.Property(c => c.BeneficiaryContact)
-            .HasMaxLength(32);
+            .HasConversion(new PiiEncryptionConverter())
+            .HasColumnType("bytea")
+            .HasMaxLength(2048);
 
         builder.Property(c => c.TypeOfOffence)
             .HasMaxLength(128)
@@ -89,13 +92,17 @@ public sealed class CaseConfiguration : IEntityTypeConfiguration<Case>
             .HasDefaultValue(0);
 
         builder.Property(c => c.Latitude)
-            .HasPrecision(9, 6);
+            .HasConversion(new GpsEncryptionConverter())
+            .HasColumnType("bytea");
 
         builder.Property(c => c.Longitude)
-            .HasPrecision(9, 6);
+            .HasConversion(new GpsEncryptionConverter())
+            .HasColumnType("bytea");
 
         builder.Property(c => c.Landmark)
-            .HasMaxLength(500);
+            .HasConversion(new PiiEncryptionConverter())
+            .HasColumnType("bytea")
+            .HasMaxLength(4096);
 
         builder.Property(c => c.GpsVerified)
             .HasDefaultValue(false);

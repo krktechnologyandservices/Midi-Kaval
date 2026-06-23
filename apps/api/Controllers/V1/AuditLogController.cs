@@ -7,10 +7,12 @@ using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Models;
 using MidiKaval.Api.Models.Audit;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MidiKaval.Api.Controllers.V1;
 
 [ApiController]
+[EnableRateLimiting("data-read")]
 [Authorize(Policy = Policies.DirectorOnly)]
 [Route("api/v1/audit")]
 [Produces("application/json")]

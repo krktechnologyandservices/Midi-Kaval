@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Cases;
 using MidiKaval.Api.Infrastructure.Storage;
@@ -19,6 +20,7 @@ public sealed class AttachmentsController(AttachmentService attachmentService) :
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Presign(
         [FromBody] AttachmentPresignRequest? request,
         CancellationToken cancellationToken)
@@ -57,6 +59,7 @@ public sealed class AttachmentsController(AttachmentService attachmentService) :
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Confirm(
         [FromBody] AttachmentConfirmRequest? request,
         CancellationToken cancellationToken)
@@ -105,6 +108,7 @@ public sealed class AttachmentsController(AttachmentService attachmentService) :
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> GetDownloadUrl(Guid id, CancellationToken cancellationToken)
     {
         try

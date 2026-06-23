@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MidiKaval.Api.Infrastructure;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Visits;
@@ -19,6 +20,7 @@ public sealed class VisitsController(VisitService visitService) : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<VisitListResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ListToday(CancellationToken cancellationToken)
     {
         try
@@ -38,6 +40,7 @@ public sealed class VisitsController(VisitService visitService) : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<VisitGroupingSuggestionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> GetTodayGroupingSuggestion(CancellationToken cancellationToken)
     {
         try
@@ -62,6 +65,7 @@ public sealed class VisitsController(VisitService visitService) : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<VisitListResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ListWeekly(CancellationToken cancellationToken)
     {
         try
@@ -81,6 +85,7 @@ public sealed class VisitsController(VisitService visitService) : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<VisitListResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> ListOverdue(CancellationToken cancellationToken)
     {
         try
@@ -102,6 +107,7 @@ public sealed class VisitsController(VisitService visitService) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Start(Guid id, CancellationToken cancellationToken)
     {
         try
@@ -132,6 +138,7 @@ public sealed class VisitsController(VisitService visitService) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Complete(
         Guid id,
         [FromBody] CompleteVisitRequest? request,
@@ -174,6 +181,7 @@ public sealed class VisitsController(VisitService visitService) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Reschedule(
         Guid id,
         [FromBody] RescheduleVisitRequest? request,

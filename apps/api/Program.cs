@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Infrastructure;
 using MidiKaval.Api.Infrastructure.Budgets;
+using MidiKaval.Api.Infrastructure.Middleware;
 using MidiKaval.Api.Infrastructure.Cases;
 using MidiKaval.Api.Infrastructure.Visits;
 using MidiKaval.Api.Infrastructure.Sync;
@@ -78,6 +79,10 @@ if (!builder.Environment.IsTesting())
         builder.Configuration.GetSection(PushNotificationsOptions.SectionName));
     builder.Services.Configure<ReportExportOptions>(
         builder.Configuration.GetSection(ReportExportOptions.SectionName));
+    builder.Services.AddOptions<CaseAnonymizationJobOptions>()
+        .Bind(builder.Configuration.GetSection(CaseAnonymizationJobOptions.SectionName))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<CaseAnonymizationJobOptions>, CaseAnonymizationJobOptionsValidator>();
     builder.Services.AddSingleton<FakePushNotificationSender>();
     var pushOptions = builder.Configuration
         .GetSection(PushNotificationsOptions.SectionName)
@@ -103,6 +108,7 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<DashboardService>();
     builder.Services.AddScoped<ReportGenerationService>();
     builder.Services.AddScoped<ReportExportJobRunner>();
+    builder.Services.AddScoped<CaseAnonymizationJobRunner>();
     builder.Services.AddScoped<MappingSpecLoader>();
     builder.Services.AddScoped<MigrationImportService>();
     builder.Services.Configure<MappingSpecOptions>(builder.Configuration.GetSection(MappingSpecOptions.SectionName));
@@ -112,6 +118,7 @@ if (!builder.Environment.IsTesting())
         builder.Services.AddHostedService<CourtReminderBackgroundService>();
         builder.Services.AddHostedService<CourtMissEscalationBackgroundService>();
         builder.Services.AddHostedService<ReportExportBackgroundService>();
+        builder.Services.AddHostedService<CaseAnonymizationBackgroundService>();
     }
     builder.Services.AddScoped<AttachmentService>();
     builder.Services.AddScoped<VisitService>();
@@ -131,6 +138,8 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<SocioDemographicProfileExcelService>();
     builder.Services.AddBlobStorage(builder.Configuration);
     builder.Services.AddMidiKavalAuth(builder.Configuration);
+    builder.Services.AddMidiKavalDataRateLimiting(builder.Configuration);
+    builder.Services.AddMidiKavalSecurity(builder.Configuration);
     builder.Services.AddMidiKavalCors(builder.Configuration, builder.Environment);
 }
 
@@ -167,10 +176,11 @@ app.UseMiddleware<ApiProblemDetailsMiddleware>();
 
 if (!app.Environment.IsTesting())
 {
+    app.UseMiddleware<ContentSecurityPolicyMiddleware>();
     app.UseCors(CorsOptions.WebClientPolicy);
-    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseRateLimiter();
 }
 
 app.UseSwagger();

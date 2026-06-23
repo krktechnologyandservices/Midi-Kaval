@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Infrastructure.Audit;
@@ -22,6 +23,7 @@ public sealed class StaffController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<StaffListResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> List(CancellationToken cancellationToken)
     {
         var organisationId = ResolveOrganisationId();
@@ -52,6 +54,7 @@ public sealed class StaffController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
     public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken)
     {
         var organisationId = ResolveOrganisationId();
@@ -74,6 +77,7 @@ public sealed class StaffController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Create(
         CreateStaffRequest request,
         CancellationToken cancellationToken)
@@ -163,6 +167,7 @@ public sealed class StaffController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Update(
         Guid id,
         UpdateStaffRequest request,
@@ -239,6 +244,7 @@ public sealed class StaffController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
     {
         var organisationId = ResolveOrganisationId();
@@ -295,6 +301,7 @@ public sealed class StaffController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> Reactivate(Guid id, CancellationToken cancellationToken)
     {
         var organisationId = ResolveOrganisationId();
@@ -344,6 +351,7 @@ public sealed class StaffController(AppDbContext db) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
     public async Task<IActionResult> ForceReset(Guid id, CancellationToken cancellationToken)
     {
         var organisationId = ResolveOrganisationId();
