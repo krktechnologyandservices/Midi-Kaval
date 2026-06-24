@@ -40,6 +40,14 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.IsActive)
             .HasDefaultValue(true);
 
+        builder.Property(u => u.IsSuspended)
+            .HasDefaultValue(false);
+
+        builder.HasOne(u => u.Organisation)
+            .WithMany(o => o.Users)
+            .HasForeignKey(u => u.OrganisationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(u => new { u.OrganisationId, u.Email })
             .IsUnique();
     }

@@ -1,5 +1,5 @@
 # generated: 2026-06-13
-# last_updated: 2026-06-23
+# last_updated: 2026-06-24
 # project: Midi-Kaval
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,14 +35,14 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-13
-last_updated: 2026-06-23
+last_updated: 2026-06-24 (Story 1.12 review → done — all patches applied)
 project: Midi-Kaval
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  epic-1: done
+  epic-1: in-progress
   1-1-monorepo-scaffold-and-local-dev-environment: done
   1-2-api-host-foundation-with-health-and-openapi: done
   1-3-users-schema-and-seed-admin-account: done
@@ -52,6 +52,10 @@ development_status:
   1-7-react-native-shell-with-login-and-otp-flow: done
   1-8-rbac-policies-on-protected-endpoints: done
   1-9-self-service-password-reset: done
+  1-10-data-model-add-organisations-and-activation-tokens-tables: done
+  1-11-vendor-backstage-portal-authentication-and-activation-link-generation: done
+  1-12-first-director-registration-flow: done
+  1-13-vendor-safety-net-zero-director-recovery: backlog
   epic-1-retrospective: done
 
   epic-2: in-progress
@@ -64,6 +68,13 @@ development_status:
   2-7-case-export-to-excel-and-pdf: done
   2-8-case-assignment-transfer-and-handoff-whisper: done
   2-9-web-case-registry-and-detail-ui: done
+  2-10-extend-users-schema-with-role-and-organisation-columns: backlog
+  2-11-user-management-dashboard-list-filter-sort: backlog
+  2-12-invite-new-user-flow: backlog
+  2-13-user-suspension-and-reactivation: backlog
+  2-14-permanent-deletion-user-anonymisation: backlog
+  2-15-last-director-protection: backlog
+  2-16-director-2fa-mandate-and-recovery: backlog
   epic-2-retrospective: optional
 
   epic-3: in-progress
@@ -75,6 +86,9 @@ development_status:
   3-6-offline-visit-storage-and-sync-push-api: done
   3-7-sync-chip-and-sync-queue-mobile-ui: done
   3-8-discreet-pocso-capture-mode: done
+  3-9-invitations-data-model: backlog
+  3-10-double-confirmation-registration-flow: backlog
+  3-11-pending-invitations-management-and-resend: backlog
   epic-3-retrospective: optional
 
   epic-4: in-progress
@@ -83,6 +97,8 @@ development_status:
   4-3-notes-timeline-ui-web-and-mobile: done
   4-4-interventions-crud-api: done
   4-5-interventions-ui-and-overdue-job: done
+  4-6-audit-events-data-model-and-recording: backlog
+  4-7-audit-log-viewer: backlog
   epic-4-retrospective: optional
 
   epic-5: in-progress
@@ -90,6 +106,8 @@ development_status:
   5-2-court-schedule-ui-web-case-detail-and-mobile: done
   5-3-court-reminder-background-job: done
   5-4-court-miss-escalation-and-crisis-queue-feed: done
+  5-5-audit-broadcast-batched-email-digests-to-directors: backlog
+  5-6-user-notification-suspension-and-deletion-emails: backlog
   epic-5-retrospective: optional
 
   epic-6: in-progress
@@ -97,6 +115,8 @@ development_status:
   6-2-mobile-travel-claim-capture: done
   6-3-director-claim-approval-on-web: done
   6-4-claim-status-notifications: done
+  6-5-migration-script-for-existing-hardcoded-accounts: backlog
+  6-6-dual-auth-support-during-migration-window: backlog
   epic-6-retrospective: optional
 
   epic-7: in-progress

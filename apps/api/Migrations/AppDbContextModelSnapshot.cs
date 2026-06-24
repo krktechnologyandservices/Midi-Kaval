@@ -22,6 +22,56 @@ namespace MidiKaval.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.ActivationToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ConsumedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at_utc");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<int>("DeliveryAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("delivery_attempts");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organisation_id");
+
+                    b.Property<string>("TargetEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("target_email");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_activation_tokens");
+
+                    b.HasIndex("OrganisationId", "TokenHash")
+                        .HasDatabaseName("ix_activation_tokens_organisation_id_token_hash");
+
+                    b.ToTable("activation_tokens", (string)null);
+                });
+
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.Attachment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1721,6 +1771,37 @@ namespace MidiKaval.Api.Migrations
                     b.ToTable("legend_visit_outcomes", (string)null);
                 });
 
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.Organisation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organisations");
+
+                    b.ToTable("organisations", (string)null);
+                });
+
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.ProjectBudget", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2099,6 +2180,12 @@ namespace MidiKaval.Api.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<bool>("IsSuspended")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_suspended");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -2130,6 +2217,14 @@ namespace MidiKaval.Api.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("token_version");
+
+                    b.Property<DateTime?>("TotpEnrolledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("totp_enrolled_at");
+
+                    b.Property<string>("TotpSecret")
+                        .HasColumnType("text")
+                        .HasColumnName("totp_secret");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")
@@ -2314,6 +2409,18 @@ namespace MidiKaval.Api.Migrations
                         .HasDatabaseName("ix_visit_notes_visit_id");
 
                     b.ToTable("visit_notes", (string)null);
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.ActivationToken", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Organisation", "Organisation")
+                        .WithMany("ActivationTokens")
+                        .HasForeignKey("OrganisationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_activation_tokens_organisations_organisation_id");
+
+                    b.Navigation("Organisation");
                 });
 
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.AuditEvent", b =>
@@ -2629,6 +2736,18 @@ namespace MidiKaval.Api.Migrations
                         .HasConstraintName("fk_travel_claim_cases_travel_claims_travel_claim_id");
                 });
 
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.User", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Organisation", "Organisation")
+                        .WithMany("Users")
+                        .HasForeignKey("OrganisationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_users_organisations_organisation_id");
+
+                    b.Navigation("Organisation");
+                });
+
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.UserDevice", b =>
                 {
                     b.HasOne("MidiKaval.Api.Domain.Entities.User", null)
@@ -2637,6 +2756,13 @@ namespace MidiKaval.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_user_devices_users_user_id");
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.Organisation", b =>
+                {
+                    b.Navigation("ActivationTokens");
+
+                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.ProjectBudget", b =>

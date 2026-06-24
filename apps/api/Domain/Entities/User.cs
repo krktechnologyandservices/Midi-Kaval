@@ -12,6 +12,11 @@ public class User
     public int TokenVersion { get; set; }
     public string PasswordHash { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public bool IsSuspended { get; set; }
+    public string? TotpSecret { get; set; }
+    public DateTime? TotpEnrolledAt { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+
+    public Organisation Organisation { get; set; } = null!;
 }

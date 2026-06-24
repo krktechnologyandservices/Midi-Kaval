@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard, guestGuard, otpGuard } from './core/auth/auth.guard';
 import { directorGuard } from './core/auth/director.guard';
 import { supervisorGuard } from './core/auth/supervisor.guard';
+import { vendorGuard } from './core/auth/vendor.guard';
 
 export const routes: Routes = [
   {
@@ -43,6 +44,13 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/auth/mobile-only/mobile-only.component').then(
         (m) => m.MobileOnlyComponent,
+      ),
+  },
+  {
+    path: 'activate',
+    loadComponent: () =>
+      import('./features/activation/activation.component').then(
+        (m) => m.ActivationComponent,
       ),
   },
   {
@@ -189,6 +197,12 @@ export const routes: Routes = [
           ),
       },
     ],
+  },
+  {
+    path: 'vendor',
+    canActivate: [authGuard, vendorGuard],
+    loadComponent: () =>
+      import('./features/vendor/vendor.component').then((m) => m.VendorComponent),
   },
   {
     path: '**',

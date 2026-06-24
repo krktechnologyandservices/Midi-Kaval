@@ -44,6 +44,23 @@ public class FieldWorkerUserSeeder(
             return;
         }
 
+        // Ensure the organisation exists before seeding — supports the FK constraint.
+        var orgExists = await db.Organisations.AnyAsync(o => o.Id == organisationId, cancellationToken);
+        if (!orgExists)
+        {
+            var now = DateTime.UtcNow;
+            var org = new Organisation
+            {
+                Id = organisationId,
+                Name = "Pilot Organisation",
+                IsActive = true,
+                CreatedAtUtc = now,
+            };
+            db.Organisations.Add(org);
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Seeded pilot organisation {OrganisationId} for field worker account.", organisationId);
+        }
+
         var normalizedEmail = email.Trim().ToLowerInvariant();
 
         var existing = await db.Users.SingleOrDefaultAsync(

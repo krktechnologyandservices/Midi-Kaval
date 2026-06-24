@@ -114,6 +114,10 @@ public static class AuthServiceCollectionExtensions
                 Policies.AccountantOrAbove,
                 UserRoles.Director,
                 UserRoles.Accountant);
+            AddActiveUserRolePolicy(
+                options,
+                Policies.VendorOnly,
+                UserRoles.Vendor);
         });
 
         var rateLimitOptions = configuration.GetSection(AuthRateLimitOptions.SectionName).Get<AuthRateLimitOptions>()
@@ -152,9 +156,27 @@ public static class AuthServiceCollectionExtensions
             options.AddPolicy("auth-reset-password", CreateAuthRateLimitPartition(rateLimitOptions));
             options.AddPolicy("auth-step-up", CreateAuthRateLimitPartition(rateLimitOptions));
             options.AddPolicy("auth-verify-step-up", CreateAuthRateLimitPartition(rateLimitOptions));
+            options.AddPolicy("auth-activate", CreateAuthRateLimitPartition(rateLimitOptions));
+            options.AddPolicy("auth-activate-read", CreateAuthRateLimitPartition(rateLimitOptions));
 
             options.AddPolicy("data-read", CreateDataReadRateLimitPartition(dataRateLimitOptions));
             options.AddPolicy("data-write", CreateDataWriteRateLimitPartition(dataRateLimitOptions));
+
+            options.AddPolicy("vendor-create", httpContext =>
+            {
+                // Partition by authenticated user identity so one vendor cannot exhaust another's budget
+                var partitionKey = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                    ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                    ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey,
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0,
+                    });
+            });
         });
 
         return services;
@@ -214,7 +236,7 @@ public static class AuthServiceCollectionExtensions
         httpContext =>
         {
             var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString()
-                ?? httpContext.Connection.Id;
+                ?? "unknown";
             return RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey,
                 _ => new FixedWindowRateLimiterOptions
@@ -236,7 +258,7 @@ public static class AuthServiceCollectionExtensions
             }
 
             var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString()
-                ?? httpContext.Connection.Id;
+                ?? "unknown";
             return RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey,
                 _ => new FixedWindowRateLimiterOptions
@@ -258,7 +280,7 @@ public static class AuthServiceCollectionExtensions
             }
 
             var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString()
-                ?? httpContext.Connection.Id;
+                ?? "unknown";
             return RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey,
                 _ => new FixedWindowRateLimiterOptions

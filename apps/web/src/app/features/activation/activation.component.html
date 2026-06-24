@@ -1,0 +1,125 @@
+<main>
+  @if (step() === 'validate') {
+    <div class="card">
+      <h1>Activating your account</h1>
+      <p>Please wait while we verify your activation link...</p>
+      <div class="spinner"></div>
+    </div>
+  }
+
+  @if (step() === 'info') {
+    <div class="card">
+      <h1>Welcome to Kaval</h1>
+      <p class="subtitle">You've been invited to join <strong>{{ organisationName() }}</strong></p>
+
+      <div class="form-group">
+        <label for="email">Your email</label>
+        <input
+          id="email"
+          type="email"
+          [value]="email()"
+          readonly
+          class="readonly-input"
+        />
+      </div>
+
+      <p class="info-text">
+        This account will be the first Director of your organisation.
+        You'll set your name and password on the next screen.
+      </p>
+
+      <button (click)="proceedToForm()">Continue to Setup</button>
+    </div>
+  }
+
+  @if (step() === 'form') {
+    <div class="card">
+      <h1>Welcome to Kaval</h1>
+      <p class="subtitle">You've been invited to join <strong>{{ organisationName() }}</strong></p>
+
+      @if (errorMessage()) {
+        <div class="error-banner">{{ errorMessage() }}</div>
+      }
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          [value]="email()"
+          readonly
+          class="readonly-input"
+        />
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="form-group">
+          <label for="fullName">Full Name</label>
+          <input
+            id="fullName"
+            type="text"
+            formControlName="fullName"
+            placeholder="e.g. Jane Smith"
+          />
+          @if (form.controls.fullName.invalid && form.controls.fullName.touched) {
+            <div class="field-error">
+              @if (form.controls.fullName.errors?.['required']) {
+                Full name is required.
+              }
+              @if (form.controls.fullName.errors?.['maxlength']) {
+                Full name is too long (256 characters max).
+              }
+            </div>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            formControlName="password"
+            placeholder="Create a strong password"
+          />
+          <div class="strength-bar">
+            <div
+              class="strength-fill {{ passwordStrength.class }}"
+              [style.width.%]="passwordStrength.percent"
+            ></div>
+          </div>
+          <div class="strength-label">{{ passwordStrength.label }}</div>
+          @if (form.controls.password.touched && passwordErrors.length > 0) {
+            <div class="field-error">
+              Password must contain:
+              <ul>
+                @for (err of passwordErrors; track err) {
+                  <li>{{ err }}</li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+
+        <button type="submit" [disabled]="submitting()">
+          {{ submitting() ? 'Activating...' : 'Activate Account' }}
+        </button>
+      </form>
+    </div>
+  }
+
+  @if (step() === 'success') {
+    <div class="card success-card">
+      <h2>Activation Complete</h2>
+      <p>{{ successMessage() }}</p>
+      <button class="btn-primary" (click)="goToLogin()">Go to Login</button>
+    </div>
+  }
+
+  @if (step() === 'error') {
+    <div class="card error-card">
+      <h2>Activation Link Issue</h2>
+      <p>{{ errorMessage() }}</p>
+      <button class="btn-primary" (click)="goToLogin()">Go to Login</button>
+    </div>
+  }
+</main>

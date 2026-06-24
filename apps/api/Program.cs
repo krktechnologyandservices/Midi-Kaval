@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.HttpOverrides;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Infrastructure;
 using MidiKaval.Api.Infrastructure.Budgets;
@@ -23,6 +24,10 @@ using MidiKaval.Api.Jobs;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Infrastructure.Seed;
 using MidiKaval.Api.Models;
+using MidiKaval.Api.Infrastructure.RoleManagement;
+using MidiKaval.Api.Domain.RoleManagement;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 
@@ -63,6 +68,7 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<AdminUserSeeder>();
     builder.Services.AddScoped<FieldWorkerUserSeeder>();
     builder.Services.AddScoped<PocsoCaseSeeder>();
+    builder.Services.AddScoped<VendorUserSeeder>();
     builder.Services.AddScoped<CaseService>();
     builder.Services.AddScoped<CaseNoteService>();
     builder.Services.AddScoped<InterventionService>();
@@ -141,6 +147,31 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddMidiKavalDataRateLimiting(builder.Configuration);
     builder.Services.AddMidiKavalSecurity(builder.Configuration);
     builder.Services.AddMidiKavalCors(builder.Configuration, builder.Environment);
+
+    // Vendor backstage services
+    builder.Services.AddSingleton<MidiKaval.Api.Infrastructure.RoleManagement.TokenService>();
+    builder.Services.AddScoped<MidiKaval.Api.Domain.RoleManagement.OrganisationService>();
+    builder.Services.AddScoped<MidiKaval.Api.Domain.RoleManagement.RegistrationService>();
+    builder.Services.AddScoped<ActivationEmailDeliveryJob>();
+
+    // Hangfire background jobs
+    var hangfireConnectionString = builder.Configuration.GetConnectionString("Hangfire");
+    builder.Services.AddHangfire(config =>
+    {
+        config.UseSimpleAssemblyNameTypeSerializer()
+              .UseRecommendedSerializerSettings();
+
+        if (!string.IsNullOrWhiteSpace(hangfireConnectionString))
+        {
+            config.UsePostgreSqlStorage(opts =>
+                    opts.UseNpgsqlConnection(hangfireConnectionString));
+        }
+        else
+        {
+            config.UseInMemoryStorage();
+        }
+    });
+    builder.Services.AddHangfireServer();
 }
 
 builder.Services.AddEndpointsApiExplorer();
@@ -164,6 +195,17 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 app.UseMiddleware<RequestIdMiddleware>();
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    // TODO: Configure KnownNetworks or KnownProxies before production deployment.
+    // Without these, any client can spoof X-Forwarded-For and bypass IP-based rate limiting.
+    // Example for a Docker/nginx setup on 172.x.x.x:
+    //   KnownNetworks = { new IPNetwork(IPAddress.Parse("172.16.0.0"), 12) }
+    // Example for a single proxy IP:
+    //   KnownProxies = { IPAddress.Parse("10.0.0.100") }
+    // For Azure App Service / AWS ELB the platform handles forwarding — leave empty.
+});
 
 if (!app.Environment.IsDevelopment())
 {
@@ -181,6 +223,7 @@ if (!app.Environment.IsTesting())
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseRateLimiter();
+    app.UseHangfireDashboard();
 }
 
 app.UseSwagger();

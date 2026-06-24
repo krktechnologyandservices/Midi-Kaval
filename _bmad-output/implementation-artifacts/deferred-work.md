@@ -511,3 +511,27 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - **No CancellationToken support** (`MigrationImportService.cs:455`) — `ValidateFileFormat` uses synchronous `Read`; method is called from async controller context.
 - **No concurrency protection in doc comment** (`MigrationImportService.cs:448-462`) — Static method shared across requests not documented as non-thread-safe.
 - **No test for 4+ byte non-ZIP garbage** (`MigrationFileValidationTests.cs`) — Only short file (`.Length < 4`) and renamed .exe (MZ) are tested; random bytes >= 4 bytes is untested.
+
+## Deferred from: code review of 1-10-data-model-add-organisations-and-activation-tokens-tables.md (2026-06-24)
+
+- **Auth middleware doesn't check `IsSuspended`** (`Infrastructure/AuthServiceCollectionExtensions.cs:197`, `Infrastructure/Auth/ActiveUserAuthorizationHandler.cs:20`) — deferred to Story 2.4 (User Suspension and Reactivation)
+- **Suspended users still receive notifications** (EmailDeliveryService, InterventionService, CrisisQueueService, CourtSittingService, CourtMissEscalationBackgroundService, CourtReminderBackgroundService, PushDeliveryService) — all query by `u.IsActive` only; deferred to Story 2.4
+- **Staff DTO doesn't expose `IsSuspended`** (`Models/Users/StaffDto.cs:10`) — deferred to Story 2.x Director Dashboard
+- **Deactivate/Reactivate don't interact with `IsSuspended`** (`StaffController.cs:274,324`) — separate concern; suspension lifecycle is Story 2.4
+- **RbacTestData ordering dependency with new FK** (`RbacAuthorizationTests.cs:168-216`) — pre-existing test infra concern; AdminUserSeeder self-healing covers the happy path
+- **Plaintext TOTP secret storage** — `totp_secret` column stores raw Base32; encryption deferred to Story 2.7
+- **Missing index on `activation_tokens.expires_at_utc`** — cleanup job would scan; deferred to Story 3.3
+
+## Deferred from: code review of 1-11-vendor-backstage-portal-authentication-and-activation-link-generation.md (2026-06-24)
+
+- **Require2FA ignores IsSuspended check** (`apps/api/Authorization/Require2FAAttribute.cs:29-32`) — deferred to Story 2.4 (User Suspension and Reactivation) which implements the full suspension lifecycle
+- **No unique constraint on organisation name** — out of scope for Story 1.11; could be added in a future story that addresses org management
+- **Migration side-effect alters is_active default** (`apps/api/Migrations/20260623211741_AddActivationTokenDeliveryAttempts.cs:14-22`) — pre-existing schema change from Story 1.10; default was changed from `true` to `false` to match spec
+- **FK enforcement test doesn't test rejection of invalid OrgId** (`tests/api.integration/UsersSchemaTests.cs:159-187`) — test improvement; current test validates FK works for valid org references but not that invalid ones are rejected
+
+## Deferred from: code review of 1-12-first-director-registration-flow.md (2026-06-24)
+
+- **Password policy duplicated in C# and TypeScript** — `ValidatePassword` in C# and `passwordPolicyValidator` in TypeScript are identical but disjoint. When the policy is updated, one side will drift. Consider exposing policy via `GET /api/v1/auth/password-policy`. Cross-cutting concern, not blocking this story.
+- **VendorOnly policy registered but no vendor API endpoints shown** — `Policies.VendorOnly` authorization policy is registered but no vendor controller endpoints in this diff. From Story 1.11; verify the vendor `OrganisationsController` has `[Authorize(Policy = Policies.VendorOnly)]`.
+- **ActivationEmailDeliveryJob retry doesn't persist new token hash** — On retry, `GenerateActivationToken()` creates a new raw token and signature but the new `tokenHash` is not saved to the `ActivationToken.TokenHash` column. When the Director clicks the new link, SHA-256 lookup fails because the stored hash is stale. Bug in Story 1.11 code, not introduced by 1.12.
+- **DbUpdateException handler missing in RegistrationController** — Constraint violations (unique email, FK) during user creation propagate to global exception handler and return HTTP 500. Acceptable for unexpected failures; non-blocking.

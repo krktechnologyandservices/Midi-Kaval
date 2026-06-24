@@ -4,6 +4,7 @@ export enum AppRole {
   Accountant = 'Accountant',
   SocialWorker = 'SocialWorker',
   CaseWorker = 'CaseWorker',
+  Vendor = 'Vendor',
 }
 
 export enum SyncState {

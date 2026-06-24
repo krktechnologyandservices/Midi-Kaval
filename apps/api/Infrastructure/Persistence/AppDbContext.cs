@@ -9,6 +9,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<User> Users => Set<User>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<Case> Cases => Set<Case>();
+    public DbSet<Organisation> Organisations => Set<Organisation>();
+    public DbSet<ActivationToken> ActivationTokens => Set<ActivationToken>();
     public DbSet<CaseStageTransition> CaseStageTransitions => Set<CaseStageTransition>();
     public DbSet<CaseSearchPreset> CaseSearchPresets => Set<CaseSearchPreset>();
     public DbSet<CaseAssignment> CaseAssignments => Set<CaseAssignment>();

@@ -31,6 +31,25 @@ public class AdminUserSeeder(
             return;
         }
 
+        // Ensure the organisation exists before seeding a Director user.
+        // This is needed because the new FK constraint (fk_users_organisations_organisation_id)
+        // requires a matching organisations row.
+        var orgExists = await db.Organisations.AnyAsync(o => o.Id == organisationId, cancellationToken);
+        if (!orgExists)
+        {
+            var now = DateTime.UtcNow;
+            var org = new Organisation
+            {
+                Id = organisationId,
+                Name = "Pilot Organisation",
+                IsActive = true,
+                CreatedAtUtc = now,
+            };
+            db.Organisations.Add(org);
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Seeded pilot organisation {OrganisationId} for Director account.", organisationId);
+        }
+
         var normalizedEmail = email.Trim().ToLowerInvariant();
 
         var exists = await db.Users.AnyAsync(
@@ -42,7 +61,7 @@ public class AdminUserSeeder(
             return;
         }
 
-        var now = DateTime.UtcNow;
+        var createdAt = DateTime.UtcNow;
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -51,8 +70,8 @@ public class AdminUserSeeder(
             Role = UserRoles.Director,
             TokenVersion = 0,
             IsActive = true,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
+            CreatedAtUtc = createdAt,
+            UpdatedAtUtc = createdAt,
         };
 
         user.PasswordHash = passwordHasher.HashPassword(user, password);

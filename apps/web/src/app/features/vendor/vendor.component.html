@@ -1,0 +1,73 @@
+<header>
+  <button class="logout-btn" (click)="logout()">Log out</button>
+</header>
+
+<main>
+  @if (showForm()) {
+    <div class="card">
+      <h1>Vendor Backstage</h1>
+      <p>Create a new organisation and send an activation link to the first Director.</p>
+
+      @if (errorMessage()) {
+        <div class="error-banner">{{ errorMessage() }}</div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="form-group">
+          <label for="name">Organisation Name</label>
+          <input
+            id="name"
+            type="text"
+            formControlName="name"
+            placeholder="e.g. ABC Foundation"
+          />
+          @if (form.controls.name.invalid && form.controls.name.touched) {
+            <div class="field-error">
+              @if (form.controls.name.errors?.['required']) {
+                Organisation name is required.
+              }
+              @if (form.controls.name.errors?.['maxlength']) {
+                Organisation name is too long (256 characters max).
+              }
+            </div>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="email">Director Email</label>
+          <input
+            id="email"
+            type="email"
+            formControlName="targetDirectorEmail"
+            placeholder="director@example.org"
+          />
+          @if (form.controls.targetDirectorEmail.invalid && form.controls.targetDirectorEmail.touched) {
+            <div class="field-error">
+              @if (form.controls.targetDirectorEmail.errors?.['required']) {
+                Director email is required.
+              }
+              @if (form.controls.targetDirectorEmail.errors?.['email']) {
+                Please enter a valid email address.
+              }
+              @if (form.controls.targetDirectorEmail.errors?.['maxlength']) {
+                Email is too long.
+              }
+            </div>
+          }
+        </div>
+
+        <button type="submit" [disabled]="submitting()">
+          {{ submitting() ? 'Sending...' : 'Send Activation Link' }}
+        </button>
+      </form>
+    </div>
+  } @else {
+    <div class="card success-card">
+      <h2>Activation Link Sent</h2>
+      <p>{{ successMessage() }}</p>
+      <button class="new-btn" (click)="showForm.set(true); successMessage.set(null); form.reset()">
+        Create Another
+      </button>
+    </div>
+  }
+</main>

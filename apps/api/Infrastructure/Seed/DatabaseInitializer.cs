@@ -34,5 +34,8 @@ public static class DatabaseInitializer
 
         var blobStorage = scope.ServiceProvider.GetRequiredService<IBlobStorageService>();
         await blobStorage.EnsureContainerAsync();
+
+        var vendorSeeder = scope.ServiceProvider.GetRequiredService<VendorUserSeeder>();
+        await vendorSeeder.SeedAsync();
     }
 }

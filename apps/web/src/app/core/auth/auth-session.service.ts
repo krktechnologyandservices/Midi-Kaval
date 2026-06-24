@@ -214,6 +214,11 @@ export class AuthSessionService {
       return;
     }
 
+    if (this.currentUser()?.role === AppRole.Vendor) {
+      void this.router.navigate(['/vendor']);
+      return;
+    }
+
     void this.router.navigate(['/login']);
   }
 
