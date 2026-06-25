@@ -14,6 +14,29 @@ export interface CreateOrganisationResponse {
   status: string;
 }
 
+export interface VendorOrganisationSummary {
+  id: string;
+  name: string;
+  isActive: boolean;
+  directorCount: number;
+  hasPendingRecovery: boolean;
+  createdAtUtc: string;
+}
+
+export interface VendorOrganisationDetail extends VendorOrganisationSummary {
+  lastKnownDirectorName: string | null;
+  lastKnownDirectorActiveAt: string | null;
+}
+
+export interface ReissueActivationRequest {
+  targetDirectorEmail: string;
+}
+
+export interface ReissueActivationResponse {
+  status: string;
+  targetDirectorEmail: string;
+}
+
 export interface ApiEnvelope<T> {
   data: T;
   meta: { requestId: string };
@@ -28,6 +51,32 @@ export class VendorApiService {
     return firstValueFrom(
       this.http.post<ApiEnvelope<CreateOrganisationResponse>>(
         `${environment.apiBaseUrl}/api/v1/vendor/organisations`,
+        body,
+      ),
+    ).then(e => e.data);
+  }
+
+  getOrganisations(): Promise<VendorOrganisationSummary[]> {
+    return firstValueFrom(
+      this.http.get<ApiEnvelope<VendorOrganisationSummary[]>>(
+        `${environment.apiBaseUrl}/api/v1/vendor/organisations`,
+      ),
+    ).then(e => e.data);
+  }
+
+  getOrganisationDetail(id: string): Promise<VendorOrganisationDetail> {
+    return firstValueFrom(
+      this.http.get<ApiEnvelope<VendorOrganisationDetail>>(
+        `${environment.apiBaseUrl}/api/v1/vendor/organisations/${id}`,
+      ),
+    ).then(e => e.data);
+  }
+
+  reissueActivation(organisationId: string, targetDirectorEmail: string): Promise<ReissueActivationResponse> {
+    const body: ReissueActivationRequest = { targetDirectorEmail };
+    return firstValueFrom(
+      this.http.post<ApiEnvelope<ReissueActivationResponse>>(
+        `${environment.apiBaseUrl}/api/v1/vendor/organisations/${organisationId}/reissue-activation`,
         body,
       ),
     ).then(e => e.data);

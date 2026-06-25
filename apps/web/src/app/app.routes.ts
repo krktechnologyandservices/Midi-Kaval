@@ -144,9 +144,26 @@ export const routes: Routes = [
         path: 'admin',
         canActivate: [directorGuard],
         loadComponent: () =>
-          import('./features/shell/pages/admin-page.component').then(
-            (m) => m.AdminPageComponent,
+          import('./features/admin/admin.component').then(
+            (m) => m.AdminShellComponent,
           ),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'team' },
+          {
+            path: 'team',
+            loadComponent: () =>
+              import('./features/admin/pages/team-roster/team-roster.component').then(
+                (m) => m.TeamRosterComponent,
+              ),
+          },
+          {
+            path: 'invitations',
+            loadComponent: () =>
+              import('./features/admin/pages/invitations/invitations.component').then(
+                (m) => m.InvitationsComponent,
+              ),
+          },
+        ],
       },
       {
         path: 'admin/staff',

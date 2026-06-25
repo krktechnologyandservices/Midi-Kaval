@@ -19,6 +19,10 @@ public sealed class OrganisationConfiguration : IEntityTypeConfiguration<Organis
         builder.Property(x => x.IsActive)
             .HasDefaultValue(false);
 
+        builder.Property(x => x.HasPendingRecovery)
+            .HasColumnName("has_pending_recovery")
+            .HasDefaultValue(false);
+
         builder.Property(x => x.CreatedAtUtc)
             .HasDefaultValueSql("NOW()")
             .IsRequired();

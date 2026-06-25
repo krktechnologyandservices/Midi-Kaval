@@ -70,4 +70,7 @@ public static class AuditEventTypes
     public const string BudgetUtilizationDeleted = "budget.utilization.deleted";
     public const string CaseAnonymized = "case.anonymized";
     public const string CasePersonalDataErased = "case.personal_data_erased";
+
+    public const string InvitationSent = "invitation.sent";
+    public const string InvitationResent = "invitation.resent";
 }

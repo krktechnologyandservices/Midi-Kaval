@@ -7,16 +7,24 @@
 
 header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   padding: 16px 24px;
   background: #fff;
   border-bottom: 1px solid #e0e0e0;
 }
 
+nav {
+  display: flex;
+  gap: 8px;
+}
+
 main {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   padding: 48px 16px;
+  gap: 16px;
 }
 
 .card {
@@ -25,12 +33,18 @@ main {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   padding: 32px;
   width: 100%;
-  max-width: 480px;
+  max-width: 720px;
 }
 
 h1 {
   margin: 0 0 8px;
   font-size: 1.5rem;
+  color: #1a1a1a;
+}
+
+h2 {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
   color: #1a1a1a;
 }
 
@@ -79,7 +93,6 @@ input:focus {
 }
 
 button {
-  width: 100%;
   padding: 12px;
   border: none;
   border-radius: 4px;
@@ -90,6 +103,7 @@ button {
 }
 
 button[type='submit'] {
+  width: 100%;
   background: #1976d2;
   color: #fff;
 }
@@ -116,27 +130,19 @@ button[type='submit']:disabled {
   background: #f5f5f5;
 }
 
-.success-card {
-  text-align: center;
-  padding: 48px 32px;
-}
-
-.success-card h2 {
-  color: #2e7d32;
-  margin: 0 0 16px;
-}
-
-.success-card p {
-  margin: 0 0 24px;
-  font-size: 1rem;
-}
-
-.new-btn {
-  background: #1976d2;
-  color: #fff;
-  padding: 12px 24px;
+.back-btn,
+.nav-btn {
+  background: transparent;
+  color: #1976d2;
+  border: 1px solid #1976d2;
+  padding: 8px 16px;
   width: auto;
-  display: inline-block;
+  font-size: 0.85rem;
+}
+
+.back-btn:hover,
+.nav-btn:hover {
+  background: #e3f2fd;
 }
 
 .error-banner {
@@ -147,4 +153,169 @@ button[type='submit']:disabled {
   border-radius: 4px;
   margin-bottom: 16px;
   font-size: 0.875rem;
+}
+
+.loading {
+  text-align: center;
+  color: #666;
+  padding: 24px;
+  font-size: 0.9rem;
+}
+
+.empty-state {
+  text-align: center;
+  color: #999;
+  padding: 24px;
+  font-size: 0.9rem;
+}
+
+/* Organisation Table */
+.org-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.org-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.org-table td {
+  padding: 12px;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.org-row {
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.org-row:hover {
+  background-color: #f5f8ff;
+}
+
+/* Status Badges */
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.badge-active {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.badge-recovery {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+/* Safety Net Banner */
+.safety-net-banner {
+  width: 100%;
+  max-width: 720px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.safety-net-warning {
+  color: #f57f17;
+  font-size: 0.95rem;
+  margin-bottom: 12px;
+}
+
+.safety-net-info {
+  color: #795548;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: #fff3e0;
+  border-radius: 4px;
+}
+
+.safety-net-form {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #ffe082;
+}
+
+.safety-net-form h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: #333;
+}
+
+.safety-net-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+}
+
+.safety-net-success {
+  color: #2e7d32;
+  font-size: 0.95rem;
+  text-align: center;
+  padding: 12px;
+}
+
+.reissue-btn {
+  background: #f57f17;
+  color: #fff;
+}
+
+.reissue-btn:hover:not(:disabled) {
+  background: #e65100;
+}
+
+.reissue-btn:disabled {
+  background: #ffcc80;
+  cursor: not-allowed;
+}
+
+.dismiss-btn {
+  background: #1976d2;
+  color: #fff;
+  padding: 8px 16px;
+  width: auto;
+  margin-top: 12px;
+}
+
+/* Detail Grid */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
 }

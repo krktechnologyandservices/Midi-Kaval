@@ -1,9 +1,17 @@
 <header>
+  <nav>
+    @if (viewState() === 'create' || viewState() === 'detail') {
+      <button type="button" class="back-btn" (click)="showList()">Back to List</button>
+    }
+    @if (viewState() === 'list') {
+      <button type="button" class="nav-btn" (click)="showCreateForm()">Create Organisation</button>
+    }
+  </nav>
   <button class="logout-btn" (click)="logout()">Log out</button>
 </header>
 
 <main>
-  @if (showForm()) {
+  @if (viewState() === 'create') {
     <div class="card">
       <h1>Vendor Backstage</h1>
       <p>Create a new organisation and send an activation link to the first Director.</p>
@@ -61,13 +69,142 @@
         </button>
       </form>
     </div>
-  } @else {
-    <div class="card success-card">
-      <h2>Activation Link Sent</h2>
-      <p>{{ successMessage() }}</p>
-      <button class="new-btn" (click)="showForm.set(true); successMessage.set(null); form.reset()">
-        Create Another
-      </button>
+  }
+
+  @if (viewState() === 'list') {
+    <div class="card">
+      <h1>Organisations</h1>
+      <p>View all organisations and their status.</p>
+
+      @if (errorMessage()) {
+        <div class="error-banner">{{ errorMessage() }}</div>
+      }
+
+      @if (loadingList()) {
+        <div class="loading">Loading organisations...</div>
+      } @else if (organisations().length === 0) {
+        <div class="empty-state">No organisations created yet.</div>
+      } @else {
+        <table class="org-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Directors</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (org of organisations(); track org.id) {
+              <tr class="org-row" (click)="showDetail(org.id)">
+                <td>{{ org.name }}</td>
+                <td>
+                  @if (org.hasPendingRecovery) {
+                    <span class="badge badge-recovery">Recovery Needed</span>
+                  } @else if (org.isActive) {
+                    <span class="badge badge-active">Active</span>
+                  } @else {
+                    <span class="badge badge-pending">Pending</span>
+                  }
+                </td>
+                <td>{{ org.directorCount }}</td>
+                <td>{{ org.createdAtUtc | date }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
     </div>
+  }
+
+  @if (viewState() === 'detail') {
+    @let org = selectedOrganisation();
+
+    @if (loadingDetail()) {
+      <div class="card">
+        <div class="loading">Loading organisation details...</div>
+      </div>
+    } @else if (org) {
+      @if (org.hasPendingRecovery) {
+        <div class="safety-net-banner">
+          @if (reissueSuccess()) {
+            <div class="safety-net-success">
+              {{ reissueSuccess() }}
+              <button class="dismiss-btn" (click)="showList()">Back to List</button>
+            </div>
+          } @else {
+            <div class="safety-net-warning">
+              <strong>No active Directors.</strong> This organisation has no active Directors. Send a new activation link to resume operations.
+            </div>
+
+            @if (org.lastKnownDirectorName) {
+              <div class="safety-net-info">
+                Last known Director: <strong>{{ org.lastKnownDirectorName }}</strong>
+                @if (org.lastKnownDirectorActiveAt) {
+                  (last active: {{ org.lastKnownDirectorActiveAt | date }})
+                }
+              </div>
+            }
+
+            <div class="safety-net-form">
+              <h3>Send Activation Link</h3>
+
+              @if (reissueError()) {
+                <div class="safety-net-error">{{ reissueError() }}</div>
+              }
+
+              <form [formGroup]="reissueForm" (ngSubmit)="reissueActivation()">
+                <div class="form-group">
+                  <label for="reissue-email">New Director Email</label>
+                  <input
+                    id="reissue-email"
+                    type="email"
+                    formControlName="targetDirectorEmail"
+                    placeholder="director@example.org"
+                  />
+                  @if (reissueForm.controls.targetDirectorEmail.invalid && reissueForm.controls.targetDirectorEmail.touched) {
+                    <div class="field-error">
+                      @if (reissueForm.controls.targetDirectorEmail.errors?.['required']) {
+                        Director email is required.
+                      }
+                      @if (reissueForm.controls.targetDirectorEmail.errors?.['email']) {
+                        Please enter a valid email address.
+                      }
+                    </div>
+                  }
+                </div>
+                <button type="submit" [disabled]="reissueSubmitting()" class="reissue-btn">
+                  {{ reissueSubmitting() ? 'Sending...' : 'Send Activation Link' }}
+                </button>
+              </form>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="card">
+        <h2>{{ org.name }}</h2>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Status</span>
+            @if (org.hasPendingRecovery) {
+              <span class="badge badge-recovery">Recovery Needed</span>
+            } @else if (org.isActive) {
+              <span class="badge badge-active">Active</span>
+            } @else {
+              <span class="badge badge-pending">Pending</span>
+            }
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Directors</span>
+            <span>{{ org.directorCount }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Created</span>
+            <span>{{ org.createdAtUtc | date }}</span>
+          </div>
+        </div>
+      </div>
+    }
   }
 </main>

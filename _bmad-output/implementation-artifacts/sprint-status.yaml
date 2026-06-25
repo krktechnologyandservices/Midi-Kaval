@@ -1,5 +1,5 @@
 # generated: 2026-06-13
-# last_updated: 2026-06-24
+# last_updated: 2026-06-25
 # project: Midi-Kaval
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-13
-last_updated: 2026-06-24 (Story 1.12 review → done — all patches applied)
+last_updated: 2026-06-25
 project: Midi-Kaval
 project_key: NOKEY
 tracking_system: file-system
@@ -55,7 +55,7 @@ development_status:
   1-10-data-model-add-organisations-and-activation-tokens-tables: done
   1-11-vendor-backstage-portal-authentication-and-activation-link-generation: done
   1-12-first-director-registration-flow: done
-  1-13-vendor-safety-net-zero-director-recovery: backlog
+  1-13-vendor-safety-net-zero-director-recovery: done
   epic-1-retrospective: done
 
   epic-2: in-progress
@@ -68,9 +68,9 @@ development_status:
   2-7-case-export-to-excel-and-pdf: done
   2-8-case-assignment-transfer-and-handoff-whisper: done
   2-9-web-case-registry-and-detail-ui: done
-  2-10-extend-users-schema-with-role-and-organisation-columns: backlog
-  2-11-user-management-dashboard-list-filter-sort: backlog
-  2-12-invite-new-user-flow: backlog
+  2-10-extend-users-schema-with-role-and-organisation-columns: done
+  2-11-user-management-dashboard-list-filter-sort: done
+  2-12-invite-new-user-flow: done
   2-13-user-suspension-and-reactivation: backlog
   2-14-permanent-deletion-user-anonymisation: backlog
   2-15-last-director-protection: backlog

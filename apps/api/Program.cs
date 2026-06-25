@@ -152,7 +152,15 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddSingleton<MidiKaval.Api.Infrastructure.RoleManagement.TokenService>();
     builder.Services.AddScoped<MidiKaval.Api.Domain.RoleManagement.OrganisationService>();
     builder.Services.AddScoped<MidiKaval.Api.Domain.RoleManagement.RegistrationService>();
+    builder.Services.AddScoped<MidiKaval.Api.Domain.RoleManagement.LastDirectorGuard>();
+    builder.Services.AddScoped<MidiKaval.Api.Domain.RoleManagement.ZeroDirectorTriggerService>();
+    builder.Services.AddScoped<MidiKaval.Api.Domain.RoleManagement.UserManagementService>();
+    builder.Services.AddScoped<InvitationService>();
     builder.Services.AddScoped<ActivationEmailDeliveryJob>();
+    builder.Services.AddScoped<InvitationEmailDeliveryJob>();
+    builder.Services.AddScoped<InvitationCleanupJob>();
+    builder.Services.AddScoped<ZeroDirectorAlertJob>();
+    builder.Services.AddScoped<ZeroDirectorMonitorJob>();
 
     // Hangfire background jobs
     var hangfireConnectionString = builder.Configuration.GetConnectionString("Hangfire");
@@ -221,9 +229,21 @@ if (!app.Environment.IsTesting())
     app.UseMiddleware<ContentSecurityPolicyMiddleware>();
     app.UseCors(CorsOptions.WebClientPolicy);
     app.UseAuthentication();
+    app.UseMiddleware<MidiKaval.Api.Infrastructure.Middleware.TokenVersionMiddleware>();
+    app.UseMiddleware<MidiKaval.Api.Infrastructure.Middleware.SuspendedUserMiddleware>();
     app.UseAuthorization();
     app.UseRateLimiter();
     app.UseHangfireDashboard();
+
+    // Register recurring jobs
+    RecurringJob.AddOrUpdate<InvitationCleanupJob>(
+        "invitation-cleanup",
+        j => j.ExecuteAsync(CancellationToken.None),
+        "0 2 * * *"); // Daily at 2am
+    RecurringJob.AddOrUpdate<ZeroDirectorMonitorJob>(
+        "zero-director-monitor",
+        j => j.ExecuteAsync(CancellationToken.None),
+        "0 * * * *"); // Every hour
 }
 
 app.UseSwagger();

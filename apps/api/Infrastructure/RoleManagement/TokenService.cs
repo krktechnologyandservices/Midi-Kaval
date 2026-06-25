@@ -39,4 +39,7 @@ public sealed class TokenService
 
     public string BuildActivationUrl(string baseUrl, string rawToken, string signature) =>
         $"{baseUrl.TrimEnd('/')}/activate?token={rawToken}&sig={signature}";
+
+    public string BuildInvitationUrl(string baseUrl, string rawToken, string signature) =>
+        $"{baseUrl.TrimEnd('/')}/invite?token={rawToken}&sig={signature}";
 }

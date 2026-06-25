@@ -1341,6 +1341,72 @@ namespace MidiKaval.Api.Migrations
                     b.ToTable("interventions", (string)null);
                 });
 
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.Invitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ConfirmedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at_utc");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<Guid>("InvitedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invited_by_user_id");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organisation_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("role");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("pending")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TargetEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("target_email");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("token_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_invitations");
+
+                    b.HasIndex("InvitedByUserId")
+                        .HasDatabaseName("ix_invitations_invited_by_user_id");
+
+                    b.HasIndex("OrganisationId", "TargetEmail", "Status")
+                        .IsUnique()
+                        .HasDatabaseName("ix_invitations_organisation_id_target_email_status")
+                        .HasFilter("status = 'pending'");
+
+                    b.ToTable("invitations", (string)null);
+                });
+
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.Legends.Area", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1783,6 +1849,12 @@ namespace MidiKaval.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc")
                         .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("HasPendingRecovery")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_pending_recovery");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -2685,6 +2757,27 @@ namespace MidiKaval.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_interventions_users_created_by_user_id");
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.Invitation", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.User", "InvitedByUser")
+                        .WithMany()
+                        .HasForeignKey("InvitedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invitations_users_invited_by_user_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Organisation", "Organisation")
+                        .WithMany()
+                        .HasForeignKey("OrganisationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invitations_organisations_organisation_id");
+
+                    b.Navigation("InvitedByUser");
+
+                    b.Navigation("Organisation");
                 });
 
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.ProjectBudget", b =>

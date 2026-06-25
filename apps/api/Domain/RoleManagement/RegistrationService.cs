@@ -146,6 +146,12 @@ public class RegistrationService(
             if (org is not null)
             {
                 org.IsActive = true;
+
+                // Clear any pending recovery flag if a re-issued link is being consumed
+                if (org.HasPendingRecovery)
+                {
+                    org.HasPendingRecovery = false;
+                }
             }
 
             await db.SaveChangesAsync(cancellationToken);

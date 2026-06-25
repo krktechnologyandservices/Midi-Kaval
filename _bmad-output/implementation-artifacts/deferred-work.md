@@ -535,3 +535,14 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - **VendorOnly policy registered but no vendor API endpoints shown** — `Policies.VendorOnly` authorization policy is registered but no vendor controller endpoints in this diff. From Story 1.11; verify the vendor `OrganisationsController` has `[Authorize(Policy = Policies.VendorOnly)]`.
 - **ActivationEmailDeliveryJob retry doesn't persist new token hash** — On retry, `GenerateActivationToken()` creates a new raw token and signature but the new `tokenHash` is not saved to the `ActivationToken.TokenHash` column. When the Director clicks the new link, SHA-256 lookup fails because the stored hash is stale. Bug in Story 1.11 code, not introduced by 1.12.
 - **DbUpdateException handler missing in RegistrationController** — Constraint violations (unique email, FK) during user creation propagate to global exception handler and return HTTP 500. Acceptable for unexpected failures; non-blocking.
+
+## Deferred from: code review of 1-13-vendor-safety-net-zero-director-recovery.md (2026-06-24)
+
+- **No database migration included** — HasPendingRecovery column mapped but no migration in diff. Acknowledged in story file: PostgreSQL provider needed for migration generation.
+- **Controller catches RateLimitExceededException from service layer** — Service-internal exception type used in controller. Pre-existing pattern used elsewhere in codebase.
+- **Dedup uses audit events instead of Redis/column** — ZeroDirectorMonitorJob deduplication uses audit events for `organisation.zero_director_alert` instead of Redis or dedicated `last_alert_sent_at` column. Reasonable alternative; works correctly.
+
+## Deferred from: code review of 2-10-extend-users-schema-with-role-and-organisation-columns (2026-06-25)
+
+- **No logging on security rejections** — Middleware rejection paths emit no structured logs. Real but pre-existing cross-cutting concern; logging infrastructure decisions should be addressed holistically.
+- **Two DB round-trips in GetUserListAsync** — `CountAsync` + `Skip/Take/ToListAsync` = two queries. Performance optimization, not a correctness bug. Can be addressed when performance profiling occurs.
