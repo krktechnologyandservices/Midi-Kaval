@@ -73,4 +73,8 @@ public static class AuditEventTypes
 
     public const string InvitationSent = "invitation.sent";
     public const string InvitationResent = "invitation.resent";
+
+    public const string UserSuspended = "user.suspended";
+    public const string UserReactivated = "user.reactivated";
+    public const string UserDeleted = "user.deleted";
 }

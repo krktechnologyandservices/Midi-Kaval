@@ -546,3 +546,10 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 
 - **No logging on security rejections** — Middleware rejection paths emit no structured logs. Real but pre-existing cross-cutting concern; logging infrastructure decisions should be addressed holistically.
 - **Two DB round-trips in GetUserListAsync** — `CountAsync` + `Skip/Take/ToListAsync` = two queries. Performance optimization, not a correctness bug. Can be addressed when performance profiling occurs.
+
+## Deferred from: code review of 2-15-last-director-protection.md (2026-06-26)
+
+- **ReactivateUser skips ModelState.IsValid** (`UsersController.cs`) — pre-existing (endpoint has no request body, always valid)
+- **ReactivateUser accepts no request body (no reactivation reason captured)** (`UsersController.cs`) — pre-existing design choice
+- **404 vs 409 responses leak user existence (enumeration oracle)** (`UsersController.cs`) — pre-existing system-wide pattern
+- **TryResolveActorUserId failure handled same as auth failure** (`UsersController.cs`) — pre-existing system-wide pattern

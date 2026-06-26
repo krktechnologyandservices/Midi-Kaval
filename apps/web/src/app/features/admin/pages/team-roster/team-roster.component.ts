@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
@@ -7,14 +7,18 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { AuthSessionService } from '../../../../core/auth/auth-session.service';
 import { AdminUserService } from '../../services/admin-user.service';
-import { AdminUserSummary } from '../../models/admin.models';
+import { AdminUserSummary, getUserStatus } from '../../models/admin.models';
 import { StatusBadgeComponent } from '../../components/status-badge/status-badge.component';
+import { UserDetailSheetComponent } from '../../components/user-detail-sheet/user-detail-sheet.component';
 
 interface RoleOption {
   value: string;
@@ -27,9 +31,10 @@ interface RoleOption {
     CommonModule, FormsModule,
     MatTableModule, MatSortModule, MatPaginatorModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatButtonModule, MatIconModule, MatChipsModule,
+    MatButtonModule, MatIconModule, MatChipsModule, MatMenuModule, MatTooltipModule,
     MatProgressSpinnerModule,
     StatusBadgeComponent,
+    UserDetailSheetComponent,
   ],
   template: `
     <div class="roster-header">
@@ -75,6 +80,7 @@ interface RoleOption {
           <mat-option value="">All</mat-option>
           <mat-option value="active">Active</mat-option>
           <mat-option value="suspended">Suspended</mat-option>
+          <mat-option value="deleted">Deleted</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
@@ -131,7 +137,7 @@ interface RoleOption {
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
             <td mat-cell *matCellDef="let u">
-              <app-status-badge [status]="u.isSuspended ? 'suspended' : 'active'" />
+              <app-status-badge [status]="getUserStatus(u)" />
             </td>
           </ng-container>
 
@@ -140,8 +146,48 @@ interface RoleOption {
             <td mat-cell *matCellDef="let u">{{ u.createdAtUtc | date:'mediumDate' }}</td>
           </ng-container>
 
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let u">
+              <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="User actions">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #menu="matMenu">
+                <button mat-menu-item (click)="openDetailSheet(u)">
+                  <mat-icon>person</mat-icon>
+                  <span>View Details</span>
+                </button>
+                @if (!u.isSuspended && getUserStatus(u) !== 'deleted') {
+                  <button
+                    mat-menu-item
+                    (click)="suspendUser(u)"
+                    [disabled]="isCurrentUser(u) || isLastDirectorUser(u)"
+                    [matTooltip]="isCurrentUser(u) ? 'You cannot suspend your own account.' : isLastDirectorUser(u) ? 'At least one Director must remain active. Promote another user to Director first.' : ''"
+                  >
+                    <mat-icon>block</mat-icon>
+                    <span>Suspend</span>
+                  </button>
+                }
+                @if (u.isSuspended && getUserStatus(u) !== 'deleted') {
+                  <button mat-menu-item (click)="reactivateUser(u)" [disabled]="isCurrentUser(u)">
+                    <mat-icon>check_circle</mat-icon>
+                    <span>Reactivate</span>
+                  </button>
+                }
+              </mat-menu>
+            </td>
+          </ng-container>
+
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns; trackBy: trackByUserId"></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: displayedColumns; trackBy: trackByUserId"
+            [class.clickable-row]="true"
+            (click)="openDetailSheet(row)"
+            role="button"
+            tabindex="0"
+            (keydown.enter)="openDetailSheet(row)"
+          ></tr>
         </table>
 
         <mat-paginator
@@ -154,6 +200,15 @@ interface RoleOption {
         >
         </mat-paginator>
       </div>
+    }
+
+    @if (selectedUser(); as u) {
+      <app-user-detail-sheet
+        (closed)="onDetailSheetClosed()"
+        (suspended)="onUserSuspended($event)"
+        (reactivated)="onUserReactivated($event)"
+        (deleted)="onUserDeleted($event)"
+      />
     }
   `,
   styles: `
@@ -172,15 +227,19 @@ interface RoleOption {
     .roster-table { width: 100%; }
     .roster-table th { background: #F5F6FA; color: #697586; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
     .roster-table td { border-bottom: 1px solid #E2E5EB; }
-    .roster-table tr:hover td { background: #F5F6FA; }
+    .roster-table tr:hover td { background: #F5F6FA; cursor: pointer; }
     .role-pill { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 12px; background: #E8EDF5; color: #1B2A4A; }
   `,
 })
 export class TeamRosterComponent implements OnInit {
   private readonly adminUserService = inject(AdminUserService);
+  private readonly authSessionService = inject(AuthSessionService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly searchSubject = new Subject<string>();
   private currentRequest = 0;
+
+  readonly selectedUser = signal<AdminUserSummary | null>(null);
+  readonly detailSheet = viewChild(UserDetailSheetComponent);
 
   readonly users = signal<AdminUserSummary[]>([]);
   readonly totalCount = signal(0);
@@ -195,7 +254,7 @@ export class TeamRosterComponent implements OnInit {
   readonly sortBy = signal('createdAtUtc');
   readonly sortDesc = signal(true);
 
-  readonly displayedColumns = ['name', 'email', 'role', 'status', 'createdAtUtc'];
+  readonly displayedColumns = ['name', 'email', 'role', 'status', 'createdAtUtc', 'actions'];
 
   readonly roleOptions: RoleOption[] = [
     { value: 'Director', label: 'Director' },
@@ -205,6 +264,8 @@ export class TeamRosterComponent implements OnInit {
     { value: 'Accountant', label: 'Accountant' },
     { value: 'Vendor', label: 'Vendor' },
   ];
+
+  protected readonly getUserStatus = getUserStatus;
 
   constructor() {
     const sub = this.searchSubject.pipe(
@@ -267,7 +328,7 @@ export class TeamRosterComponent implements OnInit {
     await this.loadUsers();
   }
 
-  private async loadUsers(): Promise<void> {
+  async loadUsers(): Promise<void> {
     const requestId = ++this.currentRequest;
     this.error.set(false);
     this.loading.set(true);
@@ -294,5 +355,85 @@ export class TeamRosterComponent implements OnInit {
         this.loading.set(false);
       }
     }
+  }
+
+  openDetailSheet(user: AdminUserSummary): void {
+    this.selectedUser.set(user);
+    const currentUser = this.authSessionService.currentUser();
+
+    const isLastDirector = user.role === 'Director' &&
+      !this.users().some(u =>
+        u.id !== user.id &&
+        u.role === 'Director' &&
+        getUserStatus(u) === 'active'
+      );
+
+    Promise.resolve().then(() => {
+      const sheet = this.detailSheet();
+      if (sheet) {
+        sheet.setData({
+          user,
+          currentUserId: currentUser?.id ?? null,
+          isLastDirector,
+        });
+      }
+    });
+
+    // Fire-and-forget server check for authoritative isLastDirector value
+    this.adminUserService.isLastDirector(user.id).then(serverIsLastDirector => {
+      const sheet = this.detailSheet();
+      if (sheet) {
+        sheet.setData({
+          user,
+          currentUserId: currentUser?.id ?? null,
+          isLastDirector: serverIsLastDirector,
+        });
+      }
+    }).catch(() => {
+      // Server check failed — client-side computation was the initial value, keep it
+    });
+  }
+
+  onDetailSheetClosed(): void {
+    this.selectedUser.set(null);
+  }
+
+  onUserSuspended(_userId: string): void {
+    this.loadUsers();
+  }
+
+  onUserReactivated(_userId: string): void {
+    this.loadUsers();
+  }
+
+  onUserDeleted(_userId: string): void {
+    this.loadUsers();
+  }
+
+  isCurrentUser(user: AdminUserSummary): boolean {
+    return this.authSessionService.currentUser()?.id === user.id;
+  }
+
+  isLastDirectorUser(user: AdminUserSummary): boolean {
+    // If we only see one page of results, the client-side computation is unreliable —
+    // return false (conservative: don't block based on incomplete data) and let the
+    // server authoritative check handle it.
+    if (this.users().length < this.totalCount()) {
+      return false;
+    }
+    return user.role === 'Director' &&
+      !this.users().some(u =>
+        u.id !== user.id &&
+        u.role === 'Director' &&
+        getUserStatus(u) === 'active'
+      );
+  }
+
+  suspendUser(user: AdminUserSummary): void {
+    this.openDetailSheet(user);
+  }
+
+  reactivateUser(user: AdminUserSummary): void {
+    this.openDetailSheet(user);
   }
 }

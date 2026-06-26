@@ -1,5 +1,5 @@
 # generated: 2026-06-13
-# last_updated: 2026-06-25
+# last_updated: 2026-06-26
 # project: Midi-Kaval
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-13
-last_updated: 2026-06-25
+last_updated: 2026-06-26
+
 project: Midi-Kaval
 project_key: NOKEY
 tracking_system: file-system
@@ -71,9 +72,9 @@ development_status:
   2-10-extend-users-schema-with-role-and-organisation-columns: done
   2-11-user-management-dashboard-list-filter-sort: done
   2-12-invite-new-user-flow: done
-  2-13-user-suspension-and-reactivation: backlog
-  2-14-permanent-deletion-user-anonymisation: backlog
-  2-15-last-director-protection: backlog
+  2-13-user-suspension-and-reactivation: done
+  2-14-permanent-deletion-user-anonymisation: done
+  2-15-last-director-protection: done
   2-16-director-2fa-mandate-and-recovery: backlog
   epic-2-retrospective: optional
 

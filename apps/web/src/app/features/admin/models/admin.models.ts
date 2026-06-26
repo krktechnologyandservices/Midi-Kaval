@@ -6,6 +6,7 @@ export interface AdminUserSummary {
   role: string;
   isActive: boolean;
   isSuspended: boolean;
+  suspendedAtUtc?: string | null;
   createdAtUtc: string;
 }
 
@@ -14,6 +15,23 @@ export interface AdminUserListResult {
   totalCount: number;
   page: number;
   pageSize: number;
+}
+
+export type UserDisplayStatus = 'active' | 'suspended' | 'deleted';
+
+export function getUserStatus(user: AdminUserSummary | null | undefined): UserDisplayStatus {
+  if (!user) return 'active';
+  if (!user.isActive && user.email.startsWith('deleted-')) return 'deleted';
+  if (user.isSuspended) return 'suspended';
+  return 'active';
+}
+
+export function getUserStatusLabel(status: UserDisplayStatus): string {
+  switch (status) {
+    case 'active': return 'Active';
+    case 'suspended': return 'Suspended';
+    case 'deleted': return 'Deleted';
+  }
 }
 
 export interface SendInvitationRequest {
@@ -50,5 +68,26 @@ export interface ResendInvitationResponse {
   id: string;
   targetEmail: string;
   newExpiresAtUtc: string;
+  message: string;
+}
+
+export interface SuspendUserRequest {
+  reason?: string;
+}
+
+export interface UserActionResponse {
+  id: string;
+  isSuspended: boolean;
+  actionedAtUtc: string;
+  message: string;
+}
+
+export interface DeleteUserRequest {
+  confirmationEmail: string;
+}
+
+export interface DeleteUserResponse {
+  id: string;
+  deletedAtUtc: string;
   message: string;
 }

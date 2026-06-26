@@ -116,5 +116,13 @@ public static class PiiAuditEventTypes
         // Metadata contains caseId and userId only (not the beneficiary data itself).
         // Excluded from redaction by design per architecture decision.
         AuditEventTypes.CasePiiRevealed,
+
+        // UserSuspended / UserReactivated — metadata intentionally contains
+        // target_email, target_name, target_role for audit trail purposes.
+        // These are exempt from redaction because their purpose IS to log the
+        // identity of the affected user at the time of the action.
+        AuditEventTypes.UserSuspended,
+        AuditEventTypes.UserReactivated,
+        AuditEventTypes.UserDeleted,
     ];
 }

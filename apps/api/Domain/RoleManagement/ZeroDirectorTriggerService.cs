@@ -18,7 +18,7 @@ public sealed record LastDirectorInfo(string? Name, DateTime? LastActiveAt);
 /// 2-14 (deletion) wire in calls to <see cref="NotifyUserRemovedAsync"/>.
 /// For Story 1.13, only the monitoring fallback (AC-4) provides the safety net.
 /// </summary>
-public sealed class ZeroDirectorTriggerService(
+public class ZeroDirectorTriggerService(
     AppDbContext db,
     LastDirectorGuard lastDirectorGuard,
     ILogger<ZeroDirectorTriggerService> logger)
@@ -48,10 +48,15 @@ public sealed class ZeroDirectorTriggerService(
         await db.SaveChangesAsync(ct);
 
         // 4. Enqueue Hangfire fire-and-forget job
-        BackgroundJob.Enqueue<ZeroDirectorAlertJob>(j => j.ExecuteAsync(organisationId, CancellationToken.None));
+        EnqueueZeroDirectorAlert(organisationId);
 
         logger.LogWarning(
             "Zero-Director state detected for organisation {OrganisationId}. Recovery triggered.",
             organisationId);
+    }
+
+    protected virtual void EnqueueZeroDirectorAlert(Guid organisationId)
+    {
+        BackgroundJob.Enqueue<ZeroDirectorAlertJob>(j => j.ExecuteAsync(organisationId, CancellationToken.None));
     }
 }

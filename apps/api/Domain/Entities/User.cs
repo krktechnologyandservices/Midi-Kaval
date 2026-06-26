@@ -16,6 +16,7 @@ public class User
     public string? TotpSecret { get; set; }
     public DateTime? TotpEnrolledAt { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+    public DateTime? SuspendedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
     public Organisation Organisation { get; set; } = null!;

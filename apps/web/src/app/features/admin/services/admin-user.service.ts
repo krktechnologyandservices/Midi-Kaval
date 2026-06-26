@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { environment } from '../../../environments/environment';
-import { AdminUserListResult } from '../models/admin.models';
+import { environment } from '../../../../environments/environment';
+import { AdminUserListResult, DeleteUserResponse, SuspendUserRequest, UserActionResponse } from '../models/admin.models';
 
 interface ApiEnvelope<T> {
   data: T;
@@ -36,5 +36,41 @@ export class AdminUserService {
         `${environment.apiBaseUrl}/api/v1/admin/users?${params.toString()}`,
       ),
     ).then(e => e.data);
+  }
+
+  suspendUser(id: string, reason?: string): Promise<UserActionResponse> {
+    const body: SuspendUserRequest = { reason };
+    return firstValueFrom(
+      this.http.post<ApiEnvelope<UserActionResponse>>(
+        `${environment.apiBaseUrl}/api/v1/admin/users/${id}/suspend`,
+        body,
+      ),
+    ).then(e => e.data);
+  }
+
+  reactivateUser(id: string): Promise<UserActionResponse> {
+    return firstValueFrom(
+      this.http.post<ApiEnvelope<UserActionResponse>>(
+        `${environment.apiBaseUrl}/api/v1/admin/users/${id}/reactivate`,
+        {},
+      ),
+    ).then(e => e.data);
+  }
+
+  deleteUser(id: string, confirmationEmail: string): Promise<DeleteUserResponse> {
+    return firstValueFrom(
+      this.http.delete<ApiEnvelope<DeleteUserResponse>>(
+        `${environment.apiBaseUrl}/api/v1/admin/users/${id}`,
+        { body: { confirmationEmail } },
+      ),
+    ).then(e => e.data);
+  }
+
+  isLastDirector(userId: string): Promise<boolean> {
+    return firstValueFrom(
+      this.http.get<{ isLastDirector: boolean }>(
+        `${environment.apiBaseUrl}/api/v1/admin/users/${userId}/is-last-director`,
+      ),
+    ).then(r => r.isLastDirector);
   }
 }

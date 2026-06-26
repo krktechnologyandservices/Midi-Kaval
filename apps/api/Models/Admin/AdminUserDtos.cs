@@ -8,6 +8,7 @@ public sealed record AdminUserSummary(
     string Role,
     bool IsActive,
     bool IsSuspended,
+    DateTime? SuspendedAtUtc,
     DateTime CreatedAtUtc
 );
 

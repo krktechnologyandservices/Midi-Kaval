@@ -94,6 +94,48 @@ public class LastDirectorGuardTests
 
             Assert.False(result);
         }
+
+        [Fact]
+        public async Task ReturnsFalse_WhenDirectorIsSuspended()
+        {
+            using var db = CreateContext();
+            var org = SeedOrganisation(db);
+            var director = SeedUser(db, org.Id, UserRoles.Director, isActive: true, isSuspended: true);
+
+            var guard = new LastDirectorGuard(db);
+            var result = await guard.IsLastActiveDirectorAsync(org.Id, director.Id, default);
+
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task ReturnsFalse_WhenDirectorIsDeleted()
+        {
+            using var db = CreateContext();
+            var org = SeedOrganisation(db);
+            var director = SeedUser(db, org.Id, UserRoles.Director, isActive: false);
+            director.Email = "deleted-abc123@anonymised.local";
+            await db.SaveChangesAsync();
+
+            var guard = new LastDirectorGuard(db);
+            var result = await guard.IsLastActiveDirectorAsync(org.Id, director.Id, default);
+
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task ReturnsFalse_ForNonDirectorUser()
+        {
+            using var db = CreateContext();
+            var org = SeedOrganisation(db);
+            var director = SeedUser(db, org.Id, UserRoles.Director);
+            var coordinator = SeedUser(db, org.Id, UserRoles.Coordinator);
+
+            var guard = new LastDirectorGuard(db);
+            var result = await guard.IsLastActiveDirectorAsync(org.Id, coordinator.Id, default);
+
+            Assert.False(result);
+        }
     }
 
     public class HasAnyActiveDirectorAsync
