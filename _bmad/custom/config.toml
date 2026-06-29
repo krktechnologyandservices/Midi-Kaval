@@ -1,7 +1,182 @@
-# Team / enterprise overrides for _bmad/config.toml.
-# Committed to the repo — applies to every developer on the project.
-# Tables deep-merge over base config; keyed entries merge by key.
-# Example: override an agent descriptor, or add a new agent.
+###############################################################################
+# Team / Enterprise Overrides for _bmad/config.toml
 #
-# [agents.bmad-agent-pm]
-# description = "Prefers short, bulleted PRDs over narrative drafts."
+# Purpose
+# -------
+# Optimize GitHub Copilot Premium usage by enabling reasoning only where
+# it materially improves output quality.
+#
+# Guidelines
+# ----------
+# thinking = true
+#   • Architecture
+#   • Research
+#   • Investigation
+#   • Critical Reviews
+#   • Brainstorming
+#   • Product Design
+#
+# thinking = false
+#   • Story Execution
+#   • Coding from Existing Stories
+#   • Documentation
+#   • Sprint Planning
+#   • Project Context Generation
+#   • Formatting / Editorial Tasks
+#
+# NOTE:
+# This file ONLY overrides settings.
+# All other configuration is inherited from the base BMAD configuration.
+###############################################################################
+
+###############################################################################
+# Core Skills
+###############################################################################
+
+[agents.bmad-advanced-elicitation]
+api_options = { thinking = true }
+
+[agents.bmad-brainstorming]
+api_options = { thinking = true }
+
+[agents.bmad-customize]
+api_options = { thinking = true }
+
+[agents.bmad-editorial-review-prose]
+api_options = { thinking = false }
+
+[agents.bmad-editorial-review-structure]
+api_options = { thinking = false }
+
+[agents.bmad-help]
+api_options = { thinking = false }
+
+[agents.bmad-index-docs]
+api_options = { thinking = false }
+
+[agents.bmad-party-mode]
+api_options = { thinking = true }
+
+[agents.bmad-review-adversarial-general]
+api_options = { thinking = true }
+
+[agents.bmad-review-edge-case-hunter]
+api_options = { thinking = true }
+
+[agents.bmad-shard-doc]
+api_options = { thinking = false }
+
+[agents.bmad-spec]
+api_options = { thinking = true }
+
+###############################################################################
+# Analysis
+###############################################################################
+
+[agents.bmad-agent-analyst]
+api_options = { thinking = true }
+
+[agents.bmad-agent-tech-writer]
+api_options = { thinking = false }
+
+[agents.bmad-document-project]
+api_options = { thinking = false }
+
+[agents.bmad-prfaq]
+api_options = { thinking = true }
+
+[agents.bmad-product-brief]
+api_options = { thinking = true }
+
+[agents.bmad-domain-research]
+api_options = { thinking = true }
+
+[agents.bmad-market-research]
+api_options = { thinking = true }
+
+[agents.bmad-technical-research]
+api_options = { thinking = true }
+
+###############################################################################
+# Planning
+###############################################################################
+
+[agents.bmad-agent-pm]
+api_options = { thinking = false }
+
+[agents.bmad-agent-ux-designer]
+api_options = { thinking = true }
+
+[agents.bmad-prd]
+api_options = { thinking = true }
+
+[agents.bmad-ux]
+api_options = { thinking = true }
+
+###############################################################################
+# Architecture
+###############################################################################
+
+[agents.bmad-agent-architect]
+api_options = { thinking = true }
+
+[agents.bmad-check-implementation-readiness]
+api_options = { thinking = false }
+
+[agents.bmad-create-architecture]
+api_options = { thinking = true }
+
+[agents.bmad-create-epics-and-stories]
+api_options = { thinking = false }
+
+[agents.bmad-generate-project-context]
+api_options = { thinking = false }
+
+###############################################################################
+# Implementation
+###############################################################################
+
+# Runs most frequently during development.
+# Disable reasoning to reduce Premium Request consumption.
+[agents.bmad-agent-dev]
+api_options = { thinking = false }
+
+[agents.bmad-checkpoint-preview]
+api_options = { thinking = false }
+
+# Reviews benefit from deeper reasoning.
+[agents.bmad-code-review]
+api_options = { thinking = true }
+
+# Significant requirement changes require reasoning.
+[agents.bmad-correct-course]
+api_options = { thinking = true }
+
+# Story generation follows templates.
+[agents.bmad-create-story]
+api_options = { thinking = false }
+
+# Story execution happens very frequently.
+[agents.bmad-dev-story]
+api_options = { thinking = false }
+
+# Root cause analysis benefits from reasoning.
+[agents.bmad-investigate]
+api_options = { thinking = true }
+
+# Test generation is largely deterministic.
+[agents.bmad-qa-generate-e2e-tests]
+api_options = { thinking = false }
+
+# Quick implementation should remain lightweight.
+[agents.bmad-quick-dev]
+api_options = { thinking = false }
+
+[agents.bmad-retrospective]
+api_options = { thinking = false }
+
+[agents.bmad-sprint-planning]
+api_options = { thinking = false }
+
+[agents.bmad-sprint-status]
+api_options = { thinking = false }

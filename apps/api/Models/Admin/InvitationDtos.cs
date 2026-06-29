@@ -14,7 +14,9 @@ public sealed record InvitationSummary(
     string Status,
     DateTime CreatedAtUtc,
     DateTime ExpiresAtUtc,
-    DateTime? ConfirmedAtUtc
+    DateTime? ConfirmedAtUtc,
+    string? InvitedByUserEmail = null,
+    string? InvitedByUserName = null
 );
 
 public sealed record InvitationListResult(

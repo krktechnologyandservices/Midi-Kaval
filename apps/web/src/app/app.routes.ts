@@ -18,6 +18,13 @@ export const routes: Routes = [
       import('./features/auth/otp/otp.component').then((m) => m.OtpComponent),
   },
   {
+    path: 'login/totp',
+    loadComponent: () =>
+      import('./features/auth/totp-login/totp-login.component').then(
+        (m) => m.TotpLoginComponent,
+      ),
+  },
+  {
     path: 'forgot-password',
     loadComponent: () =>
       import('./features/auth/forgot-password/forgot-password.component').then(
@@ -51,6 +58,20 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/activation/activation.component').then(
         (m) => m.ActivationComponent,
+      ),
+  },
+  {
+    path: 'invite',
+    loadComponent: () =>
+      import('./features/invitation-accept/invitation-accept.component').then(
+        (m) => m.InvitationAcceptComponent,
+      ),
+  },
+  {
+    path: 'confirm-email',
+    loadComponent: () =>
+      import('./features/email-confirmed/email-confirmed.component').then(
+        (m) => m.EmailConfirmedComponent,
       ),
   },
   {
@@ -163,6 +184,13 @@ export const routes: Routes = [
                 (m) => m.InvitationsComponent,
               ),
           },
+          {
+            path: 'audit',
+            loadComponent: () =>
+              import('./features/admin/pages/audit-log/audit-log.component').then(
+                (m) => m.AuditLogComponent,
+              ),
+          },
         ],
       },
       {
@@ -171,14 +199,6 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/shell/pages/staff-page.component').then(
             (m) => m.StaffPageComponent,
-          ),
-      },
-      {
-        path: 'admin/audit',
-        canActivate: [directorGuard],
-        loadComponent: () =>
-          import('./features/shell/pages/audit-log-page.component').then(
-            (m) => m.AuditLogPageComponent,
           ),
       },
       {

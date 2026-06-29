@@ -10,6 +10,7 @@ using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Email;
 using MidiKaval.Api.Infrastructure.Notifications;
+using MidiKaval.Api.Jobs;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Models;
 using MidiKaval.Api.Models.Attachments;
@@ -1137,6 +1138,13 @@ internal static class CaseTestData
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var runner = scope.ServiceProvider.GetRequiredService<CourtMissEscalationJobRunner>();
+        await runner.RunAsync();
+    }
+
+    public static async Task RunAuditDigestJobAsync(AuthWebApplicationFactory factory)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<AuditDigestJobRunner>();
         await runner.RunAsync();
     }
 

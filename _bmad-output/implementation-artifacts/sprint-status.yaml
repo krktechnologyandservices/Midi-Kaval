@@ -1,5 +1,5 @@
 # generated: 2026-06-13
-# last_updated: 2026-06-26
+# last_updated: 2026-06-29
 # project: Midi-Kaval
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-13
-last_updated: 2026-06-26
+last_updated: 2026-06-29
 
 project: Midi-Kaval
 project_key: NOKEY
@@ -75,7 +75,7 @@ development_status:
   2-13-user-suspension-and-reactivation: done
   2-14-permanent-deletion-user-anonymisation: done
   2-15-last-director-protection: done
-  2-16-director-2fa-mandate-and-recovery: backlog
+  2-16-director-2fa-mandate-and-recovery: done
   epic-2-retrospective: optional
 
   epic-3: in-progress
@@ -87,9 +87,9 @@ development_status:
   3-6-offline-visit-storage-and-sync-push-api: done
   3-7-sync-chip-and-sync-queue-mobile-ui: done
   3-8-discreet-pocso-capture-mode: done
-  3-9-invitations-data-model: backlog
-  3-10-double-confirmation-registration-flow: backlog
-  3-11-pending-invitations-management-and-resend: backlog
+  3-9-invitations-data-model: done
+  3-10-double-confirmation-registration-flow: done
+  3-11-pending-invitations-management-and-resend: done
   epic-3-retrospective: optional
 
   epic-4: in-progress
@@ -98,17 +98,17 @@ development_status:
   4-3-notes-timeline-ui-web-and-mobile: done
   4-4-interventions-crud-api: done
   4-5-interventions-ui-and-overdue-job: done
-  4-6-audit-events-data-model-and-recording: backlog
-  4-7-audit-log-viewer: backlog
+  4-6-audit-events-data-model-and-recording: done
+  4-7-audit-log-viewer: done
   epic-4-retrospective: optional
 
-  epic-5: in-progress
+  epic-5: done
   5-1-court-sitting-crud-api: done
   5-2-court-schedule-ui-web-case-detail-and-mobile: done
   5-3-court-reminder-background-job: done
   5-4-court-miss-escalation-and-crisis-queue-feed: done
-  5-5-audit-broadcast-batched-email-digests-to-directors: backlog
-  5-6-user-notification-suspension-and-deletion-emails: backlog
+  5-5-audit-broadcast-batched-email-digests-to-directors: done
+  5-6-user-notification-suspension-and-deletion-emails: done
   epic-5-retrospective: optional
 
   epic-6: in-progress
@@ -116,7 +116,7 @@ development_status:
   6-2-mobile-travel-claim-capture: done
   6-3-director-claim-approval-on-web: done
   6-4-claim-status-notifications: done
-  6-5-migration-script-for-existing-hardcoded-accounts: backlog
+  6-5-migration-script-for-existing-hardcoded-accounts: ready-for-dev
   6-6-dual-auth-support-during-migration-window: backlog
   epic-6-retrospective: optional
 

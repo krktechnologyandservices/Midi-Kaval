@@ -63,7 +63,7 @@ import { StatusBadgeComponent } from '../status-badge/status-badge.component';
             <div class="info-row"><span class="label">Member since</span><span class="value">{{ u.createdAtUtc | date:'mediumDate' }}</span></div>
           </section>
 
-          @if (getUserStatus(u) !== 'deleted') {
+            @if (getUserStatus(u) !== 'deleted') {
             <section class="actions-section">
               <h3>Actions</h3>
               @if (u.isSuspended) {
@@ -98,6 +98,21 @@ import { StatusBadgeComponent } from '../status-badge/status-badge.component';
                   @if (isSelf(u)) {
                     <mat-icon class="info-icon" aria-label="Cannot suspend yourself">info</mat-icon>
                   }
+                </div>
+              }
+
+              @if (u.role === 'Director' && !isSelf(u)) {
+                <div class="action-row">
+                  <span class="action-label">Reset two-factor authentication</span>
+                  <button
+                    mat-stroked-button
+                    color="primary"
+                    [disabled]="isProcessing()"
+                    [matTooltip]="'Reset this Director\\'s two-factor authentication. They will need to re-enroll.'"
+                    (click)="confirmResetTwoFactor()"
+                  >
+                    {{ isProcessing() ? 'Processing...' : 'Reset 2FA' }}
+                  </button>
                 </div>
               }
             </section>
@@ -291,6 +306,36 @@ export class UserDetailSheetComponent {
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to delete user. Please try again.';
         this.snackBar.open(msg, 'Dismiss', { duration: 4000 });
+      } finally {
+        this.isProcessing.set(false);
+      }
+    });
+
+    this.destroyRef.onDestroy(() => sub.unsubscribe());
+  }
+
+  async confirmResetTwoFactor(): Promise<void> {
+    const u = this.user();
+    if (!u) return;
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Reset Two-Factor Authentication?',
+        message: `${u.firstName} ${u.lastName} will need to re-enroll two-factor authentication before performing management actions. This action will be logged.`,
+        confirmText: 'Reset 2FA',
+        confirmColor: 'primary' as const,
+      },
+    });
+
+    const sub = dialogRef.afterClosed().subscribe(async (confirmed: boolean) => {
+      if (!confirmed) return;
+      this.isProcessing.set(true);
+      try {
+        await this.adminUserService.resetTwoFactor(u.id);
+        this.user.update(val => val ? { ...val, totpEnrolledAt: null } : null);
+        this.snackBar.open('Two-factor authentication has been reset for this user.', 'Dismiss', { duration: 4000 });
+      } catch {
+        this.snackBar.open('Failed to reset two-factor authentication. Please try again.', 'Dismiss', { duration: 4000 });
       } finally {
         this.isProcessing.set(false);
       }

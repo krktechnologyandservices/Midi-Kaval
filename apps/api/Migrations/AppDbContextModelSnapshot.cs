@@ -145,6 +145,42 @@ namespace MidiKaval.Api.Migrations
                     b.ToTable("attachments", (string)null);
                 });
 
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.AuditDigestEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuditEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("audit_event_id");
+
+                    b.Property<Guid>("DigestBatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("digest_batch_id");
+
+                    b.Property<DateTime>("DigestSentAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("digest_sent_at_utc");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organisation_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_digest_entries");
+
+                    b.HasIndex("AuditEventId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_audit_digest_entries_audit_event_id");
+
+                    b.HasIndex("OrganisationId", "DigestSentAtUtc")
+                        .HasDatabaseName("ix_audit_digest_entries_organisation_id_digest_sent_at_utc");
+
+                    b.ToTable("audit_digest_entries", (string)null);
+                });
+
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.AuditEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2512,6 +2548,25 @@ namespace MidiKaval.Api.Migrations
                     b.Navigation("ActorUser");
 
                     b.Navigation("SubjectUser");
+
+                    b.Navigation("DigestEntries");
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.AuditDigestEntry", b =>
+                {
+                    b.HasOne("MidiKaval.Api.Domain.Entities.AuditEvent", null)
+                        .WithMany("DigestEntries")
+                        .HasForeignKey("AuditEventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_audit_digest_entries_audit_events_audit_event_id");
+
+                    b.HasOne("MidiKaval.Api.Domain.Entities.Organisation", null)
+                        .WithMany()
+                        .HasForeignKey("OrganisationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_audit_digest_entries_organisations_organisation_id");
                 });
 
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.BudgetLineItem", b =>

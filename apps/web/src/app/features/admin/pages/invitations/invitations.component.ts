@@ -12,6 +12,7 @@ import { MatTableModule } from '@angular/material/table';
 import { InvitationService } from '../../services/invitation.service';
 import { InvitationSummary } from '../../models/admin.models';
 import { InviteDialogComponent } from '../../components/invite-dialog/invite-dialog.component';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-invitations',
@@ -63,6 +64,11 @@ import { InviteDialogComponent } from '../../components/invite-dialog/invite-dia
             </td>
           </ng-container>
 
+          <ng-container matColumnDef="invitedByUserEmail">
+            <th mat-header-cell *matHeaderCellDef>Invited By</th>
+            <td mat-cell *matCellDef="let i">{{ i.invitedByUserName ?? i.invitedByUserEmail }}</td>
+          </ng-container>
+
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
             <td mat-cell *matCellDef="let i">
@@ -85,16 +91,14 @@ import { InviteDialogComponent } from '../../components/invite-dialog/invite-dia
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Actions</th>
             <td mat-cell *matCellDef="let i">
-              @if (i.status === 'pending' || i.status === 'expired') {
-                <button
-                  mat-stroked-button
-                  size="small"
-                  (click)="resend(i)"
-                  [disabled]="resendingId() === i.id"
-                >
-                  {{ resendingId() === i.id ? 'Resending...' : 'Resend' }}
-                </button>
-              }
+              <button
+                mat-stroked-button
+                size="small"
+                (click)="resend(i)"
+                [disabled]="resendingId() === i.id || i.status === 'confirmed'"
+              >
+                {{ resendingId() === i.id ? 'Resending...' : 'Resend' }}
+              </button>
             </td>
           </ng-container>
 
@@ -144,7 +148,7 @@ export class InvitationsComponent implements OnInit {
   readonly sortBy = signal('createdAtUtc');
   readonly sortDesc = signal(true);
 
-  readonly displayedColumns = ['targetEmail', 'role', 'status', 'createdAtUtc', 'expiresAtUtc', 'actions'];
+  readonly displayedColumns = ['targetEmail', 'role', 'invitedByUserEmail', 'status', 'createdAtUtc', 'expiresAtUtc', 'actions'];
 
   async ngOnInit(): Promise<void> {
     await this.loadInvitations();
@@ -222,6 +226,21 @@ export class InvitationsComponent implements OnInit {
   }
 
   async resend(invitation: InvitationSummary): Promise<void> {
+    const confirmed = await this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(
+      ConfirmDialogComponent,
+      {
+        data: {
+          title: 'Resend invitation?',
+          content: `A new invitation will be sent to ${invitation.targetEmail}. The previous invitation link will no longer work.`,
+          confirmLabel: 'Send',
+        },
+        width: '400px',
+        disableClose: true,
+      },
+    ).afterClosed().toPromise() ?? false;
+
+    if (!confirmed) return;
+
     this.resendingId.set(invitation.id);
     try {
       const result = await this.invitationService.resendInvitation(invitation.id);

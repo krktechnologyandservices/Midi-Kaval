@@ -31,6 +31,8 @@ public class AuthWebApplicationFactory : WebApplicationFactory<Program>
 
     public FakeEmailSender EmailSender { get; } = new();
 
+    public FakeUserNotificationRateLimiter NotificationRateLimiter { get; } = new();
+
     public FakePushNotificationSender PushSender { get; } =
         new(NullLogger<FakePushNotificationSender>.Instance);
 
@@ -99,6 +101,14 @@ public class AuthWebApplicationFactory : WebApplicationFactory<Program>
             }
 
             services.AddSingleton<IEmailSender>(EmailSender);
+
+            var rateLimiterDescriptors = services.Where(d => d.ServiceType == typeof(IUserNotificationRateLimiter)).ToList();
+            foreach (var descriptor in rateLimiterDescriptors)
+            {
+                services.Remove(descriptor);
+            }
+
+            services.AddSingleton<IUserNotificationRateLimiter>(NotificationRateLimiter);
 
             var pushDescriptors = services.Where(d => d.ServiceType == typeof(IPushNotificationSender)).ToList();
             foreach (var descriptor in pushDescriptors)

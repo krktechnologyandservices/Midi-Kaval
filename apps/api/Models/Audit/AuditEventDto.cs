@@ -10,4 +10,6 @@ public record AuditEventDto(
     Guid? SubjectUserId,
     string? SubjectEmail,
     string? SubjectName,
+    TargetUserSnapshotDto? TargetUserSnapshot,
+    string? ActorIpAddress,
     object? Metadata);

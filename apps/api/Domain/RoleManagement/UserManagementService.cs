@@ -5,6 +5,7 @@ using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Jobs;
 using MidiKaval.Api.Models.Admin;
+using MidiKaval.Api.Models.Audit;
 
 namespace MidiKaval.Api.Domain.RoleManagement;
 
@@ -100,12 +101,19 @@ public class UserManagementService(
         return new AdminUserListResult(items, totalCount, page, pageSize);
     }
 
+    private static string GetDisplayName(string? firstName, string? lastName)
+    {
+        var combined = $"{firstName ?? ""} {lastName ?? ""}".Trim();
+        return string.IsNullOrWhiteSpace(combined) ? "User" : combined;
+    }
+
     public async Task<SuspendUserResponse> SuspendAsync(
         Guid organisationId,
         Guid actorUserId,
         Guid targetUserId,
         string? reason,
-        CancellationToken ct)
+        string? actorIpAddress = null,
+        CancellationToken ct = default)
     {
         if (targetUserId == actorUserId)
             throw new InvalidOperationException("You cannot suspend your own account. Another Director must perform this action.");
@@ -130,6 +138,12 @@ public class UserManagementService(
             if (isLastDirector)
                 throw new InvalidOperationException("Cannot deactivate — no other active Director remains in the organisation.");
 
+            // Snapshot identity before mutation
+            var snapshot = new TargetUserSnapshotDto(
+                user.Email,
+                GetDisplayName(user.FirstName, user.LastName),
+                user.Role);
+
             user.IsSuspended = true;
             user.SuspendedAtUtc = now;
             user.TokenVersion++;
@@ -141,11 +155,13 @@ public class UserManagementService(
                 organisationId,
                 actorUserId: actorUserId,
                 subjectUserId: targetUserId,
+                targetUserSnapshot: snapshot,
+                actorIpAddress: actorIpAddress,
                 metadata: new Dictionary<string, object?>
                 {
                     ["reason"] = reason,
                     ["target_email"] = user.Email,
-                    ["target_name"] = $"{user.FirstName} {user.LastName}".Trim(),
+                    ["target_name"] = GetDisplayName(user.FirstName, user.LastName),
                     ["target_role"] = user.Role,
                 },
                 cancellationToken: ct);
@@ -158,11 +174,11 @@ public class UserManagementService(
                 logger.LogWarning(ex, "Zero-Director detection failed after suspending user {TargetUserId}.", targetUserId);
             }
 
-            EnqueueStatusEmailJob(user.Id, user.Email, $"{user.FirstName} {user.LastName}".Trim(), "suspended", reason, ct);
+            EnqueueStatusEmailJob(user.Id, organisationId, user.Email, GetDisplayName(user.FirstName, user.LastName), "suspended", reason, ct);
         }
         catch (Exception ex) when (ex is not KeyNotFoundException and not InvalidOperationException)
         {
-            try { await transaction.RollbackAsync(ct); }
+            try { await transaction.RollbackAsync(CancellationToken.None); }
             catch (Exception rollbackEx)
             {
                 logger.LogError(rollbackEx, "Failed to rollback transaction for user suspension {TargetUserId}.", targetUserId);
@@ -177,7 +193,8 @@ public class UserManagementService(
         Guid organisationId,
         Guid actorUserId,
         Guid targetUserId,
-        CancellationToken ct)
+        string? actorIpAddress = null,
+        CancellationToken ct = default)
     {
         if (targetUserId == actorUserId)
             throw new InvalidOperationException("You cannot reactivate your own account. Another Director must perform this action.");
@@ -198,6 +215,12 @@ public class UserManagementService(
             if (!user.IsActive && user.Email.StartsWith("deleted-"))
                 throw new InvalidOperationException("Cannot reactivate a deleted user.");
 
+            // Snapshot identity before mutation
+            var snapshot = new TargetUserSnapshotDto(
+                user.Email,
+                GetDisplayName(user.FirstName, user.LastName),
+                user.Role);
+
             user.IsSuspended = false;
             user.SuspendedAtUtc = null;
             user.UpdatedAtUtc = now;
@@ -208,21 +231,23 @@ public class UserManagementService(
                 organisationId,
                 actorUserId: actorUserId,
                 subjectUserId: targetUserId,
+                targetUserSnapshot: snapshot,
+                actorIpAddress: actorIpAddress,
                 metadata: new Dictionary<string, object?>
                 {
                     ["target_email"] = user.Email,
-                    ["target_name"] = $"{user.FirstName} {user.LastName}".Trim(),
+                    ["target_name"] = GetDisplayName(user.FirstName, user.LastName),
                     ["target_role"] = user.Role,
                 },
                 cancellationToken: ct);
 
             await transaction.CommitAsync(ct);
 
-            EnqueueStatusEmailJob(user.Id, user.Email, $"{user.FirstName} {user.LastName}".Trim(), "reactivated", null, ct);
+            EnqueueStatusEmailJob(user.Id, organisationId, user.Email, GetDisplayName(user.FirstName, user.LastName), "reactivated", null, ct);
         }
         catch (Exception ex) when (ex is not KeyNotFoundException and not InvalidOperationException)
         {
-            try { await transaction.RollbackAsync(ct); }
+            try { await transaction.RollbackAsync(CancellationToken.None); }
             catch (Exception rollbackEx)
             {
                 logger.LogError(rollbackEx, "Failed to rollback transaction for user reactivation {TargetUserId}.", targetUserId);
@@ -238,7 +263,8 @@ public class UserManagementService(
         Guid actorUserId,
         Guid targetUserId,
         string confirmationEmail,
-        CancellationToken ct)
+        string? actorIpAddress = null,
+        CancellationToken ct = default)
     {
         if (targetUserId == actorUserId)
             throw new InvalidOperationException("You cannot delete your own account. Another Director must perform this action.");
@@ -264,11 +290,10 @@ public class UserManagementService(
                 throw new InvalidOperationException("Cannot deactivate — no other active Director remains in the organisation.");
 
             // Snapshot identity before anonymisation
-            var snapshotFirstName = user.FirstName;
-            var snapshotLastName = user.LastName;
             var snapshotEmail = user.Email;
             var snapshotRole = user.Role;
-            var snapshotName = $"{snapshotFirstName} {snapshotLastName}".Trim();
+            var snapshotName = GetDisplayName(user.FirstName, user.LastName);
+            var snapshot = new TargetUserSnapshotDto(snapshotEmail, snapshotName, snapshotRole);
 
             // Anonymise the user
             user.FirstName = "Deleted";
@@ -289,19 +314,14 @@ public class UserManagementService(
                 AuditEventTypes.UserDeleted,
                 organisationId,
                 actorUserId: actorUserId,
-                subjectUserId: null,
+                subjectUserId: targetUserId,
+                targetUserSnapshot: snapshot,
+                actorIpAddress: actorIpAddress,
                 metadata: new Dictionary<string, object?>
                 {
                     ["target_email"] = snapshotEmail,
                     ["target_name"] = snapshotName,
                     ["target_role"] = snapshotRole,
-                    ["target_user_snapshot"] = System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        firstName = snapshotFirstName,
-                        lastName = snapshotLastName,
-                        email = snapshotEmail,
-                        role = snapshotRole,
-                    }),
                 },
                 cancellationToken: ct);
 
@@ -313,11 +333,11 @@ public class UserManagementService(
                 logger.LogWarning(ex, "Zero-Director detection failed after deleting user {TargetUserId}.", targetUserId);
             }
 
-            EnqueueDeletionEmailJob(snapshotEmail, snapshotName, ct);
+            EnqueueDeletionEmailJob(targetUserId, organisationId, snapshotEmail, snapshotName, ct);
         }
         catch (Exception ex) when (ex is not KeyNotFoundException and not InvalidOperationException)
         {
-            try { await transaction.RollbackAsync(ct); }
+            try { await transaction.RollbackAsync(CancellationToken.None); }
             catch (Exception rollbackEx)
             {
                 logger.LogError(rollbackEx, "Failed to rollback transaction for user deletion {TargetUserId}.", targetUserId);
@@ -328,16 +348,16 @@ public class UserManagementService(
         return new DeleteUserResponse(user.Id, now, "User has been permanently deleted.");
     }
 
-    protected virtual void EnqueueStatusEmailJob(Guid userId, string email, string name, string actionType, string? reason, CancellationToken ct)
+    protected virtual void EnqueueStatusEmailJob(Guid userId, Guid organisationId, string email, string name, string actionType, string? reason, CancellationToken ct)
     {
         BackgroundJob.Enqueue<UserStatusEmailJob>(j =>
-            j.ExecuteAsync(userId, email, name, actionType, reason, ct));
+            j.ExecuteAsync(userId, organisationId, email, name, actionType, reason, CancellationToken.None));
     }
 
-    protected virtual void EnqueueDeletionEmailJob(string originalEmail, string originalName, CancellationToken ct)
+    protected virtual void EnqueueDeletionEmailJob(Guid userId, Guid organisationId, string originalEmail, string originalName, CancellationToken ct)
     {
         BackgroundJob.Enqueue<UserStatusEmailJob>(j =>
-            j.ExecuteAsync(Guid.Empty, originalEmail, originalName, "deleted", null, ct));
+            j.ExecuteAsync(userId, organisationId, originalEmail, originalName, "deleted", null, CancellationToken.None));
     }
 
     protected virtual Task NotifyUserRemovedAsync(Guid organisationId, Guid userId, CancellationToken ct)

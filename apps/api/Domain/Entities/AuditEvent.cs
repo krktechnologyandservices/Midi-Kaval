@@ -9,6 +9,8 @@ public sealed class AuditEvent
     public Guid? ActorUserId { get; set; }
     public Guid? SubjectUserId { get; set; }
     public string EventType { get; set; } = string.Empty;
+    public string? TargetUserSnapshot { get; set; }
+    public string? ActorIpAddress { get; set; }
     public string? MetadataJson { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 
@@ -17,4 +19,6 @@ public sealed class AuditEvent
 
     [ForeignKey(nameof(SubjectUserId))]
     public User? SubjectUser { get; set; }
+
+    public ICollection<AuditDigestEntry> DigestEntries { get; set; } = [];
 }

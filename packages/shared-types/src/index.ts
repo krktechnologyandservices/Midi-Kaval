@@ -13,3 +13,15 @@ export enum SyncState {
   Synced = 'synced',
   Error = 'error',
 }
+
+export enum InvitationStatus {
+  Pending = 'pending',
+  Confirmed = 'confirmed',
+  Expired = 'expired',
+}
+
+export enum ConfirmationStatus {
+  Pending = 'pending',
+  Confirmed = 'confirmed',
+  Expired = 'expired',
+}

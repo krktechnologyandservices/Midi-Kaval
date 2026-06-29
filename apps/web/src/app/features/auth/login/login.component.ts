@@ -6,6 +6,14 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { AuthSessionService } from '../../../core/auth/auth-session.service';
+import { HttpErrorResponse } from '@angular/common/http';
+
+interface ProblemDetails {
+  detail?: string;
+  type?: string;
+  extensions?: Record<string, unknown>;
+  [key: string]: unknown;
+}
 
 @Component({
   selector: 'app-login',
@@ -52,8 +60,15 @@ export class LoginComponent implements OnInit {
     this.submitting.set(true);
     try {
       await this.auth.login(this.form.getRawValue());
-      await this.router.navigate(['/login/otp']);
+      // Navigation is handled by AuthSessionService.login()
     } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 403) {
+        const problem = error.error as ProblemDetails | null;
+        if (problem?.extensions?.['code'] === 'ACCOUNT_NOT_CONFIRMED') {
+          this.errorMessage.set('Please check your email to confirm your account before logging in.');
+          return;
+        }
+      }
       this.errorMessage.set(this.auth.extractErrorMessage(error));
     } finally {
       this.submitting.set(false);

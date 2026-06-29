@@ -34,6 +34,15 @@ public sealed class RefreshTokenOptions
     public int MaxActivePerUser { get; set; } = 5;
 }
 
+public sealed class TotpOptions
+{
+    public const string SectionName = "Totp";
+
+    public string Issuer { get; set; } = "Midi-Kaval";
+    public int StepSeconds { get; set; } = 30;
+    public int CodeLength { get; set; } = 6;
+}
+
 public sealed class PasswordResetOptions
 {
     public const string SectionName = "PasswordReset";

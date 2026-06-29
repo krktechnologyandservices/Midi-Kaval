@@ -553,3 +553,59 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - **ReactivateUser accepts no request body (no reactivation reason captured)** (`UsersController.cs`) — pre-existing design choice
 - **404 vs 409 responses leak user existence (enumeration oracle)** (`UsersController.cs`) — pre-existing system-wide pattern
 - **TryResolveActorUserId failure handled same as auth failure** (`UsersController.cs`) — pre-existing system-wide pattern
+
+## Deferred from: code review of 2-16-director-2fa-mandate-and-recovery.md (2026-06-27)
+
+- **`IsEnrolledAsync` only checks `TotpEnrolledAt`** — partial-enrollment state (`TotpSecret` set, `TotpEnrolledAt` null) ambiguity exists in the entity design, not introduced here.
+- **TOTP enrollment has no rotation/re-enrollment requirement** — security policy concern, not a code bug.
+- **`TokenVersion` increment doesn't invalidate existing sessions** — by design; refresh tokens expire naturally (7 days).
+- **Unenrolled Directors hit 403 on actions** — handled by existing `[Require2FA]` attribute; separate story for proactive enrollment prompt.
+- **`Require2FA` filter does DB query on every request** — pre-existing pattern; caching optimization is out of scope.
+- **403→modal interception UI unwired** — frontend UX enhancement, separate story.
+
+## Deferred from: code review of story 3-9-invitations-data-model (2026-06-27)
+
+- **Repeated test setup boilerplate** — 6+ tests independently create Org+User with hardcoded strings — pre-existing pattern
+- **`PasswordHash = "placeholder"` brittle test data** — pre-existing test pattern
+- **No `[Collection]` attribute for parallel test safety** — pre-existing test infra concern
+- **Missing `token_hash` uniqueness constraint test** — not in ACs
+- **Missing `expires_at_utc > created_at_utc` validation test** — not in ACs
+- **Missing email case-insensitivity test for unique index** — not in ACs
+- **Missing `status`+`confirmed_at_utc` consistency test** — not in ACs
+- **Missing re-invitation after expiry test** — not in ACs
+
+## Deferred from: code review of story 3-10 (2026-06-27)
+
+- **No endpoint to resend confirmation email** — Users are stuck after 3 failed delivery attempts. Story 3-11 is the planned vehicle for this. Not in scope of current ACs.
+- **No cleanup mechanism for expired confirmation tokens** — No recurring job to delete/archive expired rows. Table grows unbounded. Future enhancement, out of scope of 3-10.
+- **Pending user state confusion with suspension/deactivation** — `UserManagementService` and frontend `getUserStatus` have no handling for `IsActive=false, IsSuspended=false` users. Pre-existing issue not introduced by story 3-10.
+- **Cascade delete on User FK loses ConfirmationToken rows on user deletion** — By design but noted for GDPR/compliance considerations.
+
+## Deferred from: code review round 2 of story 3-10 (2026-06-27)
+
+- **`VerifyTotpLoginAsync` null-forgiving / race conditions** — `VerifyTotpLoginAsync` has null-forgiving operator (`request!`) after partial null guard, and concurrent verify requests for same `TotpChallengeId` can race. Pre-existing code from story 2-16, not introduced by 3-10.
+- **`IsActive=true` AND `IsSuspended=true` anomalous user state** — No validation prevents a user from being both active and suspended. Pre-existing data model concern affecting all user flows, not introduced by story 3-10.
+- **Component constructor side-effects in Angular components** — `EmailConfirmedComponent` and `InvitationAcceptComponent` perform HTTP calls in constructors instead of lifecycle hooks. Works in practice but is an anti-pattern; lower priority.
+
+## Deferred from: code review of 4-7-audit-log-viewer (2026-06-28)
+
+- **Fragile event type label synchronization** — 80+ hand-maintained labels in `EVENT_TYPE_LABELS` with no codegen or integration test. Every backend addition of a new audit event type requires a manual, out-of-band update.
+- **`TargetUserSnapshotDto` lacks user ID** — The snapshot DTO carries `email`, `name`, `role` but no stable user ID. Navigating from an audit log entry to a user detail page requires a secondary lookup by email.
+- **Minimal test coverage on audit service** — Only one test verifies the service calls `/api/v1/admin/audit`. No tests for error responses, parameter serialization, combined filter scenarios, or `extractErrorMessage`.
+- **Expandable row state cleared on pagination** — `expandedRows` set is cleared on every data refresh (including pagination). Intentional trade-off — old row references are meaningless after data reload.
+- **Missing sort order parameter (AC 1)** — No explicit `sort` or `order` parameter sent to the API. Backend defaults to timestamp descending, so behavior is correct but not enforced from the frontend.
+- **`.trim()` on non-string for filter fields** — `filterActorUserId.trim()` / `filterSubjectUserId.trim()` assume string values. Component fields are string-typed and bound via `ngModel`, making non-string assignment unlikely.
+
+## Deferred from: code review re-review of 5-5-audit-broadcast-batched-email-digests-to-directors (2026-06-28)
+
+- **Horizontal scale duplicate emails** — No distributed lock (PostgreSQL advisory lock, Redis) across multiple app instances; pre-existing cross-cutting concern, no distributed lock pattern exists in project.
+- **Missing structural sync between `DigestEventTypes` and `FormatEventType`** — No test-time or compile-time enforcement that every digest event type has a human-readable label; `_ => eventType` fallthrough silently returns raw constant.
+- **`AuditEvent` relationship configured by convention not explicit** — `AuditDigestEntryConfiguration` explicitly configures `Organisation` FK but leaves `AuditEvent` FK to EF Core convention; works correctly, minor inconsistency.
+
+## Deferred from: code review of 5-6-user-notification-suspension-and-deletion-emails (2026-06-29)
+
+- **HTML email body sent as `text/plain`** — `SmtpEmailSender` sends Html-encoded body with `TextPart("plain")`, users see raw HTML tags. Pre-existing issue.
+- **Notification may be silently lost if `BackgroundJob.Enqueue` throws after CommitAsync** — No compensation logic (outbox, retry queue). Pre-existing pattern.
+- **Rate limiter uses calendar-day bucket, not 24-hour sliding window** — 6 emails can be delivered in 2 minutes across midnight. Design trade-off, matches spec wording.
+- **Rate-limit skip is completely silent — Director receives no feedback** — Not required by acceptance criteria.
+- **SubjectUserId in deletion audit changed from null to targetUserId** — Snapshot `TargetUserSnapshotDto` preserves original identity. Intentional design.

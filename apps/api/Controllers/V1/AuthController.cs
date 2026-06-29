@@ -39,7 +39,7 @@ public class AuthController(AuthService authService, IWebHostEnvironment environ
         }
         catch (AuthForbiddenException ex)
         {
-            return ForbiddenProblem(ex.Message);
+            return ForbiddenProblem(ex.Message, ex.ErrorCode);
         }
         catch (EmailDeliveryException ex)
         {
@@ -304,11 +304,23 @@ public class AuthController(AuthService authService, IWebHostEnvironment environ
             statusCode: StatusCodes.Status401Unauthorized,
             title: "Unauthorized");
 
-    private IActionResult ForbiddenProblem(string detail) =>
-        Problem(
-            detail: detail,
-            statusCode: StatusCodes.Status403Forbidden,
-            title: "Forbidden");
+    private IActionResult ForbiddenProblem(string detail, string? errorCode = null)
+    {
+        var problem = new ProblemDetails
+        {
+            Detail = detail,
+            Status = StatusCodes.Status403Forbidden,
+            Title = "Forbidden",
+            Type = errorCode is not null
+                ? $"https://errors/{errorCode}"
+                : "https://tools.ietf.org/html/rfc7231#section-6.5.3",
+        };
+        if (errorCode is not null)
+        {
+            problem.Extensions["code"] = errorCode;
+        }
+        return new ObjectResult(problem) { StatusCode = StatusCodes.Status403Forbidden };
+    }
 
     private IActionResult ServiceUnavailableProblem(string detail) =>
         Problem(

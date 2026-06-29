@@ -6,6 +6,7 @@ using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Infrastructure.RoleManagement;
 using MidiKaval.Api.Jobs;
 using MidiKaval.Api.Models.Admin;
+using MidiKaval.Api.Models.Audit;
 
 namespace MidiKaval.Api.Domain.RoleManagement;
 
@@ -13,7 +14,8 @@ public class InvitationService(
     AppDbContext db,
     TokenService tokenService,
     IAuditService auditService,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    ILogger<InvitationService> logger)
 {
     private const int DefaultPageSize = 25;
     private const int MaxPageSize = 100;
@@ -22,7 +24,8 @@ public class InvitationService(
         Guid organisationId,
         Guid invitedByUserId,
         SendInvitationRequest request,
-        CancellationToken ct)
+        string? actorIpAddress = null,
+        CancellationToken ct = default)
     {
         var invitableRoles = new[] { UserRoles.Coordinator, UserRoles.SocialWorker, UserRoles.CaseWorker, UserRoles.Accountant };
         if (!invitableRoles.Contains(request.Role))
@@ -65,16 +68,22 @@ public class InvitationService(
         using var transaction = await db.Database.BeginTransactionAsync(ct);
         try
         {
+            // Load inviter for snapshot inside the transaction to avoid TOCTOU race
+            var inviter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == invitedByUserId, ct);
+            TargetUserSnapshotDto? inviterSnapshot = inviter is not null
+                ? new TargetUserSnapshotDto(inviter.Email, $"{inviter.FirstName} {inviter.LastName}".Trim(), inviter.Role)
+                : null;
+
             db.Invitations.Add(invitation);
             await db.SaveChangesAsync(ct);
-
-            EnqueueEmailJob(invitation.Id, rawToken, signature, request.Email, request.Role);
 
             await auditService.RecordAsync(
                 AuditEventTypes.InvitationSent,
                 organisationId,
                 actorUserId: invitedByUserId,
                 subjectUserId: null,
+                targetUserSnapshot: inviterSnapshot,
+                actorIpAddress: actorIpAddress,
                 metadata: new Dictionary<string, object?>
                 {
                     ["target_email"] = request.Email,
@@ -84,10 +93,12 @@ public class InvitationService(
                 cancellationToken: ct);
 
             await transaction.CommitAsync(ct);
+
+            EnqueueEmailJob(invitation.Id, rawToken, signature, request.Email, request.Role);
         }
         catch
         {
-            await transaction.RollbackAsync(ct);
+            await transaction.RollbackAsync(CancellationToken.None);
             throw;
         }
 
@@ -104,8 +115,11 @@ public class InvitationService(
         int pageSize = DefaultPageSize,
         CancellationToken ct = default)
     {
-        page = Math.Max(1, page);
-        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+        if (pageSize < 1 || pageSize > MaxPageSize)
+            pageSize = DefaultPageSize;
+
+        if (page < 1)
+            page = 1;
 
         var query = db.Invitations
             .AsNoTracking()
@@ -121,10 +135,14 @@ public class InvitationService(
                 i.Id,
                 i.TargetEmail,
                 i.Role,
-                i.Status,
+                i.Status.ToString(),
                 i.CreatedAtUtc,
                 i.ExpiresAtUtc,
-                i.ConfirmedAtUtc))
+                i.ConfirmedAtUtc,
+                i.InvitedByUser != null ? i.InvitedByUser.Email : null,
+                i.InvitedByUser != null
+                    ? ((i.InvitedByUser.FirstName ?? "") + " " + (i.InvitedByUser.LastName ?? "")).Trim()
+                    : null))
             .ToListAsync(ct);
 
         return new InvitationListResult(items, totalCount, page, pageSize);
@@ -134,63 +152,126 @@ public class InvitationService(
         Guid organisationId,
         Guid invitationId,
         Guid resendByUserId,
-        CancellationToken ct)
+        string? actorIpAddress = null,
+        CancellationToken ct = default)
     {
+        var tokenHours = configuration.GetValue<int>("INVITATION_TOKEN_TTL_HOURS", 24);
+        if (tokenHours <= 0) tokenHours = 24;
+
         var invitation = await db.Invitations
-            .FirstOrDefaultAsync(i => i.Id == invitationId && i.OrganisationId == organisationId, ct);
-        if (invitation is null)
-        {
-            throw new KeyNotFoundException("Invitation not found.");
-        }
+            .Include(i => i.InvitedByUser)
+            .FirstOrDefaultAsync(i => i.Id == invitationId && i.OrganisationId == organisationId, ct)
+            ?? throw new KeyNotFoundException("Invitation not found.");
 
         if (invitation.Status == InvitationStatus.Confirmed)
-        {
             throw new InvalidOperationException("Cannot resend a confirmed invitation.");
-        }
 
-        var tokenHours = configuration.GetValue<int>("INVITATION_TOKEN_TTL_HOURS", 24);
+        // Create snapshot of original inviter for the notification event
+        TargetUserSnapshotDto? originalInviterSnapshot = invitation.InvitedByUser is not null
+            ? new TargetUserSnapshotDto(
+                invitation.InvitedByUser.Email,
+                $"{invitation.InvitedByUser.FirstName} {invitation.InvitedByUser.LastName}".Trim(),
+                invitation.InvitedByUser.Role)
+            : null;
+
         var (rawToken, tokenHash, signature) = tokenService.GenerateActivationToken();
 
         using var transaction = await db.Database.BeginTransactionAsync(ct);
         try
         {
+            // Load resendByUser inside the transaction to avoid TOCTOU race
+            var resendByUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == resendByUserId, ct);
+            var resendByUserName = resendByUser is not null ? $"{resendByUser.FirstName} {resendByUser.LastName}".Trim() : "Unknown";
+
+            // Create snapshot of the resending user
+            TargetUserSnapshotDto? resenderSnapshot = resendByUser is not null
+                ? new TargetUserSnapshotDto(resendByUser.Email, resendByUserName, resendByUser.Role)
+                : null;
+
             invitation.TokenHash = tokenHash;
             invitation.ExpiresAtUtc = DateTime.UtcNow.AddHours(tokenHours);
             await db.SaveChangesAsync(ct);
 
-            EnqueueEmailJob(invitationId, rawToken, signature, invitation.TargetEmail, invitation.Role);
-
+            // Record resend audit event with inviter metadata
             await auditService.RecordAsync(
                 AuditEventTypes.InvitationResent,
                 organisationId,
                 actorUserId: resendByUserId,
                 subjectUserId: null,
+                targetUserSnapshot: resenderSnapshot,
+                actorIpAddress: actorIpAddress,
                 metadata: new Dictionary<string, object?>
                 {
                     ["target_email"] = invitation.TargetEmail,
                     ["role"] = invitation.Role,
                     ["invitation_id"] = invitationId.ToString(),
+                    ["original_invited_by_user_id"] = invitation.InvitedByUserId.ToString(),
+                    ["resent_by_user_id"] = resendByUserId.ToString(),
+                },
+                cancellationToken: ct);
+
+            // Record notification audit event
+            await auditService.RecordAsync(
+                AuditEventTypes.InvitationResentNotified,
+                organisationId,
+                actorUserId: resendByUserId,
+                subjectUserId: invitation.InvitedByUserId,
+                targetUserSnapshot: originalInviterSnapshot,
+                actorIpAddress: actorIpAddress,
+                metadata: new Dictionary<string, object?>
+                {
+                    ["target_email"] = invitation.TargetEmail,
+                    ["original_inviter_user_id"] = invitation.InvitedByUserId.ToString(),
+                    ["original_inviter_email"] = invitation.InvitedByUser?.Email,
                 },
                 cancellationToken: ct);
 
             await transaction.CommitAsync(ct);
+
+            // Enqueue email to target recipient (after commit)
+            EnqueueEmailJob(invitationId, rawToken, signature, invitation.TargetEmail, invitation.Role);
+
+            // Enqueue notification to original inviter (after commit)
+            if (invitation.InvitedByUser is not null)
+            {
+                var originalInviterName = $"{invitation.InvitedByUser.FirstName} {invitation.InvitedByUser.LastName}".Trim();
+                EnqueueResendNotificationJob(
+                    invitation.InvitedByUser.Email,
+                    originalInviterName,
+                    invitation.TargetEmail,
+                    resendByUserName);
+            }
         }
         catch
         {
-            await transaction.RollbackAsync(ct);
+            await transaction.RollbackAsync(CancellationToken.None);
             throw;
         }
+
+        logger.LogInformation(
+            "Invitation {InvitationId} resent by user {ResendByUserId} (original inviter: {InvitedByUserId}).",
+            invitationId, resendByUserId, invitation.InvitedByUserId);
 
         return new ResendInvitationResponse(
             invitation.Id,
             invitation.TargetEmail,
             invitation.ExpiresAtUtc,
-            $"New invitation sent to {invitation.TargetEmail}.");
+            $"Invitation resent to {invitation.TargetEmail}.");
     }
 
     protected virtual void EnqueueEmailJob(Guid invitationId, string rawToken, string signature, string email, string role)
     {
         BackgroundJob.Enqueue<InvitationEmailDeliveryJob>(j =>
             j.ExecuteAsync(invitationId, rawToken, signature, email, role, CancellationToken.None));
+    }
+
+    protected virtual void EnqueueResendNotificationJob(
+        string originalInviterEmail,
+        string originalInviterName,
+        string targetEmail,
+        string resentByUserName)
+    {
+        BackgroundJob.Enqueue<InvitationResendNotificationJob>(j =>
+            j.ExecuteAsync(originalInviterEmail, originalInviterName, targetEmail, resentByUserName, CancellationToken.None));
     }
 }

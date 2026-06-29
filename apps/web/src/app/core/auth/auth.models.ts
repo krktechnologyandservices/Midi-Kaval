@@ -28,3 +28,4 @@ export const AUTH_HTTP_OPTIONS = { withCredentials: true } as const;
 export const ACCESS_TOKEN_KEY = 'midi_kaval_access_token';
 export const USER_KEY = 'midi_kaval_user';
 export const CHALLENGE_KEY = 'midi_kaval_otp_challenge';
+export const TOTP_KEY = 'midi_kaval_totp_state';

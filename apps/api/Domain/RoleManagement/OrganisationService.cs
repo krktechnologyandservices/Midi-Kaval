@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using MidiKaval.Api.Domain.Entities;
+using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Email;
 using MidiKaval.Api.Infrastructure.Email.Templates;
 using MidiKaval.Api.Infrastructure.Persistence;
@@ -17,6 +18,7 @@ public class OrganisationService(
     IConnectionMultiplexer multiplexer,
     IConfiguration configuration,
     LastDirectorGuard lastDirectorGuard,
+    IAuditService auditService,
     ILogger<OrganisationService> logger)
 {
     private static readonly TimeSpan EmailRateLimitWindow = TimeSpan.FromHours(1);
@@ -108,6 +110,7 @@ public class OrganisationService(
         Guid organisationId,
         string targetDirectorEmail,
         Guid? actorUserId = null,
+        string? actorIpAddress = null,
         CancellationToken cancellationToken = default)
     {
         // 1. Load the organisation
@@ -128,44 +131,8 @@ public class OrganisationService(
             throw new RateLimitExceededException("Too many activation requests for this email address. Please try again later.");
 
         // 4. Serializable transaction: verify zero-Director state and persist token atomically
-        var now = DateTime.UtcNow;
-        var ttlHours = configuration.GetValue<int>("ACTIVATION_TOKEN_TTL_HOURS", 168);
-        var (rawToken, tokenHash, signature) = tokenService.GenerateActivationToken();
-
-        await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
-
-        var hasDirector = await lastDirectorGuard.HasAnyActiveDirectorAsync(organisationId, cancellationToken);
-        if (hasDirector)
-            throw new ValidationException("This organisation already has active Directors.");
-
-        var activationToken = new ActivationToken
-        {
-            Id = Guid.NewGuid(),
-            OrganisationId = organisationId,
-            TokenHash = tokenHash,
-            TargetEmail = targetDirectorEmail.Trim().ToLowerInvariant(),
-            ExpiresAtUtc = now.AddHours(ttlHours),
-            DeliveryAttempts = 0,
-            CreatedAtUtc = now,
-        };
-        db.ActivationTokens.Add(activationToken);
-        await db.SaveChangesAsync(cancellationToken);
-
-        // Record audit event for compliance
-        if (actorUserId.HasValue)
-        {
-            db.AuditEvents.Add(new AuditEvent
-            {
-                Id = Guid.NewGuid(),
-                OrganisationId = organisationId,
-                EventType = "activation_reissued",
-                ActorUserId = actorUserId,
-                CreatedAtUtc = now,
-            });
-            await db.SaveChangesAsync(cancellationToken);
-        }
-
-        await tx.CommitAsync(cancellationToken);
+        var (rawToken, signature, activationToken, now) = await ExecuteReissueActivationAsync(
+            organisationId, targetDirectorEmail, actorUserId, actorIpAddress, cancellationToken);
 
         // 5. Build activation URL and send email
         var baseUrl = configuration.GetValue<string>("ActivationLink:BaseUrl") ?? "http://localhost:4200";
@@ -261,6 +228,54 @@ public class OrganisationService(
         return new VendorOrganisationDetail(
             org.Id, org.Name, org.IsActive, org.DirectorCount, org.HasPendingRecovery,
             lastKnownDirectorName, lastKnownDirectorActiveAt, org.CreatedAtUtc);
+    }
+
+    /// <summary>
+    /// Executes the transactional part of reissue activation: serializable transaction
+    /// to verify zero-Director state and persist the new activation token atomically.
+    /// Override in tests to bypass relational-provider requirements (InMemory does not
+    /// support transactions or raw SQL).
+    /// </summary>
+    protected virtual async Task<(string rawToken, string signature, ActivationToken token, DateTime now)> ExecuteReissueActivationAsync(
+        Guid organisationId, string targetDirectorEmail, Guid? actorUserId, string? actorIpAddress = null, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var ttlHours = configuration.GetValue<int>("ACTIVATION_TOKEN_TTL_HOURS", 168);
+        var (rawToken, tokenHash, signature) = tokenService.GenerateActivationToken();
+
+        await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+
+        var hasDirector = await lastDirectorGuard.HasAnyActiveDirectorAsync(organisationId, cancellationToken);
+        if (hasDirector)
+            throw new ValidationException("This organisation already has active Directors.");
+
+        var activationToken = new ActivationToken
+        {
+            Id = Guid.NewGuid(),
+            OrganisationId = organisationId,
+            TokenHash = tokenHash,
+            TargetEmail = targetDirectorEmail.Trim().ToLowerInvariant(),
+            ExpiresAtUtc = now.AddHours(ttlHours),
+            DeliveryAttempts = 0,
+            CreatedAtUtc = now,
+        };
+        db.ActivationTokens.Add(activationToken);
+        await db.SaveChangesAsync(cancellationToken);
+
+        // Record audit event for compliance
+        if (actorUserId.HasValue)
+        {
+            await auditService.RecordAsync(
+                AuditEventTypes.ActivationReissued,
+                organisationId,
+                actorUserId: actorUserId,
+                actorIpAddress: actorIpAddress,
+                cancellationToken: cancellationToken);
+        }
+
+        await tx.CommitAsync(cancellationToken);
+
+        return (rawToken, signature, activationToken, now);
     }
 
     protected virtual async Task<bool> IsEmailRateLimitedAsync(string email)

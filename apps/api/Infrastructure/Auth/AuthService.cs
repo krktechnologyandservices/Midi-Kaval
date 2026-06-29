@@ -3,11 +3,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using MidiKaval.Api.Domain.Entities;
+using MidiKaval.Api.Domain.RoleManagement;
 using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Email;
 using MidiKaval.Api.Infrastructure.Notifications;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Models.Auth;
+// TOTP operations delegated to TwoFactorService
 
 namespace MidiKaval.Api.Infrastructure.Auth;
 
@@ -25,9 +27,11 @@ public sealed class AuthService(
     IUserSessionService userSessionService,
     UserDeviceService userDeviceService,
     IOptions<PasswordResetOptions> passwordResetOptions,
+    TwoFactorService twoFactorService,
     ILogger<AuthService> logger)
 {
     public const string DeactivatedMessage = "Contact your coordinator";
+    public const string AccountNotConfirmedMessage = "Please check your email to confirm your account before logging in.";
     public const string InvalidCredentialsMessage = "Invalid email or password.";
     public const string InvalidOtpMessage = "Invalid or expired verification code.";
     public const string InvalidRefreshTokenMessage = "Invalid or expired refresh token.";
@@ -60,7 +64,13 @@ public sealed class AuthService(
 
         if (!user.IsActive)
         {
-            throw new AuthForbiddenException(DeactivatedMessage);
+            if (user.IsSuspended)
+            {
+                throw new AuthForbiddenException(DeactivatedMessage);
+            }
+
+            // User is not suspended but not active — pending confirmation
+            throw new AuthForbiddenException(AccountNotConfirmedMessage, errorCode: "ACCOUNT_NOT_CONFIRMED");
         }
 
         var password = request.Password?.Trim() ?? string.Empty;
@@ -69,6 +79,32 @@ public sealed class AuthService(
         {
             await RecordLoginFailedAsync(normalizedEmail, user, cancellationToken);
             return null;
+        }
+
+        // Director with TOTP enrolled → skip email OTP, return requiresTotp=true
+        if (user.Role == UserRoles.Director && user.TotpEnrolledAt is not null)
+        {
+            // Create a binding challenge that ties TOTP verification to this password step
+            var totpChallenge = new OtpChallenge
+            {
+                UserId = user.Id,
+                OrganisationId = user.OrganisationId,
+                Email = user.Email,
+                OtpHash = Guid.NewGuid().ToString("N"), // nonce — no OTP to verify, just binding
+                TokenVersion = user.TokenVersion,
+            };
+
+            var totpChallengeId = await otpChallengeStore.CreateAsync(totpChallenge, cancellationToken);
+
+            return new LoginResponse
+            {
+                ChallengeId = null,
+                TotpChallengeId = totpChallengeId,
+                ExpiresInSeconds = otpChallengeStore.ExpirySeconds,
+                UserId = user.Id,
+                TokenVersion = user.TokenVersion,
+                RequiresTotp = true,
+            };
         }
 
         var otpCode = GenerateOtpCode();
@@ -152,16 +188,85 @@ public sealed class AuthService(
             throw new AuthForbiddenException(DeactivatedMessage);
         }
 
-        var (accessToken, expiresIn) = jwtTokenService.CreateAccessToken(user);
-        var refreshToken = await refreshTokenStore.IssueAsync(user.Id, user.TokenVersion, cancellationToken);
-
         if (!await otpChallengeStore.TryFinalizeAsync(request.ChallengeId, challenge.OtpHash, cancellationToken))
         {
             return null;
         }
 
+        return await IssueAuthTokensAsync(user, AuditEventTypes.LoginSuccess, cancellationToken);
+    }
+
+    /// <summary>Verify TOTP code for a Director login and issue JWT + refresh token.</summary>
+    public async Task<VerifyOtpResponse?> VerifyTotpLoginAsync(
+        VerifyTotpLoginRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmedCode = request?.Code?.Trim() ?? string.Empty;
+        if (trimmedCode.Length != 6)
+        {
+            return null;
+        }
+
+        // Verify the binding challenge — proves user completed the password step
+        var challenge = await otpChallengeStore.GetAsync(request!.TotpChallengeId, cancellationToken);
+        if (challenge is null || challenge.UserId != request.UserId)
+        {
+            return null;
+        }
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
+        if (user is null)
+        {
+            return null;
+        }
+
+        if (!user.IsActive)
+        {
+            throw new AuthForbiddenException(
+                user.IsSuspended ? DeactivatedMessage : AccountNotConfirmedMessage);
+        }
+
+        // Reject if token version doesn't match (e.g., 2FA was reset since login)
+        if (user.TokenVersion != request.TokenVersion)
+        {
+            return null;
+        }
+
+        if (user.TotpEnrolledAt is null || string.IsNullOrWhiteSpace(user.TotpSecret))
+        {
+            return null;
+        }
+
+        var verified = await twoFactorService.VerifyTotpCodeAsync(user.Id, trimmedCode, cancellationToken);
+        if (!verified)
+        {
+            await auditService.RecordAsync(
+                AuditEventTypes.OtpFailed,
+                user.OrganisationId,
+                subjectUserId: user.Id,
+                metadata: new Dictionary<string, object?> { ["source"] = "totp-login" },
+                cancellationToken: cancellationToken);
+            // Record failed attempt on challenge too
+            await otpChallengeStore.RecordFailedAttemptAsync(request.TotpChallengeId, cancellationToken);
+            return null;
+        }
+
+        // Consume the binding challenge after successful TOTP verification
+        await otpChallengeStore.RemoveAsync(request.TotpChallengeId, cancellationToken);
+
+        return await IssueAuthTokensAsync(user, AuditEventTypes.LoginSuccess, cancellationToken);
+    }
+
+    private async Task<VerifyOtpResponse> IssueAuthTokensAsync(
+        User user,
+        string auditEventType,
+        CancellationToken cancellationToken)
+    {
+        var (accessToken, expiresIn) = jwtTokenService.CreateAccessToken(user);
+        var refreshToken = await refreshTokenStore.IssueAsync(user.Id, user.TokenVersion, cancellationToken);
+
         await auditService.RecordAsync(
-            AuditEventTypes.LoginSuccess,
+            auditEventType,
             user.OrganisationId,
             actorUserId: user.Id,
             subjectUserId: user.Id,
@@ -537,7 +642,10 @@ public sealed class AuthService(
         RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
 }
 
-public sealed class AuthForbiddenException(string message) : Exception(message);
+public sealed class AuthForbiddenException(string message, string? errorCode = null) : Exception(message)
+{
+    public string? ErrorCode { get; } = errorCode;
+}
 
 public sealed class AuthBadRequestException(string message) : Exception(message);
 

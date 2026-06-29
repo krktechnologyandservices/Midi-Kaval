@@ -63,8 +63,9 @@ public class InvitationsController(
 
         try
         {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
             var result = await invitationService.SendInvitationAsync(
-                organisationId, userId, request, cancellationToken);
+                organisationId, userId, request, ipAddress, cancellationToken);
 
             return CreatedAtAction(nameof(SendInvitation), null,
                 new ApiResponse<SendInvitationResponse>(result, new ApiMeta
@@ -163,8 +164,9 @@ public class InvitationsController(
 
         try
         {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
             var result = await invitationService.ResendInvitationAsync(
-                organisationId, id, userId, cancellationToken);
+                organisationId, id, userId, ipAddress, cancellationToken);
 
             return Ok(new ApiResponse<ResendInvitationResponse>(result, new ApiMeta
             {

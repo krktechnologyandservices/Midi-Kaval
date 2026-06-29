@@ -31,3 +31,8 @@ public sealed record DeleteUserResponse(
     [property: JsonPropertyName("deletedAtUtc")] DateTime DeletedAtUtc,
     string Message
 );
+
+public sealed record ResetTwoFactorResponse(
+    Guid Id,
+    string Message
+);

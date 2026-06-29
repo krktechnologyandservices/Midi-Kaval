@@ -30,8 +30,8 @@
   align-items: flex-start;
 
   mat-form-field {
-    flex: 1 1 200px;
-    min-width: 160px;
+    flex: 1 1 180px;
+    min-width: 140px;
   }
 }
 
@@ -84,12 +84,89 @@
     min-width: 180px;
   }
 
-  .mat-column-details {
-    min-width: 200px;
-    max-width: 300px;
+  .mat-column-ipAddress {
+    min-width: 140px;
+    font-family: 'Roboto Mono', 'Consolas', monospace;
     font-size: 0.8125rem;
-    color: var(--mat-sys-on-surface-variant, #475467);
   }
+
+  .mat-column-expand {
+    width: 48px;
+    min-width: 48px;
+    text-align: center;
+  }
+}
+
+.audit-row {
+  cursor: pointer;
+
+  &.expanded {
+    background: var(--mat-sys-surface-variant, #f5f5f5);
+  }
+
+  &:hover {
+    background: var(--mat-sys-hover, rgba(0, 0, 0, 0.04));
+  }
+}
+
+.detail-row {
+  background: var(--mat-sys-surface-variant, #f5f5f5);
+
+  td {
+    border-bottom: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
+  }
+}
+
+.row-detail {
+  padding: 1rem;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  &.full-width {
+    grid-column: 1 / -1;
+  }
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mat-sys-on-surface-variant, #475467);
+}
+
+.detail-value {
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface, #1c1c1c);
+
+  &.code {
+    font-family: 'Roboto Mono', 'Consolas', monospace;
+    font-size: 0.8125rem;
+  }
+}
+
+.metadata-json {
+  margin: 0;
+  padding: 0.5rem;
+  background: var(--mat-sys-surface, #ffffff);
+  border: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
+  border-radius: 4px;
+  font-family: 'Roboto Mono', 'Consolas', monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
 }
 
 .empty-state {
@@ -119,7 +196,7 @@
 
 .skeleton-row {
   display: grid;
-  grid-template-columns: 160px 1fr 180px 180px 1fr;
+  grid-template-columns: 160px 1fr 180px 180px 140px 48px;
   gap: 1rem;
   padding: 0.75rem 0;
   border-bottom: 1px solid var(--mat-sys-outline-variant, #e5e7eb);

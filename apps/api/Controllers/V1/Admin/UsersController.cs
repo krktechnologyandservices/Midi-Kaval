@@ -17,7 +17,8 @@ namespace MidiKaval.Api.Controllers.V1.Admin;
 [Route("api/v1/admin")]
 public class UsersController(
     UserManagementService userManagementService,
-    LastDirectorGuard lastDirectorGuard) : ControllerBase
+    LastDirectorGuard lastDirectorGuard,
+    TwoFactorService twoFactorService) : ControllerBase
 {
     private static readonly string[] ValidSortByFields = ["name", "email", "role", "status", "createdAt"];
     private static readonly string[] SuspendConflictMessages = ["User is already suspended", "Cannot suspend a deleted user"];
@@ -152,8 +153,10 @@ public class UsersController(
 
         try
         {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
             var result = await userManagementService.SuspendAsync(
-                organisationId!.Value, actorUserId!.Value, id, request.Reason, cancellationToken);
+                organisationId!.Value, actorUserId!.Value, id, request.Reason, ipAddress, cancellationToken);
 
             return Ok(new ApiResponse<SuspendUserResponse>(
                 result,
@@ -215,8 +218,10 @@ public class UsersController(
 
         try
         {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
             var result = await userManagementService.ReactivateAsync(
-                organisationId!.Value, actorUserId!.Value, id, cancellationToken);
+                organisationId!.Value, actorUserId!.Value, id, ipAddress, cancellationToken);
 
             return Ok(new ApiResponse<ReactivateUserResponse>(
                 result,
@@ -291,8 +296,10 @@ public class UsersController(
 
         try
         {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
             var result = await userManagementService.DeleteAsync(
-                organisationId!.Value, actorUserId!.Value, id, request.ConfirmationEmail, cancellationToken);
+                organisationId!.Value, actorUserId!.Value, id, request.ConfirmationEmail, ipAddress, cancellationToken);
 
             return Ok(new ApiResponse<DeleteUserResponse>(
                 result,
@@ -344,6 +351,63 @@ public class UsersController(
 
         var result = await lastDirectorGuard.IsLastActiveDirectorAsync(organisationId!.Value, id, cancellationToken);
         return Ok(new { isLastDirector = result });
+    }
+
+    [HttpPost("users/{id:guid}/reset-2fa")]
+    [EnableRateLimiting("data-write")]
+    [ProducesResponseType(typeof(ApiResponse<ResetTwoFactorResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ResetTwoFactor(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveOrganisationId(out var organisationId, out var orgError))
+            return orgError!;
+
+        if (!TryResolveActorUserId(out var actorUserId, out var actorError))
+            return actorError!;
+
+        // Prevent resetting the last active Director's 2FA — could strand the org
+        var isLastDirector = await lastDirectorGuard.IsLastActiveDirectorAsync(organisationId!.Value, id, ct);
+        if (isLastDirector)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Cannot Reset 2FA",
+                Detail = "This user is the last active Director. At least one Director must remain enrolled.",
+                Type = "https://tools.ietf.org/html/rfc4918#section-11.2",
+            });
+        }
+
+        try
+        {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            await twoFactorService.ResetTwoFactorAsync(actorUserId!.Value, id, organisationId!.Value, ipAddress, ct);
+            return Ok(new ApiResponse<ResetTwoFactorResponse>(
+                new ResetTwoFactorResponse(id, "Two-factor authentication has been reset for this user."),
+                new ApiMeta { RequestId = ResolveRequestId() }));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "User Not Found",
+                Detail = "The specified user was not found.",
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Cannot Reset 2FA",
+                Detail = ex.Message,
+                Type = "https://tools.ietf.org/html/rfc4918#section-11.2",
+            });
+        }
     }
 
     private bool TryResolveOrganisationId(out Guid? organisationId, out IActionResult? error)

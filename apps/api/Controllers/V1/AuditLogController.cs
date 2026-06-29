@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MidiKaval.Api.Infrastructure;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Persistence;
@@ -14,9 +15,9 @@ namespace MidiKaval.Api.Controllers.V1;
 [ApiController]
 [EnableRateLimiting("data-read")]
 [Authorize(Policy = Policies.DirectorOnly)]
-[Route("api/v1/audit")]
+[Route("api/v1/admin/audit")]
 [Produces("application/json")]
-public sealed class AuditLogController(AppDbContext db) : ControllerBase
+    public sealed class AuditLogController(AppDbContext db, ILogger<AuditLogController> logger) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<AuditListResultDto>), StatusCodes.Status200OK)]
@@ -108,6 +109,8 @@ public sealed class AuditLogController(AppDbContext db) : ControllerBase
                 e.SubjectUserId,
                 SubjectEmail = e.SubjectUser != null ? e.SubjectUser.Email : null,
                 SubjectName = e.SubjectUser != null ? e.SubjectUser.FirstName + " " + e.SubjectUser.LastName : null,
+                e.TargetUserSnapshot,
+                e.ActorIpAddress,
                 e.MetadataJson,
             })
             .ToListAsync(cancellationToken);
@@ -122,6 +125,8 @@ public sealed class AuditLogController(AppDbContext db) : ControllerBase
             r.SubjectUserId,
             r.SubjectEmail,
             r.SubjectName,
+            DeserializeTargetSnapshot(r.TargetUserSnapshot),
+            r.ActorIpAddress,
             DeserializeMetadata(r.MetadataJson)
         )).ToList();
 
@@ -138,6 +143,20 @@ public sealed class AuditLogController(AppDbContext db) : ControllerBase
     private string ResolveRequestId() =>
         HttpContext.Items[RequestIdMiddleware.RequestIdItemKey] as string
             ?? HttpContext.TraceIdentifier;
+
+    private TargetUserSnapshotDto? DeserializeTargetSnapshot(string? snapshotJson)
+    {
+        if (snapshotJson is null) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<TargetUserSnapshotDto>(snapshotJson);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to deserialize target user snapshot from audit event.");
+            return null;
+        }
+    }
 
     private static object? DeserializeMetadata(string? metadataJson)
     {

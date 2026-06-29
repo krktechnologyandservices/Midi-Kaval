@@ -53,7 +53,7 @@ public class AuthLoginTests : IClassFixture<AuthWebApplicationFactory>, IAsyncLi
 
         var verifyResponse = await _client.PostAsJsonAsync(
             "/api/v1/auth/verify-otp",
-            new VerifyOtpRequest { ChallengeId = loginEnvelope.Data.ChallengeId, Code = otp });
+            new VerifyOtpRequest { ChallengeId = loginEnvelope.Data.ChallengeId!.Value, Code = otp });
 
         Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);
         var verifyEnvelope = await verifyResponse.Content.ReadFromJsonAsync<ApiEnvelope<VerifyOtpResponse>>();
@@ -133,7 +133,7 @@ public class AuthLoginTests : IClassFixture<AuthWebApplicationFactory>, IAsyncLi
 
         var verifyResponse = await _client.PostAsJsonAsync(
             "/api/v1/auth/verify-otp",
-            new VerifyOtpRequest { ChallengeId = loginEnvelope!.Data!.ChallengeId, Code = "000000" });
+            new VerifyOtpRequest { ChallengeId = loginEnvelope!.Data!.ChallengeId.Value, Code = "000000" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, verifyResponse.StatusCode);
         Assert.Equal("application/problem+json", verifyResponse.Content.Headers.ContentType?.MediaType);
@@ -198,7 +198,7 @@ public class AuthLoginTests : IClassFixture<AuthWebApplicationFactory>, IAsyncLi
 
         var verifyResponse = await _client.PostAsJsonAsync(
             "/api/v1/auth/verify-otp",
-            new VerifyOtpRequest { ChallengeId = loginEnvelope!.Data!.ChallengeId, Code = otp });
+            new VerifyOtpRequest { ChallengeId = loginEnvelope!.Data!.ChallengeId.Value, Code = otp });
 
         Assert.Equal(HttpStatusCode.Forbidden, verifyResponse.StatusCode);
         var body = await verifyResponse.Content.ReadAsStringAsync();

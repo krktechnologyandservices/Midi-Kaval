@@ -19,6 +19,12 @@ public sealed class AuditEventConfiguration : IEntityTypeConfiguration<AuditEven
         builder.Property(e => e.MetadataJson)
             .HasColumnType("jsonb");
 
+        builder.Property(e => e.TargetUserSnapshot)
+            .HasColumnType("jsonb");
+
+        builder.Property(e => e.ActorIpAddress)
+            .HasMaxLength(64);
+
         builder.Property(e => e.CreatedAtUtc)
             .IsRequired();
 

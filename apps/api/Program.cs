@@ -81,6 +81,8 @@ if (!builder.Environment.IsTesting())
         builder.Configuration.GetSection(CourtReminderJobOptions.SectionName));
     builder.Services.Configure<CourtMissEscalationJobOptions>(
         builder.Configuration.GetSection(CourtMissEscalationJobOptions.SectionName));
+    builder.Services.Configure<AuditDigestJobOptions>(
+        builder.Configuration.GetSection(AuditDigestJobOptions.SectionName));
     builder.Services.Configure<PushNotificationsOptions>(
         builder.Configuration.GetSection(PushNotificationsOptions.SectionName));
     builder.Services.Configure<ReportExportOptions>(
@@ -115,6 +117,7 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<ReportGenerationService>();
     builder.Services.AddScoped<ReportExportJobRunner>();
     builder.Services.AddScoped<CaseAnonymizationJobRunner>();
+    builder.Services.AddScoped<AuditDigestJobRunner>();
     builder.Services.AddScoped<MappingSpecLoader>();
     builder.Services.AddScoped<MigrationImportService>();
     builder.Services.Configure<MappingSpecOptions>(builder.Configuration.GetSection(MappingSpecOptions.SectionName));
@@ -125,6 +128,7 @@ if (!builder.Environment.IsTesting())
         builder.Services.AddHostedService<CourtMissEscalationBackgroundService>();
         builder.Services.AddHostedService<ReportExportBackgroundService>();
         builder.Services.AddHostedService<CaseAnonymizationBackgroundService>();
+        builder.Services.AddHostedService<AuditDigestBackgroundService>();
     }
     builder.Services.AddScoped<AttachmentService>();
     builder.Services.AddScoped<VisitService>();
@@ -159,8 +163,10 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<ActivationEmailDeliveryJob>();
     builder.Services.AddScoped<InvitationEmailDeliveryJob>();
     builder.Services.AddScoped<InvitationCleanupJob>();
+    builder.Services.AddScoped<InvitationResendNotificationJob>();
     builder.Services.AddScoped<ZeroDirectorAlertJob>();
     builder.Services.AddScoped<ZeroDirectorMonitorJob>();
+    builder.Services.AddScoped<ConfirmationEmailDeliveryJob>();
 
     // Hangfire background jobs
     var hangfireConnectionString = builder.Configuration.GetConnectionString("Hangfire");

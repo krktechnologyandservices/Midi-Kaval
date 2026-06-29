@@ -9,6 +9,7 @@ using MidiKaval.Api.Infrastructure;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Jobs;
 using MidiKaval.Api.Models;
+using MidiKaval.Api.Models.Admin;
 using MidiKaval.Api.Models.Vendor;
 
 namespace MidiKaval.Api.Controllers.V1.Vendor;
@@ -17,7 +18,9 @@ namespace MidiKaval.Api.Controllers.V1.Vendor;
 [Authorize(Policy = Policies.VendorOnly)]
 [Route("api/v1/vendor")]
 public class OrganisationsController(
-    OrganisationService organisationService) : ControllerBase
+    OrganisationService organisationService,
+    TwoFactorService twoFactorService,
+    LastDirectorGuard lastDirectorGuard) : ControllerBase
 {
     [HttpPost("organisations")]
     [Require2FA]
@@ -140,11 +143,13 @@ public class OrganisationsController(
         {
             var actorIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             Guid? actorUserId = Guid.TryParse(actorIdClaim, out var aid) ? aid : null;
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
             var result = await organisationService.ReissueActivationAsync(
                 id,
                 request.TargetDirectorEmail,
                 actorUserId,
+                ipAddress,
                 cancellationToken);
 
             // If initial email delivery failed, enqueue a Hangfire job for retry
@@ -201,6 +206,94 @@ public class OrganisationsController(
                 Type = "https://tools.ietf.org/html/rfc6585#section-4",
             });
         }
+    }
+
+    [HttpPost("users/{id:guid}/reset-2fa")]
+    [Require2FA]
+    [EnableRateLimiting("data-write")]
+    [ProducesResponseType(typeof(ApiResponse<ResetTwoFactorResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> VendorResetTwoFactor(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveOrganisationId(out var organisationId, out var orgError))
+            return orgError!;
+
+        if (!TryResolveActorUserId(out var actorUserId, out var actorError))
+            return actorError!;
+
+        // Prevent resetting the last active Director's 2FA — could strand the org
+        var isLastDirector = await lastDirectorGuard.IsLastActiveDirectorAsync(organisationId!.Value, id, ct);
+        if (isLastDirector)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Cannot Reset 2FA",
+                Detail = "This user is the last active Director. At least one Director must remain enrolled.",
+                Type = "https://tools.ietf.org/html/rfc4918#section-11.2",
+            });
+        }
+
+        try
+        {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            await twoFactorService.ResetTwoFactorAsync(actorUserId!.Value, id, actorIpAddress: ipAddress, ct: ct);
+            return Ok(new ApiResponse<ResetTwoFactorResponse>(
+                new ResetTwoFactorResponse(id, "Two-factor authentication has been reset for this user."),
+                new ApiMeta { RequestId = ResolveRequestId() }));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "User Not Found",
+                Detail = "The specified user was not found.",
+            });
+        }
+    }
+
+    private bool TryResolveOrganisationId(out Guid? organisationId, out IActionResult? error)
+    {
+        var claim = User.FindFirst(AuthClaimTypes.OrganisationId)?.Value;
+        if (claim is null || !Guid.TryParse(claim, out var parsed))
+        {
+            organisationId = null;
+            error = Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Invalid Token",
+                Detail = "Organisation claim missing from token.",
+                Type = "https://tools.ietf.org/html/rfc7235#section-3.1",
+            });
+            return false;
+        }
+        organisationId = parsed;
+        error = null;
+        return true;
+    }
+
+    private bool TryResolveActorUserId(out Guid? actorUserId, out IActionResult? error)
+    {
+        var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (claim is null || !Guid.TryParse(claim, out var parsed))
+        {
+            actorUserId = null;
+            error = Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Invalid Token",
+                Detail = "User identifier claim missing from token.",
+                Type = "https://tools.ietf.org/html/rfc7235#section-3.1",
+            });
+            return false;
+        }
+        actorUserId = parsed;
+        error = null;
+        return true;
     }
 
     private string ResolveRequestId() =>

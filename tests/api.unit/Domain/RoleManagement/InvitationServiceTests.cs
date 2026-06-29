@@ -7,6 +7,9 @@ using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Infrastructure.RoleManagement;
 using MidiKaval.Api.Models.Admin;
+using MidiKaval.Api.Models.Audit;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MidiKaval.Api.UnitTests.Domain.RoleManagement;
 
@@ -77,13 +80,13 @@ public class InvitationServiceTests
         return user;
     }
 
-    private static Invitation SeedInvitation(AppDbContext db, Guid orgId, string email, string status, DateTime? expiresAtUtc = null)
+    private static Invitation SeedInvitation(AppDbContext db, Guid orgId, string email, string status, DateTime? expiresAtUtc, Guid invitedByUserId)
     {
         var invitation = new Invitation
         {
             Id = Guid.NewGuid(),
             OrganisationId = orgId,
-            InvitedByUserId = Guid.NewGuid(),
+            InvitedByUserId = invitedByUserId,
             TargetEmail = email,
             Role = UserRoles.Coordinator,
             TokenHash = "hash",
@@ -103,19 +106,29 @@ public class InvitationServiceTests
     private sealed class TestableInvitationService : InvitationService
     {
         public List<(Guid invitationId, string rawToken, string signature, string email, string role)> EnqueuedJobs { get; } = [];
+        public List<(string originalInviterEmail, string originalInviterName, string targetEmail, string resentByUserName)> ResendNotifications { get; } = [];
 
         public TestableInvitationService(
             AppDbContext db,
             TokenService tokenService,
             IAuditService auditService,
             IConfiguration configuration)
-            : base(db, tokenService, auditService, configuration)
+            : base(db, tokenService, auditService, configuration, NullLogger<InvitationService>.Instance)
         {
         }
 
         protected override void EnqueueEmailJob(Guid invitationId, string rawToken, string signature, string email, string role)
         {
             EnqueuedJobs.Add((invitationId, rawToken, signature, email, role));
+        }
+
+        protected override void EnqueueResendNotificationJob(
+            string originalInviterEmail,
+            string originalInviterName,
+            string targetEmail,
+            string resentByUserName)
+        {
+            ResendNotifications.Add((originalInviterEmail, originalInviterName, targetEmail, resentByUserName));
         }
     }
 
@@ -187,7 +200,7 @@ public class InvitationServiceTests
             using var db = CreateContext();
             var org = SeedOrganisation(db);
             var director = SeedUser(db, org.Id, UserRoles.Director, "director@example.org");
-            SeedInvitation(db, org.Id, "pending@example.org", InvitationStatus.Pending);
+            SeedInvitation(db, org.Id, "pending@example.org", InvitationStatus.Pending, expiresAtUtc: DateTime.UtcNow.AddDays(1), invitedByUserId: director.Id);
             var service = CreateService(db);
 
             var request = new SendInvitationRequest(
@@ -247,12 +260,13 @@ public class InvitationServiceTests
             using var db = CreateContext();
             var org = SeedOrganisation(db);
             var otherOrg = SeedOrganisation(db);
+            var helper = SeedUser(db, org.Id, UserRoles.Director, "helper@org.com");
 
             for (int i = 0; i < 15; i++)
             {
-                SeedInvitation(db, org.Id, $"user{i}@org.com", InvitationStatus.Pending);
+                SeedInvitation(db, org.Id, $"user{i}@org.com", InvitationStatus.Pending, expiresAtUtc: null, invitedByUserId: helper.Id);
             }
-            SeedInvitation(db, otherOrg.Id, "other@other.com", InvitationStatus.Pending);
+            SeedInvitation(db, otherOrg.Id, "other@other.com", InvitationStatus.Pending, expiresAtUtc: null, invitedByUserId: helper.Id);
 
             var service = CreateService(db);
 
@@ -283,11 +297,12 @@ public class InvitationServiceTests
         {
             using var db = CreateContext();
             var org = SeedOrganisation(db);
+            var helper = SeedUser(db, org.Id, UserRoles.Director, "helper@org.com");
 
             // Add with deliberate time gap
-            var older = SeedInvitation(db, org.Id, "older@org.com", InvitationStatus.Pending, expiresAtUtc: DateTime.UtcNow.AddDays(2));
-            await Task.Delay(10);
-            var newer = SeedInvitation(db, org.Id, "newer@org.com", InvitationStatus.Pending, expiresAtUtc: DateTime.UtcNow.AddDays(3));
+            var older = SeedInvitation(db, org.Id, "older@org.com", InvitationStatus.Pending, invitedByUserId: helper.Id, expiresAtUtc: DateTime.UtcNow.AddDays(2));
+            await Task.Delay(50);
+            var newer = SeedInvitation(db, org.Id, "newer@org.com", InvitationStatus.Pending, invitedByUserId: helper.Id, expiresAtUtc: DateTime.UtcNow.AddDays(3));
 
             var service = CreateService(db);
             var result = await service.GetInvitationListAsync(org.Id, page: 1, pageSize: 25);
@@ -295,6 +310,23 @@ public class InvitationServiceTests
             Assert.Equal(2, result.Items.Count);
             Assert.Equal("newer@org.com", result.Items[0].TargetEmail);
             Assert.Equal("older@org.com", result.Items[1].TargetEmail);
+        }
+
+        [Fact]
+        public async Task IncludesInvitedByUserFields()
+        {
+            using var db = CreateContext();
+            var org = SeedOrganisation(db);
+            var director = SeedUser(db, org.Id, UserRoles.Director, "director@org.com");
+            SeedInvitation(db, org.Id, "invited@example.org", InvitationStatus.Pending, expiresAtUtc: DateTime.UtcNow.AddHours(24), invitedByUserId: director.Id);
+
+            var service = CreateService(db);
+            var result = await service.GetInvitationListAsync(org.Id, page: 1, pageSize: 25);
+
+            Assert.Single(result.Items);
+            var item = result.Items[0];
+            Assert.Equal("director@org.com", item.InvitedByUserEmail);
+            Assert.Equal("Test User", item.InvitedByUserName);
         }
     }
 
@@ -305,7 +337,8 @@ public class InvitationServiceTests
         {
             using var db = CreateContext();
             var org = SeedOrganisation(db);
-            var invitation = SeedInvitation(db, org.Id, "user@example.org", InvitationStatus.Pending);
+            var helper = SeedUser(db, org.Id, UserRoles.Director, "helper@org.com");
+            var invitation = SeedInvitation(db, org.Id, "user@example.org", InvitationStatus.Pending, expiresAtUtc: DateTime.UtcNow.AddHours(24), invitedByUserId: helper.Id);
             var auditService = new FakeAuditService();
             var service = CreateService(db, auditService);
 
@@ -320,11 +353,15 @@ public class InvitationServiceTests
             Assert.NotEqual("hash", updated.TokenHash); // Token should have changed
             Assert.True(updated.ExpiresAtUtc > DateTime.UtcNow.AddHours(23));
 
-            Assert.Single(auditService.RecordedEvents);
+            Assert.Equal(2, auditService.RecordedEvents.Count);
             Assert.Equal(AuditEventTypes.InvitationResent, auditService.RecordedEvents[0].eventType);
             Assert.Equal(resendByUserId, auditService.RecordedEvents[0].actorUserId);
+            Assert.Equal(AuditEventTypes.InvitationResentNotified, auditService.RecordedEvents[1].eventType);
 
             Assert.Single(service.EnqueuedJobs);
+            Assert.Single(service.ResendNotifications);
+            Assert.Equal("helper@org.com", service.ResendNotifications[0].originalInviterEmail);
+            Assert.Equal("Unknown", service.ResendNotifications[0].resentByUserName);
         }
 
         [Fact]
@@ -345,13 +382,51 @@ public class InvitationServiceTests
         {
             using var db = CreateContext();
             var org = SeedOrganisation(db);
-            var invitation = SeedInvitation(db, org.Id, "user@example.org", InvitationStatus.Confirmed);
+            var director = SeedUser(db, org.Id, UserRoles.Director, "director@org.com");
+            var invitation = SeedInvitation(db, org.Id, "user@example.org", InvitationStatus.Confirmed, expiresAtUtc: null, invitedByUserId: director.Id);
             var service = CreateService(db);
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 service.ResendInvitationAsync(org.Id, invitation.Id, Guid.NewGuid(), default));
 
             Assert.Contains("confirmed", ex.Message);
+        }
+
+        [Fact]
+        public async Task RecordsBothAuditEventsAndNotifiesOriginalInviter()
+        {
+            using var db = CreateContext();
+            var org = SeedOrganisation(db);
+            var inviterUser = SeedUser(db, org.Id, UserRoles.Director, "inviter@org.com");
+            var invitation = SeedInvitation(db, org.Id, "user@example.org", InvitationStatus.Pending, expiresAtUtc: DateTime.UtcNow.AddHours(24), invitedByUserId: inviterUser.Id);
+            var resenderUser = SeedUser(db, org.Id, UserRoles.Director, "resender@org.com");
+            var auditService = new FakeAuditService();
+            var service = CreateService(db, auditService);
+
+            var result = await service.ResendInvitationAsync(org.Id, invitation.Id, resenderUser.Id, default);
+
+            // Should record 2 audit events: InvitationResent + InvitationResendNotified
+            Assert.Equal(2, auditService.RecordedEvents.Count);
+
+            // First event: InvitationResent with resend metadata
+            Assert.Equal(AuditEventTypes.InvitationResent, auditService.RecordedEvents[0].eventType);
+            Assert.Equal(resenderUser.Id, auditService.RecordedEvents[0].actorUserId);
+            Assert.Contains(auditService.RecordedEvents[0].metadata!, m => m.Key == "original_invited_by_user_id");
+
+            // Second event: InvitationResendNotified with inviter details
+            Assert.Equal(AuditEventTypes.InvitationResentNotified, auditService.RecordedEvents[1].eventType);
+            Assert.Equal(resenderUser.Id, auditService.RecordedEvents[1].actorUserId);
+            Assert.Equal(inviterUser.Id, auditService.RecordedEvents[1].subjectUserId);
+
+            // Should enqueue the resend notification
+            Assert.Single(service.ResendNotifications);
+            Assert.Equal("inviter@org.com", service.ResendNotifications[0].originalInviterEmail);
+            Assert.Equal("user@example.org", service.ResendNotifications[0].targetEmail);
+            Assert.Equal("Test User", service.ResendNotifications[0].resentByUserName);
+
+            // Email to target should still be enqueued
+            Assert.Single(service.EnqueuedJobs);
+            Assert.Equal(invitation.Id, service.EnqueuedJobs[0].invitationId);
         }
     }
 }
@@ -361,17 +436,19 @@ public class InvitationServiceTests
 /// </summary>
 public sealed class FakeAuditService : IAuditService
 {
-    public List<(string eventType, Guid organisationId, Guid? actorUserId, Guid? subjectUserId, IReadOnlyDictionary<string, object?>? metadata)> RecordedEvents { get; } = [];
+    public List<(string eventType, Guid organisationId, Guid? actorUserId, Guid? subjectUserId, TargetUserSnapshotDto? targetUserSnapshot, string? actorIpAddress, IReadOnlyDictionary<string, object?>? metadata)> RecordedEvents { get; } = [];
 
     public Task RecordAsync(
         string eventType,
         Guid organisationId,
         Guid? actorUserId = null,
         Guid? subjectUserId = null,
+        TargetUserSnapshotDto? targetUserSnapshot = null,
+        string? actorIpAddress = null,
         IReadOnlyDictionary<string, object?>? metadata = null,
         CancellationToken cancellationToken = default)
     {
-        RecordedEvents.Add((eventType, organisationId, actorUserId, subjectUserId, metadata));
+        RecordedEvents.Add((eventType, organisationId, actorUserId, subjectUserId, targetUserSnapshot, actorIpAddress, metadata));
         return Task.CompletedTask;
     }
 }

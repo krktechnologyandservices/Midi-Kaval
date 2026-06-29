@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { AuditListResultDto, AuditLogFilter } from '../audit.models';
+import { AuditListResultDto, AuditLogFilter } from '../models/audit.models';
 
 export interface AuditMeta {
   requestId: string;
@@ -19,7 +19,7 @@ export interface AuditEnvelope {
 @Injectable({ providedIn: 'root' })
 export class AuditApiService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.apiBaseUrl}/api/v1/audit`;
+  private readonly baseUrl = `${environment.apiBaseUrl}/api/v1/admin/audit`;
 
   async list(filters: AuditLogFilter): Promise<{ items: AuditListResultDto['items']; meta: AuditMeta }> {
     try {
@@ -35,6 +35,9 @@ export class AuditApiService {
       const envelope = await firstValueFrom(
         this.http.get<AuditEnvelope>(this.baseUrl, { params }),
       );
+      if (!envelope?.data || !envelope?.meta) {
+        throw new Error('Malformed API response — missing data or meta');
+      }
       return { items: envelope.data.items, meta: envelope.meta };
     } catch (error) {
       throw error;

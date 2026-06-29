@@ -1,3 +1,9 @@
+export interface TargetUserSnapshotDto {
+  email: string;
+  name: string;
+  role: string;
+}
+
 export interface AuditEventDto {
   id: string;
   eventType: string;
@@ -8,6 +14,8 @@ export interface AuditEventDto {
   subjectUserId: string | null;
   subjectEmail: string | null;
   subjectName: string | null;
+  targetUserSnapshot: TargetUserSnapshotDto | null;
+  actorIpAddress: string | null;
   metadata: Record<string, unknown> | null;
 }
 

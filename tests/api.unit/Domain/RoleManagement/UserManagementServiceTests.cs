@@ -6,6 +6,7 @@ using MidiKaval.Api.Domain.RoleManagement;
 using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Models.Admin;
+using MidiKaval.Api.Models.Audit;
 
 namespace MidiKaval.Api.UnitTests.Domain.RoleManagement;
 
@@ -74,7 +75,7 @@ public class UserManagementServiceTests
         private static readonly ZeroDirectorTriggerService NoopTrigger =
             new(null!, null!, NullLogger<ZeroDirectorTriggerService>.Instance);
 
-        public List<(Guid userId, string email, string name, string actionType, string? reason)> EnqueuedJobs { get; } = [];
+        public List<(Guid userId, Guid organisationId, string email, string name, string actionType, string? reason)> EnqueuedJobs { get; } = [];
 
         public List<Guid> NotifiedRemovedUserIds { get; } = [];
 
@@ -89,14 +90,14 @@ public class UserManagementServiceTests
                 (u.FirstName.ToLower() + " " + u.LastName.ToLower()).Contains(lowered));
         }
 
-        protected override void EnqueueStatusEmailJob(Guid userId, string email, string name, string actionType, string? reason, CancellationToken ct)
+        protected override void EnqueueStatusEmailJob(Guid userId, Guid organisationId, string email, string name, string actionType, string? reason, CancellationToken ct)
         {
-            EnqueuedJobs.Add((userId, email, name, actionType, reason));
+            EnqueuedJobs.Add((userId, organisationId, email, name, actionType, reason));
         }
 
-        protected override void EnqueueDeletionEmailJob(string originalEmail, string originalName, CancellationToken ct)
+        protected override void EnqueueDeletionEmailJob(Guid userId, Guid organisationId, string originalEmail, string originalName, CancellationToken ct)
         {
-            EnqueuedJobs.Add((Guid.Empty, originalEmail, originalName, "deleted", null));
+            EnqueuedJobs.Add((userId, organisationId, originalEmail, originalName, "deleted", null));
         }
 
         protected override Task NotifyUserRemovedAsync(Guid organisationId, Guid userId, CancellationToken ct)
@@ -393,6 +394,10 @@ public class UserManagementServiceTests
         Assert.Single(audit.RecordedEvents);
         Assert.Equal(AuditEventTypes.UserSuspended, audit.RecordedEvents[0].eventType);
 
+        // Verify snapshot was captured
+        Assert.NotNull(audit.RecordedEvents[0].targetUserSnapshot);
+        Assert.Equal("target@org.com", audit.RecordedEvents[0].targetUserSnapshot.Email);
+
         Assert.Single(service.EnqueuedJobs);
         Assert.Equal("suspended", service.EnqueuedJobs[0].actionType);
     }
@@ -473,6 +478,10 @@ public class UserManagementServiceTests
 
         Assert.Single(audit.RecordedEvents);
         Assert.Equal(AuditEventTypes.UserReactivated, audit.RecordedEvents[0].eventType);
+
+        // Verify snapshot was captured
+        Assert.NotNull(audit.RecordedEvents[0].targetUserSnapshot);
+        Assert.Equal("target@org.com", audit.RecordedEvents[0].targetUserSnapshot.Email);
 
         Assert.Single(service.EnqueuedJobs);
         Assert.Equal("reactivated", service.EnqueuedJobs[0].actionType);
@@ -640,11 +649,43 @@ public class UserManagementServiceTests
         Assert.Equal(AuditEventTypes.UserDeleted, recorded.eventType);
         Assert.Equal(org.Id, recorded.organisationId);
         Assert.Equal(director.Id, recorded.actorUserId);
-        Assert.Null(recorded.subjectUserId);
+        Assert.Equal(target.Id, recorded.subjectUserId);
 
         Assert.NotNull(recorded.metadata);
-        Assert.True(recorded.metadata.ContainsKey("target_user_snapshot"));
         Assert.Equal("target@org.com", recorded.metadata["target_email"]);
+
+        // Verify snapshot was captured before anonymisation
+        Assert.NotNull(recorded.targetUserSnapshot);
+        Assert.Equal("target@org.com", recorded.targetUserSnapshot.Email);
+        Assert.Contains("coordinator", recorded.targetUserSnapshot.Role, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_SnapshotCapturedBeforeAnonymisation()
+    {
+        using var db = CreateContext();
+        var org = SeedOrganisation(db);
+        var director = SeedUser(db, org.Id, "director@org.com", DateTime.UtcNow, role: UserRoles.Director);
+        var target = SeedUser(db, org.Id, "target@org.com", DateTime.UtcNow, role: UserRoles.Coordinator);
+
+        var (service, audit) = CreateTestableService(db);
+        await service.DeleteAsync(org.Id, director.Id, target.Id, "target@org.com", default);
+
+        var recorded = Assert.Single(audit.RecordedEvents);
+
+        // Snapshot should contain the original identity
+        Assert.NotNull(recorded.targetUserSnapshot);
+        Assert.Equal("target@org.com", recorded.targetUserSnapshot.Email);
+        Assert.Contains("coordinator", recorded.targetUserSnapshot.Role, StringComparison.OrdinalIgnoreCase);
+        Assert.False(string.IsNullOrWhiteSpace(recorded.targetUserSnapshot.Name));
+
+        // The user entity should now be anonymised
+        var deletedUser = await db.Users.FindAsync(new object[] { target.Id });
+        Assert.NotNull(deletedUser);
+        Assert.StartsWith("deleted-", deletedUser.Email);
+        Assert.Equal("Deleted", deletedUser.FirstName);
+        Assert.Equal("User", deletedUser.LastName);
+        Assert.NotEqual(deletedUser.Email, recorded.targetUserSnapshot.Email);
     }
 
     [Fact]

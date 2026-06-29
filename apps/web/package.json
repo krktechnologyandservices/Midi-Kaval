@@ -24,7 +24,9 @@
     "@fontsource/inter": "^5.2.8",
     "@midi-kaval/api-client": "*",
     "@midi-kaval/shared-types": "*",
+    "@types/qrcode-generator": "^0.0.16",
     "material-icons": "^1.13.14",
+    "qrcode-generator": "^2.0.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"

@@ -8,6 +8,7 @@ export interface AdminUserSummary {
   isSuspended: boolean;
   suspendedAtUtc?: string | null;
   createdAtUtc: string;
+  totpEnrolledAt?: string | null;
 }
 
 export interface AdminUserListResult {
@@ -48,6 +49,8 @@ export interface InvitationSummary {
   createdAtUtc: string;
   expiresAtUtc: string;
   confirmedAtUtc?: string;
+  invitedByUserEmail: string;
+  invitedByUserName?: string;
 }
 
 export interface InvitationListResult {

@@ -1,0 +1,427 @@
+﻿=== MODIFIED FILES (git diff HEAD) ===
+
+--- a/apps/api/Domain/Entities/AuditEvent.cs
++++ b/apps/api/Domain/Entities/AuditEvent.cs
+@@ -9,6 +9,8 @@
+     public Guid? ActorUserId { get; set; }
+     public Guid? SubjectUserId { get; set; }
+     public string EventType { get; set; } = string.Empty;
++    public string? TargetUserSnapshot { get; set; }
++    public string? ActorIpAddress { get; set; }
+     public string? MetadataJson { get; set; }
+     public DateTime CreatedAtUtc { get; set; }
+ 
+@@ -17,4 +19,6 @@
+ 
+     [ForeignKey(nameof(SubjectUserId))]
+     public User? SubjectUser { get; set; }
++
++    public ICollection<AuditDigestEntry> DigestEntries { get; set; } = [];
+ }
+
+--- a/apps/api/Infrastructure/Persistence/AppDbContext.cs
++++ b/apps/api/Infrastructure/Persistence/AppDbContext.cs
+@@ -46,6 +46,7 @@
+     public DbSet<BudgetLineItem> BudgetLineItems => Set<BudgetLineItem>();
+     public DbSet<BudgetUtilization> BudgetUtilizations => Set<BudgetUtilization>();
+     public DbSet<Invitation> Invitations => Set<Invitation>();
++    public DbSet<AuditDigestEntry> AuditDigestEntries => Set<AuditDigestEntry>();
+ 
+     protected override void OnModelCreating(ModelBuilder modelBuilder)
+
+--- a/apps/api/Migrations/AppDbContextModelSnapshot.cs
++++ b/apps/api/Migrations/AppDbContextModelSnapshot.cs
+@@ -145,6 +145,42 @@
+                 });
+ 
++            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.AuditDigestEntry", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid")
++                        .HasColumnName("id");
++
++                    b.Property<Guid>("AuditEventId")
++                        .HasColumnType("uuid")
++                        .HasColumnName("audit_event_id");
++
++                    b.Property<Guid>("DigestBatchId")
++                        .HasColumnType("uuid")
++                        .HasColumnName("digest_batch_id");
++
++                    b.Property<DateTime>("DigestSentAtUtc")
++                        .HasColumnType("timestamp with time zone")
++                        .HasColumnName("digest_sent_at_utc");
++
++                    b.Property<Guid>("OrganisationId")
++                        .HasColumnType("uuid")
++                        .HasColumnName("organisation_id");
++
++                    b.HasKey("Id")
++                        .HasName("pk_audit_digest_entries");
++
++                    b.HasIndex("AuditEventId")
++                        .IsUnique()
++                        .HasDatabaseName("ix_audit_digest_entries_audit_event_id");
++
++                    b.HasIndex("OrganisationId", "DigestSentAtUtc")
++                        .HasDatabaseName("ix_audit_digest_entries_organisation_id_digest_sent_at_utc");
++
++                    b.ToTable("audit_digest_entries", (string)null);
++                });
++
+             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.AuditEvent", b =>
+                 {
+                     b.Property<Guid>("Id")
+@@ -2512,6 +2548,18 @@
+                     b.Navigation("SubjectUser");
++
++                    b.Navigation("DigestEntries");
++                });
++
++            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.AuditDigestEntry", b =>
++                {
++                    b.HasOne("MidiKaval.Api.Domain.Entities.AuditEvent", null)
++                        .WithMany("DigestEntries")
++                        .HasForeignKey("AuditEventId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired()
++                        .HasConstraintName("fk_audit_digest_entries_audit_events_audit_event_id");
+                 });
+
+--- a/apps/api/Program.cs
++++ b/apps/api/Program.cs
+@@ -81,6 +81,8 @@
+         builder.Configuration.GetSection(CourtMissEscalationJobOptions.SectionName));
++    builder.Services.Configure<AuditDigestJobOptions>(
++        builder.Configuration.GetSection(AuditDigestJobOptions.SectionName));
+     builder.Services.Configure<PushNotificationsOptions>(...);
+ 
+@@ -115,6 +117,7 @@
+     builder.Services.AddScoped<ReportExportJobRunner>();
+     builder.Services.AddScoped<CaseAnonymizationJobRunner>();
++    builder.Services.AddScoped<AuditDigestJobRunner>();
+ 
+@@ -125,6 +128,7 @@
+         builder.Services.AddHostedService<ReportExportBackgroundService>();
+         builder.Services.AddHostedService<CaseAnonymizationBackgroundService>();
++        builder.Services.AddHostedService<AuditDigestBackgroundService>();
+
+--- a/apps/api/appsettings.Development.json
++++ b/apps/api/appsettings.Development.json
+@@ -36,6 +36,10 @@
+     "WindowSeconds": 60
+   },
++  "AuditDigestJob": {
++    "WindowMinutes": 5,
++    "IntervalMinutes": 5
++  },
+   "CaseAnonymizationJob": {
+
+--- a/tests/api.integration/CaseCreateTests.cs
++++ b/tests/api.integration/CaseCreateTests.cs
+@@ -1140,6 +1140,13 @@
+         await runner.RunAsync();
+     }
+ 
++    public static async Task RunAuditDigestJobAsync(AuthWebApplicationFactory factory)
++    {
++        await using var scope = factory.Services.CreateAsyncScope();
++        var runner = scope.ServiceProvider.GetRequiredService<AuditDigestJobRunner>();
++        await runner.RunAsync();
++    }
++
+
+=== NEW FILES ===
+
+--- apps/api/Domain/Entities/AuditDigestEntry.cs
++++ apps/api/Domain/Entities/AuditDigestEntry.cs
+@@ -0,0 +1,12 @@
++namespace MidiKaval.Api.Domain.Entities;
++
++public sealed class AuditDigestEntry
++{
++    public Guid Id { get; set; }
++    public Guid AuditEventId { get; set; }
++    public Guid OrganisationId { get; set; }
++    public DateTime DigestSentAtUtc { get; set; }
++    public Guid DigestBatchId { get; set; }
++}
+
+--- apps/api/Infrastructure/Persistence/AuditDigestEntryConfiguration.cs
++++ apps/api/Infrastructure/Persistence/AuditDigestEntryConfiguration.cs
+@@ -0,0 +1,39 @@
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Metadata.Builders;
++using MidiKaval.Api.Domain.Entities;
++
++namespace MidiKaval.Api.Infrastructure.Persistence;
++
++public sealed class AuditDigestEntryConfiguration : IEntityTypeConfiguration<AuditDigestEntry>
++{
++    public void Configure(EntityTypeBuilder<AuditDigestEntry> builder)
++    {
++        builder.ToTable("audit_digest_entries");
++        builder.HasKey(e => e.Id);
++        builder.Property(e => e.AuditEventId).IsRequired();
++        builder.Property(e => e.OrganisationId).IsRequired();
++        builder.Property(e => e.DigestSentAtUtc).IsRequired();
++        builder.Property(e => e.DigestBatchId).IsRequired();
++        builder.HasIndex(e => e.AuditEventId).IsUnique();
++        builder.HasIndex(e => new { e.OrganisationId, e.DigestSentAtUtc });
++    }
++}
+
+--- apps/api/Infrastructure/Email/Templates/AuditDigestEmailTemplate.cs
++++ apps/api/Infrastructure/Email/Templates/AuditDigestEmailTemplate.cs
+@@ -0,0 +1,42 @@
++namespace MidiKaval.Api.Infrastructure.Email.Templates;
++
++internal sealed record AuditDigestEventItem(
++    string ActionType,
++    string TargetName,
++    string TargetEmail,
++    string ActorName,
++    string ActorEmail,
++    DateTime TimestampUtc);
++
++internal sealed record AuditDigestEmailContext(
++    string OrganisationName,
++    IReadOnlyList<AuditDigestEventItem> Events);
++
++internal static class AuditDigestEmailTemplate
++{
++    public static string RenderSubject(AuditDigestEmailContext context) =>
++        $"User activity digest -- {context.OrganisationName}";
++
++    public static string RenderBody(AuditDigestEmailContext context)
++    {
++        var lines = new List<string> { $"User Activity Digest -- {context.OrganisationName}", "" };
++        foreach (var evt in context.Events)
++        {
++            lines.Add($"* {evt.ActionType}: {evt.TargetName} ({evt.TargetEmail})");
++            lines.Add($"  By: {evt.ActorName} ({evt.ActorEmail})");
++            lines.Add($"  When: {evt.TimestampUtc:O}");
++            lines.Add("");
++        }
++        var body = string.Join("\n", lines);
++        return EmailTemplateFooter.Append(body);
++    }
++}
+
+--- apps/api/Jobs/AuditDigestBackgroundService.cs
++++ apps/api/Jobs/AuditDigestBackgroundService.cs
+@@ -0,0 +1,217 @@
++using System.Text.Json;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Options;
++using MidiKaval.Api.Domain.Entities;
++using MidiKaval.Api.Infrastructure.Audit;
++using MidiKaval.Api.Infrastructure.Email;
++using MidiKaval.Api.Infrastructure.Email.Templates;
++using MidiKaval.Api.Infrastructure.Persistence;
++
++namespace MidiKaval.Api.Infrastructure.Notifications;
++
++public sealed class AuditDigestJobOptions
++{
++    public const string SectionName = "AuditDigestJob";
++    public int WindowMinutes { get; set; } = 5;
++    public int IntervalMinutes { get; set; } = 5;
++}
++
++public sealed class AuditDigestJobRunner(
++    AppDbContext db,
++    IEmailSender emailSender,
++    IOptions<AuditDigestJobOptions> options,
++    ILogger<AuditDigestJobRunner> logger)
++{
++    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
++    private static readonly HashSet<string> DigestEventTypes =
++    [
++        AuditEventTypes.UserSuspended,
++        AuditEventTypes.UserReactivated,
++        AuditEventTypes.UserDeleted,
++        AuditEventTypes.AccountCreated,
++    ];
++
++    public async Task RunAsync(CancellationToken ct = default)
++    {
++        var jobOptions = options.Value;
++        var now = DateTime.UtcNow;
++        var jobCutoff = now.AddMinutes(-Math.Max(1, jobOptions.WindowMinutes));
++
++        var events = await db.AuditEvents
++            .Include(ae => ae.ActorUser)
++            .Where(ae => DigestEventTypes.Contains(ae.EventType)
++                && !db.AuditDigestEntries.Any(ade => ade.AuditEventId == ae.Id)
++                && ae.CreatedAtUtc < jobCutoff)
++            .OrderBy(ae => ae.OrganisationId)
++            .ThenBy(ae => ae.CreatedAtUtc)
++            .ToListAsync(ct);
++
++        if (events.Count == 0) return;
++
++        var orgGroup = events.GroupBy(ae => ae.OrganisationId);
++        var allEntries = new List<AuditDigestEntry>();
++
++        foreach (var group in orgGroup)
++        {
++            var orgId = group.Key;
++            var orgEvents = group.ToList();
++
++            var directors = await db.Users
++                .Where(u => u.OrganisationId == orgId
++                    && u.Role == UserRoles.Director
++                    && u.IsActive
++                    && !u.IsSuspended)
++                .ToListAsync(ct);
++
++            if (directors.Count == 0)
++            {
++                var batchId = Guid.NewGuid();
++                var sentAt = DateTime.UtcNow;
++                foreach (var evt in orgEvents)
++                    allEntries.Add(new AuditDigestEntry { Id = Guid.NewGuid(), AuditEventId = evt.Id, OrganisationId = orgId, DigestSentAtUtc = sentAt, DigestBatchId = batchId });
++                logger.LogInformation("No active Directors for org {OrgId} -- marking {Count} events processed", orgId, orgEvents.Count);
++                continue;
++            }
++
++            var orgName = await db.Organisations.Where(o => o.Id == orgId).Select(o => o.Name).FirstOrDefaultAsync(ct);
++            var eventItems = orgEvents.Select(BuildDigestEventItem).ToList();
++
++            foreach (var director in directors)
++            {
++                var batchId = Guid.NewGuid();
++                var sentAt = DateTime.UtcNow;
++
++                try
++                {
++                    var context = new AuditDigestEmailContext(orgName ?? "Unknown Organisation", eventItems);
++                    var subject = AuditDigestEmailTemplate.RenderSubject(context);
++                    var body = AuditDigestEmailTemplate.RenderBody(context);
++                    await emailSender.SendAsync(new EmailMessage(director.Email!, subject, body), ct);
++                    logger.LogInformation("Audit digest sent: {BatchId} org {OrgId} {Count} events to Director {Email}", batchId, orgId, orgEvents.Count, director.Email);
++                }
++                catch (Exception ex) when (ex is not OperationCanceledException)
++                {
++                    logger.LogError(ex, "Failed to send digest for org {OrgId} to Director {Email} -- events will still be marked processed", orgId, director.Email);
++                }
++
++                foreach (var evt in orgEvents)
++                    allEntries.Add(new AuditDigestEntry { Id = Guid.NewGuid(), AuditEventId = evt.Id, OrganisationId = orgId, DigestSentAtUtc = sentAt, DigestBatchId = batchId });
++            }
++        }
++
++        db.AuditDigestEntries.AddRange(allEntries);
++        await db.SaveChangesAsync(ct);
++
++        logger.LogInformation("Audit digest batch complete: {Total} entries across {OrgCount} orgs", allEntries.Count, orgGroup.Count());
++    }
++
++    private static AuditDigestEventItem BuildDigestEventItem(AuditEvent evt)
++    {
++        var targetSnapshot = evt.TargetUserSnapshot != null
++            ? JsonSerializer.Deserialize<TargetSnapshot>(evt.TargetUserSnapshot, JsonOptions) : null;
++        var actorName = evt.ActorUser != null
++            ? $"{evt.ActorUser.FirstName} {evt.ActorUser.LastName}".Trim() : "System";
++        var actorEmail = evt.ActorUser?.Email ?? "";
++        return new AuditDigestEventItem(
++            FormatEventType(evt.EventType),
++            targetSnapshot?.Name ?? targetSnapshot?.Email ?? "Unknown",
++            targetSnapshot?.Email ?? "Unknown",
++            actorName, actorEmail, evt.CreatedAtUtc);
++    }
++
++    private static string FormatEventType(string eventType) => eventType switch
++    {
++        AuditEventTypes.UserSuspended => "User suspended",
++        AuditEventTypes.UserReactivated => "User reactivated",
++        AuditEventTypes.UserDeleted => "User permanently deleted",
++        AuditEventTypes.AccountCreated => "Account created",
++        _ => eventType,
++    };
++
++    private sealed record TargetSnapshot(string? Name, string? Email, string? Role);
++}
++
++public sealed class AuditDigestBackgroundService(
++    IServiceScopeFactory scopeFactory,
++    IOptions<AuditDigestJobOptions> options,
++    ILogger<AuditDigestBackgroundService> logger) : BackgroundService
++{
++    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
++    {
++        var interval = TimeSpan.FromMinutes(Math.Max(1, options.Value.IntervalMinutes));
++        while (!stoppingToken.IsCancellationRequested)
++        {
++            try
++            {
++                await using var scope = scopeFactory.CreateAsyncScope();
++                var runner = scope.ServiceProvider.GetRequiredService<AuditDigestJobRunner>();
++                await runner.RunAsync(stoppingToken);
++            }
++            catch (Exception ex) when (ex is not OperationCanceledException)
++            {
++                logger.LogError(ex, "Audit digest job failed.");
++            }
++            await Task.Delay(interval, stoppingToken);
++        }
++    }
++}
+
+--- apps/api/Migrations/20260628153134_AddAuditDigestEntries.cs
++++ apps/api/Migrations/20260628153134_AddAuditDigestEntries.cs
+@@ -0,0 +1,54 @@
++using System;
++using Microsoft.EntityFrameworkCore.Migrations;
++
++#nullable disable
++
++namespace MidiKaval.Api.Migrations
++{
++    public partial class AddAuditDigestEntries : Migration
++    {
++        protected override void Up(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.CreateTable(
++                name: "audit_digest_entries",
++                columns: table => new
++                {
++                    id = table.Column<Guid>(type: "uuid", nullable: false),
++                    audit_event_id = table.Column<Guid>(type: "uuid", nullable: false),
++                    organisation_id = table.Column<Guid>(type: "uuid", nullable: false),
++                    digest_sent_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
++                    digest_batch_id = table.Column<Guid>(type: "uuid", nullable: false)
++                },
++                constraints: table =>
++                {
++                    table.PrimaryKey("pk_audit_digest_entries", x => x.id);
++                    table.ForeignKey(
++                        name: "fk_audit_digest_entries_audit_events_audit_event_id",
++                        column: x => x.audit_event_id,
++                        principalTable: "audit_events",
++                        principalColumn: "id",
++                        onDelete: ReferentialAction.Cascade);
++                });
++            migrationBuilder.CreateIndex(
++                name: "ix_audit_digest_entries_audit_event_id",
++                table: "audit_digest_entries",
++                column: "audit_event_id", unique: true);
++            migrationBuilder.CreateIndex(
++                name: "ix_audit_digest_entries_organisation_id_digest_sent_at_utc",
++                table: "audit_digest_entries",
++                columns: new[] { "organisation_id", "digest_sent_at_utc" });
++        }
++        protected override void Down(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.DropTable(name: "audit_digest_entries");
++        }
++    }
++}
+
+--- tests/api/integration/AuditDigestJobTests.cs
++++ tests/api/integration/AuditDigestJobTests.cs
+@@ -0,0 +1,354 @@
+// ... (full integration test class with 8 test methods shown in prior output)

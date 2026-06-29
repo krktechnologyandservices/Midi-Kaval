@@ -73,8 +73,23 @@ public static class AuditEventTypes
 
     public const string InvitationSent = "invitation.sent";
     public const string InvitationResent = "invitation.resent";
+    public const string InvitationResentNotified = "invitation.resent_notified";
 
     public const string UserSuspended = "user.suspended";
     public const string UserReactivated = "user.reactivated";
     public const string UserDeleted = "user.deleted";
+    public const string TwoFactorProvisioned = "user.two_factor_provisioned";
+    public const string TwoFactorEnrolled = "user.two_factor_enrolled";
+    public const string TwoFactorReset = "user.two_factor_reset";
+
+    public const string ConfirmationTokenCreated = "auth.confirmation_token_created";
+    public const string AccountCreated = "auth.account_created";
+    public const string EmailConfirmed = "auth.email_confirmed";
+    public const string ConfirmationDeliveryFailed = "auth.confirmation_delivery_failed";
+    public const string ConfirmationDelivered = "auth.confirmation_delivered";
+
+    public const string ActivationReissued = "activation_reissued";
+    public const string OrganisationActivated = "organisation.activated";
+
+    public const string UserNotificationSent = "user.notification_sent";
 }

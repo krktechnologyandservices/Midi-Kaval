@@ -12,9 +12,11 @@ using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MidiKaval.Api.Domain.Entities;
+using MidiKaval.Api.Domain.RoleManagement;
 using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Email;
+using MidiKaval.Api.Infrastructure.Notifications;
 using MidiKaval.Api.Infrastructure.Persistence;
 using StackExchange.Redis;
 
@@ -39,6 +41,10 @@ public static class AuthServiceCollectionExtensions
         services.Configure<PasswordResetOptions>(configuration.GetSection(PasswordResetOptions.SectionName));
         services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
 
+        services.AddOptions<TotpOptions>()
+            .Bind(configuration.GetSection(TotpOptions.SectionName))
+            .ValidateOnStart();
+
         var redisConnection = configuration.GetConnectionString("Redis");
         ArgumentException.ThrowIfNullOrWhiteSpace(redisConnection);
 
@@ -57,7 +63,9 @@ public static class AuthServiceCollectionExtensions
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IUserSessionService, UserSessionService>();
         services.AddScoped<AuthService>();
+        services.AddScoped<TwoFactorService>();
         services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        services.AddSingleton<IUserNotificationRateLimiter, RedisUserNotificationRateLimiter>();
         services.AddHttpContextAccessor();
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, InactiveUserAuthorizationMiddlewareResultHandler>();
         services.AddSingleton<IAuthorizationHandler, ActiveUserAuthorizationHandler>();
@@ -158,6 +166,8 @@ public static class AuthServiceCollectionExtensions
             options.AddPolicy("auth-verify-step-up", CreateAuthRateLimitPartition(rateLimitOptions));
             options.AddPolicy("auth-activate", CreateAuthRateLimitPartition(rateLimitOptions));
             options.AddPolicy("auth-activate-read", CreateAuthRateLimitPartition(rateLimitOptions));
+            options.AddPolicy("auth-enroll-totp", CreateAuthRateLimitPartition(rateLimitOptions));
+            options.AddPolicy("auth-verify-totp", CreateAuthRateLimitPartition(rateLimitOptions));
 
             options.AddPolicy("data-read", CreateDataReadRateLimitPartition(dataRateLimitOptions));
             options.AddPolicy("data-write", CreateDataWriteRateLimitPartition(dataRateLimitOptions));

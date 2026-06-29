@@ -73,4 +73,13 @@ export class AdminUserService {
       ),
     ).then(r => r.isLastDirector);
   }
+
+  resetTwoFactor(userId: string): Promise<{ id: string; message: string }> {
+    return firstValueFrom(
+      this.http.post<ApiEnvelope<{ id: string; message: string }>>(
+        `${environment.apiBaseUrl}/api/v1/admin/users/${userId}/reset-2fa`,
+        {},
+      ),
+    ).then(e => e.data);
+  }
 }

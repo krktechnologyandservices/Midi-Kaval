@@ -9,6 +9,7 @@ import {
   ApiEnvelope,
   AUTH_HTTP_OPTIONS,
   CHALLENGE_KEY,
+  TOTP_KEY,
   LoginRequest,
   LoginResponse,
   ProblemDetails,
@@ -28,11 +29,21 @@ export interface OtpChallengeState {
   expiresInSeconds: number;
 }
 
+export interface TotpState {
+  userId: string;
+  tokenVersion: number;
+  totpChallengeId: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthSessionService {
   private readonly accessToken = signal<string | null>(this.readStoredAccessToken());
   private readonly user = signal<SessionUserDto | null>(this.readStoredUser());
   private readonly challenge = signal<OtpChallengeState | null>(this.readStoredChallenge());
+  readonly requiresTotp = signal(false);
+  readonly totpUserId = signal<string | null>(null);
+  readonly totpTokenVersion = signal<number>(0);
+  readonly totpChallengeId = signal<string | null>(null);
   private refreshInFlight: Promise<boolean> | null = null;
 
   readonly isAuthenticated = computed(() => !!this.accessToken());
@@ -52,7 +63,9 @@ export class AuthSessionService {
   constructor(
     private readonly http: HttpClient,
     private readonly router: Router,
-  ) {}
+  ) {
+    this.restoreTotpState();
+  }
 
   getAccessToken(): string | null {
     return this.accessToken();
@@ -67,11 +80,28 @@ export class AuthSessionService {
       ),
     );
 
+    const loginData: Record<string, unknown> = envelope.data as unknown as Record<string, unknown>;
+    if (loginData['requiresTotp']) {
+      this.requiresTotp.set(true);
+      this.totpUserId.set(loginData['userId'] as string);
+      this.totpTokenVersion.set((loginData['tokenVersion'] as number) ?? 0);
+      this.totpChallengeId.set(loginData['totpChallengeId'] as string);
+      this.persistTotpState({
+        userId: loginData['userId'] as string,
+        tokenVersion: (loginData['tokenVersion'] as number) ?? 0,
+        totpChallengeId: loginData['totpChallengeId'] as string,
+      });
+      await this.router.navigate(['/login/totp']);
+      return envelope.data;
+    }
+
     this.challenge.set({
       challengeId: envelope.data.challengeId!,
       expiresInSeconds: envelope.data.expiresInSeconds ?? 300,
     });
     this.persistChallenge(this.challenge());
+
+    await this.router.navigate(['/login/otp']);
 
     return envelope.data;
   }
@@ -102,6 +132,33 @@ export class AuthSessionService {
     });
     this.challenge.set(null);
     this.persistChallenge(null);
+    return envelope.data;
+  }
+
+  async verifyTotpLogin(code: string): Promise<VerifyOtpResponse> {
+    const userId = this.totpUserId();
+    const tokenVersion = this.totpTokenVersion();
+    const totpChallengeId = this.totpChallengeId();
+    if (!userId) throw new Error('No TOTP login in progress.');
+
+    const envelope = await firstValueFrom(
+      this.http.post<ApiEnvelope<VerifyOtpResponse>>(
+        `${environment.apiBaseUrl}/api/v1/auth/verify-totp-login`,
+        { userId, code, tokenVersion, totpChallengeId },
+        AUTH_HTTP_OPTIONS,
+      ),
+    );
+
+    this.applySession(envelope.data.accessToken!, {
+      id: envelope.data.user!.id,
+      email: envelope.data.user!.email,
+      role: envelope.data.user!.role,
+    });
+    this.requiresTotp.set(false);
+    this.totpUserId.set(null);
+    this.totpTokenVersion.set(0);
+    this.totpChallengeId.set(null);
+    this.persistTotpState(null);
     return envelope.data;
   }
 
@@ -198,9 +255,14 @@ export class AuthSessionService {
     this.accessToken.set(null);
     this.user.set(null);
     this.challenge.set(null);
+    this.requiresTotp.set(false);
+    this.totpUserId.set(null);
+    this.totpTokenVersion.set(0);
+    this.totpChallengeId.set(null);
     sessionStorage.removeItem(ACCESS_TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
     this.persistChallenge(null);
+    this.persistTotpState(null);
   }
 
   navigateAfterLogin(): void {
@@ -319,5 +381,35 @@ export class AuthSessionService {
     }
 
     sessionStorage.setItem(CHALLENGE_KEY, JSON.stringify(state));
+  }
+
+  private persistTotpState(state: TotpState | null): void {
+    if (!state) {
+      sessionStorage.removeItem(TOTP_KEY);
+      return;
+    }
+
+    sessionStorage.setItem(TOTP_KEY, JSON.stringify(state));
+  }
+
+  private readStoredTotpState(): TotpState | null {
+    const raw = sessionStorage.getItem(TOTP_KEY);
+    if (!raw) return null;
+
+    try {
+      return JSON.parse(raw) as TotpState;
+    } catch {
+      return null;
+    }
+  }
+
+  private restoreTotpState(): void {
+    const state = this.readStoredTotpState();
+    if (state) {
+      this.requiresTotp.set(true);
+      this.totpUserId.set(state.userId);
+      this.totpTokenVersion.set(state.tokenVersion);
+      this.totpChallengeId.set(state.totpChallengeId);
+    }
   }
 }

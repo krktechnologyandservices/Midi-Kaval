@@ -46,6 +46,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<BudgetLineItem> BudgetLineItems => Set<BudgetLineItem>();
     public DbSet<BudgetUtilization> BudgetUtilizations => Set<BudgetUtilization>();
     public DbSet<Invitation> Invitations => Set<Invitation>();
+    public DbSet<AuditDigestEntry> AuditDigestEntries => Set<AuditDigestEntry>();
+    public DbSet<ConfirmationToken> ConfirmationTokens => Set<ConfirmationToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

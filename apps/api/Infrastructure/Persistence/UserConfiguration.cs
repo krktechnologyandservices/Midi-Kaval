@@ -43,6 +43,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.IsSuspended)
             .HasDefaultValue(false);
 
+        builder.Property(u => u.TotpSecret)
+            .HasMaxLength(64);
+
+        builder.Property(u => u.TotpEnrolledAt);
+
         builder.HasOne(u => u.Organisation)
             .WithMany(o => o.Users)
             .HasForeignKey(u => u.OrganisationId)

@@ -1,11 +1,15 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Domain.RoleManagement;
+using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Email;
+using MidiKaval.Api.Models.Audit;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Infrastructure.RoleManagement;
 using StackExchange.Redis;
@@ -39,28 +43,78 @@ public class OrganisationServiceTests
         var config = new ConfigurationBuilder().Build();
         var logger = NullLogger<OrganisationService>.Instance;
         var lastDirectorGuard = new LastDirectorGuard(db);
-        return new TestableOrganisationService(db, tokenService, emailSender, config, lastDirectorGuard, logger);
+        var auditService = new CollectingAuditService();
+        return new TestableOrganisationService(db, tokenService, emailSender, config, lastDirectorGuard, auditService, logger);
     }
 
     /// <summary>
     /// Testable OrganisationService that overrides the Redis-backed email rate limit check
-    /// to work without a Redis connection in unit tests.
+    /// and transactional reissue to work without Redis and InMemory providers.
     /// </summary>
     private sealed class TestableOrganisationService : OrganisationService
     {
+        private readonly AppDbContext _db;
+        private readonly IAuditService _auditService;
+
         public TestableOrganisationService(
             AppDbContext db,
             TokenService tokenService,
             IEmailSender emailSender,
             IConfiguration configuration,
             LastDirectorGuard lastDirectorGuard,
+            IAuditService auditService,
             ILogger<OrganisationService> logger)
-            : base(db, tokenService, emailSender, null!, configuration, lastDirectorGuard, logger)
+            : base(db, tokenService, emailSender, null!, configuration, lastDirectorGuard, auditService, logger)
         {
+            _db = db;
+            _auditService = auditService;
         }
 
         protected override Task<bool> IsEmailRateLimitedAsync(string email) =>
             Task.FromResult(false);
+
+        protected override async Task<(string rawToken, string signature, ActivationToken token, DateTime now)> ExecuteReissueActivationAsync(
+            Guid organisationId, string targetDirectorEmail, Guid? actorUserId, string? actorIpAddress = null, CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.UtcNow;
+            // Generate a simple test token (HMAC signature is not verified in the test flow)
+            var rawToken = Guid.NewGuid().ToString("N");
+            var signature = Guid.NewGuid().ToString("N");
+
+            var hasDirector = await _db.Users.AnyAsync(
+                u => u.OrganisationId == organisationId && u.Role == UserRoles.Director && u.IsActive && !u.IsSuspended,
+                cancellationToken);
+            if (hasDirector)
+                throw new ValidationException("This organisation already has active Directors.");
+
+            var tokenHash = Convert.ToHexString(
+                System.Security.Cryptography.SHA256.HashData(
+                    System.Text.Encoding.UTF8.GetBytes(rawToken))).ToLowerInvariant();
+
+            var activationToken = new ActivationToken
+            {
+                Id = Guid.NewGuid(),
+                OrganisationId = organisationId,
+                TokenHash = tokenHash,
+                TargetEmail = targetDirectorEmail.Trim().ToLowerInvariant(),
+                ExpiresAtUtc = now.AddDays(7),
+                DeliveryAttempts = 0,
+                CreatedAtUtc = now,
+            };
+            _db.ActivationTokens.Add(activationToken);
+
+            if (actorUserId.HasValue)
+            {
+                await _auditService.RecordAsync(
+                    AuditEventTypes.ActivationReissued,
+                    organisationId,
+                    actorUserId: actorUserId,
+                    cancellationToken: cancellationToken);
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
+            return (rawToken, signature, activationToken, now);
+        }
     }
 
     private static Organisation SeedOrganisation(AppDbContext db, bool isActive = false, bool hasPendingRecovery = false)
@@ -236,6 +290,26 @@ public class OrganisationServiceTests
             Assert.Equal("Test Org", result.Name);
             Assert.True(result.IsActive);
             Assert.Equal(1, result.DirectorCount);
+        }
+    }
+
+    /// <summary>Stub audit service that collects events in-memory.</summary>
+    private sealed class CollectingAuditService : IAuditService
+    {
+        public List<(string EventType, Guid OrgId, Guid? ActorId, Guid? SubjectId)> Events { get; } = [];
+
+        public Task RecordAsync(
+            string eventType,
+            Guid organisationId,
+            Guid? actorUserId = null,
+            Guid? subjectUserId = null,
+            TargetUserSnapshotDto? targetUserSnapshot = null,
+            string? actorIpAddress = null,
+            IReadOnlyDictionary<string, object?>? metadata = null,
+            CancellationToken cancellationToken = default)
+        {
+            Events.Add((eventType, organisationId, actorUserId, subjectUserId));
+            return Task.CompletedTask;
         }
     }
 }

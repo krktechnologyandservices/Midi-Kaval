@@ -321,7 +321,7 @@ internal static class AuthTestHelpers
 
         var verifyResponse = await client.PostAsJsonAsync(
             "/api/v1/auth/verify-otp",
-            new VerifyOtpRequest { ChallengeId = loginEnvelope!.Data!.ChallengeId, Code = otp });
+            new VerifyOtpRequest { ChallengeId = loginEnvelope!.Data!.ChallengeId.Value, Code = otp });
         verifyResponse.EnsureSuccessStatusCode();
 
         var verifyEnvelope = await verifyResponse.Content.ReadFromJsonAsync<ApiEnvelope<VerifyOtpResponse>>();
