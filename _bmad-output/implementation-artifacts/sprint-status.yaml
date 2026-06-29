@@ -37,6 +37,8 @@
 generated: 2026-06-13
 last_updated: 2026-06-29
 
+# Epic 24 added: DevOps & Deployment Infrastructure — Story 24-1 (local dev scripts) created
+
 project: Midi-Kaval
 project_key: NOKEY
 tracking_system: file-system
@@ -116,8 +118,8 @@ development_status:
   6-2-mobile-travel-claim-capture: done
   6-3-director-claim-approval-on-web: done
   6-4-claim-status-notifications: done
-  6-5-migration-script-for-existing-hardcoded-accounts: ready-for-dev
-  6-6-dual-auth-support-during-migration-window: backlog
+  6-5-migration-script-for-existing-hardcoded-accounts: done
+  6-6-dual-auth-support-during-migration-window: done
   epic-6-retrospective: optional
 
   epic-7: in-progress
@@ -209,3 +211,7 @@ development_status:
   epic-23: in-progress
   23-1-import-file-validation: done
   epic-23-retrospective: optional
+
+  epic-24: in-progress
+  24-1-local-dev-setup-scripts: ready-for-dev
+  epic-24-retrospective: optional

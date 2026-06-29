@@ -69,6 +69,7 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<FieldWorkerUserSeeder>();
     builder.Services.AddScoped<PocsoCaseSeeder>();
     builder.Services.AddScoped<VendorUserSeeder>();
+    builder.Services.AddScoped<AccountMigrationService>();
     builder.Services.AddScoped<CaseService>();
     builder.Services.AddScoped<CaseNoteService>();
     builder.Services.AddScoped<InterventionService>();
@@ -262,6 +263,25 @@ app.UseSwaggerUI(options =>
 app.MapControllers();
 
 await app.ApplyMigrationsAndSeedAsync();
+
+// Migration cutover: set RUN_MIGRATION=1 env var to migrate config-file accounts to DB
+if (Environment.GetEnvironmentVariable("RUN_MIGRATION") == "1")
+{
+    try
+    {
+        await using var migrateScope = app.Services.CreateAsyncScope();
+        var migrationService = migrateScope.ServiceProvider.GetRequiredService<AccountMigrationService>();
+        await migrationService.RunAsync(app.Lifetime.ApplicationStopping);
+    }
+    catch (OperationCanceledException)
+    {
+        app.Logger.LogInformation("Account migration was cancelled during shutdown.");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Account migration failed. The app will continue startup — re-run with RUN_MIGRATION=1 to retry.");
+    }
+}
 
 app.Run();
 

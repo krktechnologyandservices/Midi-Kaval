@@ -6,7 +6,9 @@ using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Domain.RoleManagement;
 using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Email;
+using MidiKaval.Api.Infrastructure.Migration;
 using MidiKaval.Api.Infrastructure.Notifications;
+using Npgsql;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Models.Auth;
 // TOTP operations delegated to TwoFactorService
@@ -28,6 +30,7 @@ public sealed class AuthService(
     UserDeviceService userDeviceService,
     IOptions<PasswordResetOptions> passwordResetOptions,
     TwoFactorService twoFactorService,
+    IOptions<DualAuthOptions> dualAuthOptions,
     ILogger<AuthService> logger)
 {
     public const string DeactivatedMessage = "Contact your coordinator";
@@ -58,8 +61,17 @@ public sealed class AuthService(
 
         if (user is null)
         {
-            await RecordLoginFailedAsync(normalizedEmail, null, cancellationToken);
-            return null;
+            // Dual auth fallback: check config-file credentials before failing
+            if (dualAuthOptions.Value.Enabled)
+            {
+                user = await AutoMigrateFromConfigAsync(normalizedEmail, request.Password?.Trim() ?? string.Empty, cancellationToken);
+            }
+
+            if (user is null)
+            {
+                await RecordLoginFailedAsync(normalizedEmail, null, cancellationToken);
+                return null;
+            }
         }
 
         if (!user.IsActive)
@@ -640,6 +652,187 @@ public sealed class AuthService(
 
     private static string GenerateOtpCode() =>
         RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+
+    /// <summary>Attempt dual auth auto-migration when a user is not found in the DB.</summary>
+    private async Task<User?> AutoMigrateFromConfigAsync(string normalizedEmail, string password, CancellationToken ct)
+    {
+        if (!dualAuthOptions.Value.Enabled)
+        {
+            return null;
+        }
+
+        // Try Admin section — requires Seed:OrganisationId
+        var adminResult = await TryMigrateFromSectionAsync(
+            "Seed:Admin", normalizedEmail, password, UserRoles.Director, ct);
+        if (adminResult is not null) return adminResult;
+
+        // Try Vendor section — uses hardcoded VendorOrganisationId
+        var vendorResult = await TryMigrateFromVendorSectionAsync(normalizedEmail, password, ct);
+        if (vendorResult is not null) return vendorResult;
+
+        // Try FieldWorker section — requires Seed:OrganisationId
+        var fwResult = await TryMigrateFromFieldWorkerSectionAsync(normalizedEmail, password, ct);
+        if (fwResult is not null) return fwResult;
+
+        return null;
+    }
+
+    private async Task<User?> TryMigrateFromSectionAsync(
+        string configPrefix,
+        string normalizedEmail,
+        string password,
+        string role,
+        CancellationToken ct)
+    {
+        var configEmail = (configuration[$"{configPrefix}:Email"] ?? "").Trim().ToLowerInvariant();
+        var configPassword = configuration[$"{configPrefix}:Password"]?.Trim();
+
+        if (configEmail != normalizedEmail || string.IsNullOrEmpty(configPassword))
+        {
+            return null;
+        }
+
+        var seedOrgIdValue = configuration["Seed:OrganisationId"];
+        if (!Guid.TryParse(seedOrgIdValue, out var organisationId))
+        {
+            logger.LogWarning("Dual auth: Seed:OrganisationId is missing or invalid — cannot auto-migrate {Section} account.", configPrefix);
+            return null;
+        }
+
+        if (password != configPassword)
+        {
+            logger.LogWarning("Dual auth: password mismatch for seed account {Email} ({Section}).", normalizedEmail, configPrefix);
+            return null;
+        }
+
+        return await CreateMigratedUserAsync(normalizedEmail, password, role, organisationId, ct);
+    }
+
+    private async Task<User?> TryMigrateFromVendorSectionAsync(
+        string normalizedEmail, string password, CancellationToken ct)
+    {
+        var configEmail = (configuration["Seed:Vendor:Email"] ?? "").Trim().ToLowerInvariant();
+        var configPassword = configuration["Seed:Vendor:Password"]?.Trim();
+
+        if (configEmail != normalizedEmail || string.IsNullOrEmpty(configPassword))
+        {
+            return null;
+        }
+
+        if (password != configPassword)
+        {
+            logger.LogWarning("Dual auth: password mismatch for seed account {Email} (Vendor).", normalizedEmail);
+            return null;
+        }
+
+        return await CreateMigratedUserAsync(normalizedEmail, password, UserRoles.Vendor, AccountMigrationService.VendorOrganisationId, ct);
+    }
+
+    private async Task<User?> TryMigrateFromFieldWorkerSectionAsync(
+        string normalizedEmail, string password, CancellationToken ct)
+    {
+        var configEmail = (configuration["Seed:FieldWorker:Email"] ?? "").Trim().ToLowerInvariant();
+        var configPassword = configuration["Seed:FieldWorker:Password"]?.Trim();
+        var configRole = configuration["Seed:FieldWorker:Role"]?.Trim();
+
+        if (configEmail != normalizedEmail || string.IsNullOrEmpty(configPassword))
+        {
+            return null;
+        }
+
+        var seedOrgIdValue = configuration["Seed:OrganisationId"];
+        if (!Guid.TryParse(seedOrgIdValue, out var organisationId))
+        {
+            logger.LogWarning("Dual auth: Seed:OrganisationId is missing or invalid — cannot auto-migrate FieldWorker account.");
+            return null;
+        }
+
+        // Validate role
+        if (!string.Equals(configRole, UserRoles.SocialWorker, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(configRole, UserRoles.CaseWorker, StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning("Dual auth: invalid FieldWorker role '{Role}' for {Email}.", configRole, normalizedEmail);
+            return null;
+        }
+
+        if (password != configPassword)
+        {
+            logger.LogWarning("Dual auth: password mismatch for seed account {Email} (FieldWorker).", normalizedEmail);
+            return null;
+        }
+
+        return await CreateMigratedUserAsync(normalizedEmail, password, configRole!, organisationId, ct);
+    }
+
+    private async Task<User?> CreateMigratedUserAsync(
+        string normalizedEmail, string password, string role, Guid orgId, CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        try
+        {
+            // Organisation self-heal
+            var orgExists = await db.Organisations.AnyAsync(o => o.Id == orgId, ct);
+            if (!orgExists)
+            {
+                var now = DateTime.UtcNow;
+                var orgName = orgId == AccountMigrationService.VendorOrganisationId ? "Vendor System" : "Primary Organisation";
+                var org = new Organisation
+                {
+                    Id = orgId,
+                    Name = orgName,
+                    IsActive = true,
+                    CreatedAtUtc = now,
+                };
+                db.Organisations.Add(org);
+                await db.SaveChangesAsync(ct);
+                logger.LogInformation("Dual auth: self-healed organisation {OrgId} ({Name}).", orgId, orgName);
+            }
+
+            var createdAt = DateTime.UtcNow;
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                OrganisationId = orgId,
+                Email = normalizedEmail,
+                FirstName = "",
+                LastName = "",
+                Role = role,
+                TokenVersion = 0,
+                IsActive = true,
+                CreatedAtUtc = createdAt,
+                UpdatedAtUtc = createdAt,
+            };
+
+            user.PasswordHash = passwordHasher.HashPassword(user, password);
+            db.Users.Add(user);
+            await db.SaveChangesAsync(ct);
+
+            await tx.CommitAsync(ct);
+
+            logger.LogInformation("Dual auth: auto-migrated {Role} user {Email} (OrgId={OrgId}).", role, normalizedEmail, orgId);
+            return user;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+        {
+            // Race: another request already created this user. Transaction rolls back on dispose.
+            logger.LogInformation("Dual auth: unique constraint hit for {Email} — racing request won.", normalizedEmail);
+        }
+
+        // Clear tracked entities so we can re-read cleanly
+        db.ChangeTracker.Clear();
+
+        // Under READ COMMITTED isolation, the winning transaction may not have committed yet.
+        // Retry the re-read once after a brief delay.
+        var existing = await db.Users.FirstOrDefaultAsync(u => u.OrganisationId == orgId && u.Email == normalizedEmail, ct);
+        if (existing is null)
+        {
+            await Task.Delay(500, ct);
+            existing = await db.Users.FirstOrDefaultAsync(u => u.OrganisationId == orgId && u.Email == normalizedEmail, ct);
+        }
+
+        return existing;
+    }
 }
 
 public sealed class AuthForbiddenException(string message, string? errorCode = null) : Exception(message)

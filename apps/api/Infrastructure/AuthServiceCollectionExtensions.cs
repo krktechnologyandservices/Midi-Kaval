@@ -41,6 +41,10 @@ public static class AuthServiceCollectionExtensions
         services.Configure<PasswordResetOptions>(configuration.GetSection(PasswordResetOptions.SectionName));
         services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
 
+        services.AddOptions<DualAuthOptions>()
+            .Bind(configuration.GetSection(DualAuthOptions.SectionName))
+            .ValidateOnStart();
+
         services.AddOptions<TotpOptions>()
             .Bind(configuration.GetSection(TotpOptions.SectionName))
             .ValidateOnStart();

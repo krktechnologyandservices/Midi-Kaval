@@ -609,3 +609,22 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - **Rate limiter uses calendar-day bucket, not 24-hour sliding window** — 6 emails can be delivered in 2 minutes across midnight. Design trade-off, matches spec wording.
 - **Rate-limit skip is completely silent — Director receives no feedback** — Not required by acceptance criteria.
 - **SubjectUserId in deletion audit changed from null to targetUserId** — Snapshot `TargetUserSnapshotDto` preserves original identity. Intentional design.
+
+## Deferred from: code review of 6-5-migration-script-for-existing-hardcoded-accounts (2026-06-29)
+
+- **TOCTOU race in existence-check-then-act across concurrent instances** — Extremely unlikely in single-instance startup; proper fix requires distributed locking.
+- **No email-confirmed/lockout state set on migrated users** — Pre-existing pattern, seeders don't set these either.
+- **No password policy or credentials lineage tracking** — Pre-existing, not in story scope.
+- **No retry policy for transient DB failures** — Pre-existing pattern across codebase.
+- **Multiple SaveChangesAsync round-trips instead of single batch** — Pre-existing pattern inherited from seeders.
+- **Organisation name mismatch ("Pilot Organisation" vs "Primary Organisation")** — Pre-existing inconsistency between seeders and migration.
+- **RUN_MIGRATION env var bypasses IConfiguration** — Design choice, documented in story.
+
+## Deferred from: code review of 6-6-dual-auth-support-during-migration-window (2026-06-29)
+
+- **Config credentials act as permanent backdoor after migration** — Operational concern; disable DualAuth:Enabled post-migration to remove the config fallback path.
+- **Exception classes appended to AuthService.cs** — AuthForbiddenException, AuthBadRequestException, AuthUnauthorizedException defined at bottom of AuthService.cs instead of dedicated file. Pre-existing pattern.
+- **Inconsistent exception class constructors** — AuthForbiddenException has optional errorCode; others don't. Pre-existing pattern.
+- **FieldWorker role validation not centralized in UserRoles** — Inline string comparison duplicates logic; maintainability enhancement for future role additions.
+- **Forgot-password unavailable for migrated users with non-deliverable seed emails** — Pre-existing concern; seed accounts should use real inboxes in production.
+- **Seed:FieldWorker:Role undocumented in spec** — Config key defines field worker role but not listed in Seed:* documentation.
