@@ -1,8 +1,12 @@
+---
+baseline_commit: d83f8e3f0e66844e029a24bb022b9c1e73b2366d
+---
+
 # Story 25.4: Refactor Enrollment Component — Shared 2FA Component, Backup Code Display, TwoFactorSetupGuard, Route-Based Enrollment
 
 **Epic:** Epic 25 — 2FA Universal Enrollment & Administration
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -64,34 +68,34 @@ so that **I can enroll in 2FA through a dedicated settings route, see my backup 
 
 ## Tasks / Subtasks
 
-- [ ] Create `shared/components/2fa/two-factor-enrollment.component.ts` with `TwoFactorEnrollmentComponent` (AC: 1, 2, 3)
-  - [ ] Support dialog/page modes via `pageMode` input
-  - [ ] 5-step flow: initiate → qr-display → verify → backup-codes → success
-  - [ ] Theme-aware QR code (light/dark via `prefers-color-scheme`)
-  - [ ] "Copy Key" button for Base32 secret
-  - [ ] 6-digit TOTP auto-submit on 6th character
-  - [ ] Backup codes grid (2-column monospace chips) + download .txt (AC: 4)
-  - [ ] Page mode: role-aware "Go to Dashboard" button on success (uses `navigateAfterLogin()`)
-- [ ] Create `shared/components/2fa/two-factor-enrollment.component.html` (template)
-- [ ] Create `shared/components/2fa/two-factor-enrollment.component.scss` (styles)
-- [ ] Create `shared/components/2fa/backup-codes-display.component.ts` — separate reusable component for backup code display (AC: 4)
-  - [ ] 2-column monospace chip grid
-  - [ ] "Download as .txt" button with file header `Kaval Online Backup Codes — user@email.com`
-  - [ ] Input: `codes: string[]`, `email: string`
-  - [ ] Emits `confirmed` event when user clicks "I've saved my codes"
-- [ ] Create `shared/services/two-factor.service.ts` — wraps enroll-2fa, verify-enroll-2fa, 2fa-status (AC: 9)
-- [ ] Create `shared/services/backup-code.service.ts` — wraps generate-backup-codes, verify-backup-code (AC: 9)
-- [ ] Create `core/auth/two-factor-setup.guard.ts` with `CanActivateFn` (AC: 5)
-  - [ ] Exclude `/settings/2fa` route from redirect to prevent infinite loop
-- [ ] Update `AuthSessionService` — add signals + read from login response (AC: 6)
-  - [ ] `clearSession()` resets requires2faSetup, setupUrl, orgRequires2fa
-  - [ ] `navigateAfterLogin()` checks requires2faSetup first, redirects to setupUrl
-- [ ] Add `POST /auth/generate-backup-codes` endpoint to `TwoFactorController` (AC: 4, API)
-  - [ ] Calls `BackupCodeService.GenerateAsync`, returns `{ codes: string[] }`
-  - [ ] Requires `[Authorize]`, rate limited with `data-write` policy
-- [ ] Add `settings/2fa` route to `app.routes.ts` with authGuard only (no twoFactorSetupGuard — avoids redirect loop) (AC: 7)
-- [ ] Update `auth.models.ts` LoginResponse type with new fields — OR document that Record<,> indexing pattern handles them (AC: 8)
-- [ ] Remove existing `TwoFactorModalComponent` (unused — zero references outside its own file) (AC: 1)
+- [x] Create `shared/components/2fa/two-factor-enrollment.component.ts` with `TwoFactorEnrollmentComponent` (AC: 1, 2, 3)
+  - [x] Support dialog/page modes via `pageMode` input
+  - [x] 5-step flow: initiate → qr-display → verify → backup-codes → success
+  - [x] Theme-aware QR code (light/dark via `prefers-color-scheme`)
+  - [x] "Copy Key" button for Base32 secret
+  - [x] 6-digit TOTP auto-submit on 6th character
+  - [x] Backup codes grid (2-column monospace chips) + download .txt (AC: 4)
+  - [x] Page mode: role-aware "Go to Dashboard" button on success (uses `navigateAfterLogin()`)
+- [x] Create `shared/components/2fa/two-factor-enrollment.component.html` (template)
+- [x] Create `shared/components/2fa/two-factor-enrollment.component.scss` (styles)
+- [x] Create `shared/components/2fa/backup-codes-display.component.ts` — separate reusable component for backup code display (AC: 4)
+  - [x] 2-column monospace chip grid
+  - [x] "Download as .txt" button with file header `Kaval Online Backup Codes — user@email.com`
+  - [x] Input: `codes: string[]`, `email: string`
+  - [x] Emits `confirmed` event when user clicks "I've saved my codes"
+- [x] Create `shared/services/two-factor.service.ts` — wraps enroll-2fa, verify-enroll-2fa, 2fa-status (AC: 9)
+- [x] Create `shared/services/backup-code.service.ts` — wraps generate-backup-codes, verify-backup-code (AC: 9)
+- [x] Create `core/auth/two-factor-setup.guard.ts` with `CanActivateFn` (AC: 5)
+  - [x] Exclude `/settings/2fa` route from redirect to prevent infinite loop
+- [x] Update `AuthSessionService` — add signals + read from login response (AC: 6)
+  - [x] `clearSession()` resets requires2faSetup, setupUrl, orgRequires2fa
+  - [x] `navigateAfterLogin()` checks requires2faSetup first, redirects to setupUrl
+- [x] Add `POST /auth/generate-backup-codes` endpoint to `TwoFactorController` (AC: 4, API)
+  - [x] Calls `BackupCodeService.GenerateAsync`, returns `{ codes: string[] }`
+  - [x] Requires `[Authorize]`, rate limited with `data-write` policy
+- [x] Add `settings/2fa` route to `app.routes.ts` with authGuard only (no twoFactorSetupGuard — avoids redirect loop) (AC: 7)
+- [x] Update `auth.models.ts` LoginResponse type with new fields — OR document that Record<,> indexing pattern handles them (AC: 8)
+- [x] Remove existing `TwoFactorModalComponent` (unused — zero references outside its own file) (AC: 1)
 
 ## Dev Notes
 
@@ -378,5 +382,48 @@ deepseek-v4-flash
 ### Debug Log References
 
 ### Completion Notes List
+- Added `POST /auth/generate-backup-codes` endpoint to `TwoFactorController` (API)
+- Created `TwoFactorEnrollmentComponent` — shared component supporting dialog/page modes with 5-step flow
+- Created `BackupCodesDisplayComponent` — reusable backup code display with download .txt and 2-column grid
+- Created `TwoFactorService` and `BackupCodeService` Angular API service layer
+- Created `TwoFactorSetupGuard` with route exclusion for `/settings/2fa`
+- Updated `AuthSessionService`: added `requires2faSetup`, `setupUrl`, `orgRequires2fa` signals; updated `login()`, `clearSession()`, `navigateAfterLogin()`
+- Added comment documenting that new LoginResponse fields are accessed via Record pattern at runtime
+- Added `/settings/2fa` route to `app.routes.ts` with `authGuard` only
+- Removed unused `TwoFactorModalComponent` (zero references outside own file)
+- Build: API 0 errors, Web 0 errors (all warnings pre-existing)
 
 ### File List
+- `apps/api/Controllers/V1/Auth/TwoFactorController.cs` — MODIFIED: + POST /auth/generate-backup-codes endpoint
+- `apps/web/src/app/core/auth/auth-session.service.ts` — MODIFIED: +3 signals, updated login/clearSession/navigateAfterLogin
+- `apps/web/src/app/core/auth/auth.models.ts` — MODIFIED: added comment about Record pattern for new fields
+- `apps/web/src/app/app.routes.ts` — MODIFIED: + /settings/2fa route
+- `apps/web/src/app/shared/components/2fa/two-factor-enrollment.component.ts` — NEW
+- `apps/web/src/app/shared/components/2fa/two-factor-enrollment.component.html` — NEW
+- `apps/web/src/app/shared/components/2fa/two-factor-enrollment.component.scss` — NEW
+- `apps/web/src/app/shared/components/2fa/backup-codes-display.component.ts` — NEW
+- `apps/web/src/app/shared/services/two-factor.service.ts` — NEW
+- `apps/web/src/app/shared/services/backup-code.service.ts` — NEW
+- `apps/web/src/app/core/auth/two-factor-setup.guard.ts` — NEW
+- `apps/web/src/app/features/admin/components/two-factor-modal/two-factor-modal.component.ts` — DELETED
+
+### Review Findings
+
+#### patch
+- [x] [Review][Patch] Page mode InputSignal overwritten in constructor — `two-factor-enrollment.component.ts:54-59` assigns `true` to the read-only InputSignal, replacing it with a plain boolean. Calling `this.pageMode()` throws `TypeError: pageMode is not a function`. Fix: use a separate writable signal for route-driven page mode.
+- [x] [Review][Patch] Guard never wired to routes — `two-factor-setup.guard.ts` is defined but never imported or applied in `app.routes.ts`. The redirect-to-setup logic is dead code. Fix: import and add `twoFactorSetupGuard` to appropriate route `canActivate` arrays.
+- [x] [Review][Patch] Infinite redirect after successful enrollment — `requires2faSetup` is never set to `false` after TOTP enrollment completes. `navigateAfterLogin()` redirects right back to setup. Fix: call `authSession.requires2faSetup.set(false)` on successful enrollment completion.
+- [x] [Review][Patch] `GenerateBackupCodes` doesn't verify TOTP enrollment — `TwoFactorController.cs:149` generates backup codes for any authenticated user regardless of enrollment status. Fix: check `user.TotpEnrolledAt is not null` before generating.
+- [x] [Review][Patch] 2FA setup signals not persisted across page reload — `requires2faSetup`, `setupUrl`, `orgRequires2fa` are in-memory only with no `sessionStorage` backup. Page refresh silently forgets the pending enrollment requirement. Fix: persist to sessionStorage in `login()` and restore in `bootstrapSession()`.
+- [x] [Review][Patch] `navigateAfterLogin()` doesn't fall back to `/settings/2fa` when `setupUrl` is null — `auth-session.service.ts:277-282` silently falls through to role-based routing if `setupUrl()` returns null. Inconsistent with the guard which falls back to `'/settings/2fa'`. Fix: if `requires2faSetup()` is true but `setupUrl()` is null, redirect to `'/settings/2fa'`.
+- [x] [Review][Patch] Empty 401 body on `GenerateBackupCodes` — `TwoFactorController.cs:148` returns `Unauthorized()` with no ProblemDetails body, contradicting the `[ProducesResponseType]` attribute. Fix: return `Unauthorized(new ProblemDetails { ... })`.
+- [x] [Review][Patch] No audit event on backup code generation — `TwoFactorController.cs:154` generates codes but never records an audit event. Security monitoring cannot trace when/by whom codes were generated. Fix: add audit event recording in `BackupCodeService.GenerateAsync`.
+
+#### defer
+- [x] [Review][Defer] Vendor route `/vendor/settings` doesn't exist — handled by Story 25-5 (Vendor Settings Page).
+- [x] [Review][Defer] Vendor 2FA reset doesn't revoke backup codes — pre-existing issue in vendor controller, not introduced by this story.
+- [x] [Review][Defer] `orgRequires2fa` signal never consumed — exists for downstream stories (25-5, 25-7) to consume.
+- [x] [Review][Defer] Download .txt error handling / copy button / user-select:all — nice-to-have UX enhancements, not in ACs.
+- [x] [Review][Defer] No `canDeactivate` guard on `/settings/2fa` — out of scope, not in ACs.
+- [x] [Review][Defer] No idempotency/quota on code generation — architectural concern, not in story scope.
+- [x] [Review][Defer] Plaintext codes in response/logs — intentional one-time display design.

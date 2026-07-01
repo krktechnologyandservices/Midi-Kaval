@@ -140,6 +140,39 @@ public class TwoFactorController(
         return Ok(new TwoFactorStatusResponse { Enrolled = enrolled, EnrolledAt = enrolledAt });
     }
 
+    /// <summary>Generate 8 backup codes after successful TOTP enrollment.</summary>
+    [Authorize]
+    [HttpPost("generate-backup-codes")]
+    [EnableRateLimiting("data-write")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> GenerateBackupCodes(CancellationToken ct)
+    {
+        var userId = TryGetUserId();
+        if (userId is null)
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "Authentication is required.",
+            });
+
+        var enrolled = await twoFactorService.IsEnrolledAsync(userId.Value, ct);
+        if (!enrolled)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Not Enrolled",
+                Detail = "Two-factor authentication must be enrolled before generating backup codes.",
+            });
+        }
+
+        var codes = await backupCodeService.GenerateAsync(userId.Value);
+        return Ok(new { codes });
+    }
+
     /// <summary>Verify a backup code during login (unauthenticated) and issue JWT.</summary>
     [HttpPost("verify-backup-code")]
     [EnableRateLimiting("auth-verify-backup-code")]

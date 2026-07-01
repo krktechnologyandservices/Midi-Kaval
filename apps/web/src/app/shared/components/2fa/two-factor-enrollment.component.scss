@@ -1,0 +1,122 @@
+:host {
+  display: block;
+}
+
+.qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.qr-code {
+  width: 200px;
+  height: 200px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #E2E5EB);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+@media (prefers-color-scheme: dark) {
+  .qr-code {
+    background: #fff;
+    padding: 8px;
+    border-radius: 12px;
+  }
+}
+
+.secret-fallback {
+  text-align: center;
+  font-size: 14px;
+}
+
+.secret-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.secret-value {
+  display: inline-block;
+  padding: 8px 12px;
+  background: var(--surface-secondary, #F5F6FA);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.code-input {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.action-button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 8px;
+}
+
+.spinner-icon {
+  animation: spin 1s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.error-message {
+  background: var(--error-bg, #FEF2F2);
+  border: 1px solid var(--error-border, #FCA5A5);
+  color: var(--error-text, #991B1B);
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.success-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  padding: 16px 0;
+}
+
+.success-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: var(--success-color, #16A34A);
+}
+
+.step-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+
+p {
+  margin: 12px 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -2,6 +2,9 @@ import type { components } from '@midi-kaval/api-client';
 
 export type LoginRequest = components['schemas']['LoginRequest'];
 export type LoginResponse = components['schemas']['LoginResponse'];
+// New fields (requires2faSetup, setupUrl, orgRequires2fa) are accessed at runtime
+// via Record<string, unknown> indexing in AuthSessionService.login() — the
+// auto-generated type may lag behind the API contract. This is intentional.
 export type VerifyOtpRequest = components['schemas']['VerifyOtpRequest'];
 export type VerifyOtpResponse = components['schemas']['VerifyOtpResponse'];
 export type RefreshResponse = components['schemas']['RefreshResponse'];
@@ -29,3 +32,4 @@ export const ACCESS_TOKEN_KEY = 'midi_kaval_access_token';
 export const USER_KEY = 'midi_kaval_user';
 export const CHALLENGE_KEY = 'midi_kaval_otp_challenge';
 export const TOTP_KEY = 'midi_kaval_totp_state';
+export const TWOFA_SETUP_KEY = 'midi_kaval_2fa_setup_state';

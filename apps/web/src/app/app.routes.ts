@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard, guestGuard, otpGuard } from './core/auth/auth.guard';
 import { directorGuard } from './core/auth/director.guard';
 import { supervisorGuard } from './core/auth/supervisor.guard';
+import { twoFactorSetupGuard } from './core/auth/two-factor-setup.guard';
 import { vendorGuard } from './core/auth/vendor.guard';
 
 export const routes: Routes = [
@@ -54,6 +55,15 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'settings/2fa',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./shared/components/2fa/two-factor-enrollment.component').then(
+        (m) => m.TwoFactorEnrollmentComponent,
+      ),
+    data: { pageMode: true },
+  },
+  {
     path: 'activate',
     loadComponent: () =>
       import('./features/activation/activation.component').then(
@@ -76,7 +86,7 @@ export const routes: Routes = [
   },
   {
     path: '',
-    canActivate: [authGuard, supervisorGuard],
+    canActivate: [authGuard, twoFactorSetupGuard, supervisorGuard],
     loadComponent: () =>
       import('./features/shell/supervisor-shell.component').then(
         (m) => m.SupervisorShellComponent,
@@ -237,7 +247,7 @@ export const routes: Routes = [
   },
   {
     path: 'vendor',
-    canActivate: [authGuard, vendorGuard],
+    canActivate: [authGuard, twoFactorSetupGuard, vendorGuard],
     loadComponent: () =>
       import('./features/vendor/vendor.component').then((m) => m.VendorComponent),
   },

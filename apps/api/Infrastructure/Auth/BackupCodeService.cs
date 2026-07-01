@@ -42,6 +42,23 @@ public class BackupCodeService(
         db.BackupCodes.AddRange(backupCodes);
         await db.SaveChangesAsync();
 
+        // Load user for organisation context
+        var user = await db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => new { u.OrganisationId })
+            .FirstOrDefaultAsync();
+
+        await auditService.RecordAsync(
+            AuditEventTypes.TwoFactorBypassGenerated,
+            user?.OrganisationId ?? Guid.Empty,
+            subjectUserId: userId,
+            metadata: new Dictionary<string, object?>
+            {
+                ["backupCodesGenerated"] = count,
+                ["backupCodesRemainingCount"] = await GetRemainingCountAsync(userId),
+            });
+
         return plaintextCodes;
     }
 

@@ -10,6 +10,7 @@ import {
   AUTH_HTTP_OPTIONS,
   CHALLENGE_KEY,
   TOTP_KEY,
+  TWOFA_SETUP_KEY,
   LoginRequest,
   LoginResponse,
   ProblemDetails,
@@ -44,6 +45,9 @@ export class AuthSessionService {
   readonly totpUserId = signal<string | null>(null);
   readonly totpTokenVersion = signal<number>(0);
   readonly totpChallengeId = signal<string | null>(null);
+  readonly requires2faSetup = signal(false);
+  readonly setupUrl = signal<string | null>(null);
+  readonly orgRequires2fa = signal(false);
   private refreshInFlight: Promise<boolean> | null = null;
 
   readonly isAuthenticated = computed(() => !!this.accessToken());
@@ -65,6 +69,7 @@ export class AuthSessionService {
     private readonly router: Router,
   ) {
     this.restoreTotpState();
+    this.restore2faSetupState();
   }
 
   getAccessToken(): string | null {
@@ -81,6 +86,10 @@ export class AuthSessionService {
     );
 
     const loginData: Record<string, unknown> = envelope.data as unknown as Record<string, unknown>;
+    this.requires2faSetup.set((loginData['requires2faSetup'] as boolean) ?? false);
+    this.setupUrl.set((loginData['setupUrl'] as string) ?? null);
+    this.orgRequires2fa.set((loginData['orgRequires2fa'] as boolean) ?? false);
+    this.persist2faSetupState();
     if (loginData['requiresTotp']) {
       this.requiresTotp.set(true);
       this.totpUserId.set(loginData['userId'] as string);
@@ -259,13 +268,23 @@ export class AuthSessionService {
     this.totpUserId.set(null);
     this.totpTokenVersion.set(0);
     this.totpChallengeId.set(null);
+    this.requires2faSetup.set(false);
+    this.setupUrl.set(null);
+    this.orgRequires2fa.set(false);
     sessionStorage.removeItem(ACCESS_TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
     this.persistChallenge(null);
     this.persistTotpState(null);
+    this.persist2faSetupState();
   }
 
   navigateAfterLogin(): void {
+    if (this.requires2faSetup()) {
+      const url = this.setupUrl() ?? '/settings/2fa';
+      void this.router.navigate([url]);
+      return;
+    }
+
     if (this.isMobileOnlyRole()) {
       void this.router.navigate(['/mobile-only']);
       return;
@@ -410,6 +429,42 @@ export class AuthSessionService {
       this.totpUserId.set(state.userId);
       this.totpTokenVersion.set(state.tokenVersion);
       this.totpChallengeId.set(state.totpChallengeId);
+    }
+  }
+
+  private persist2faSetupState(): void {
+    if (!this.requires2faSetup() && !this.setupUrl() && !this.orgRequires2fa()) {
+      sessionStorage.removeItem(TWOFA_SETUP_KEY);
+      return;
+    }
+
+    sessionStorage.setItem(
+      TWOFA_SETUP_KEY,
+      JSON.stringify({
+        requires2faSetup: this.requires2faSetup(),
+        setupUrl: this.setupUrl(),
+        orgRequires2fa: this.orgRequires2fa(),
+      }),
+    );
+  }
+
+  private restore2faSetupState(): void {
+    const state = this.readStored2faSetupState();
+    if (state) {
+      this.requires2faSetup.set(state.requires2faSetup);
+      this.setupUrl.set(state.setupUrl);
+      this.orgRequires2fa.set(state.orgRequires2fa);
+    }
+  }
+
+  private readStored2faSetupState(): { requires2faSetup: boolean; setupUrl: string | null; orgRequires2fa: boolean } | null {
+    const raw = sessionStorage.getItem(TWOFA_SETUP_KEY);
+    if (!raw) return null;
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
     }
   }
 }
