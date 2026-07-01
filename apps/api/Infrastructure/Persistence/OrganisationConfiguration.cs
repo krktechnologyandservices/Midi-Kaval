@@ -23,6 +23,10 @@ public sealed class OrganisationConfiguration : IEntityTypeConfiguration<Organis
             .HasColumnName("has_pending_recovery")
             .HasDefaultValue(false);
 
+        builder.Property(x => x.Require2fa)
+            .HasColumnName("require_2fa")
+            .HasDefaultValue(false);
+
         builder.Property(x => x.CreatedAtUtc)
             .HasDefaultValueSql("NOW()")
             .IsRequired();

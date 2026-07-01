@@ -68,6 +68,8 @@ public static class AuthServiceCollectionExtensions
         services.AddScoped<IUserSessionService, UserSessionService>();
         services.AddScoped<AuthService>();
         services.AddScoped<TwoFactorService>();
+        services.AddScoped<BackupCodeService>();
+        services.AddScoped<AdminTwoFactorService>();
         services.AddSingleton<IEmailSender, SmtpEmailSender>();
         services.AddSingleton<IUserNotificationRateLimiter, RedisUserNotificationRateLimiter>();
         services.AddHttpContextAccessor();
@@ -172,6 +174,7 @@ public static class AuthServiceCollectionExtensions
             options.AddPolicy("auth-activate-read", CreateAuthRateLimitPartition(rateLimitOptions));
             options.AddPolicy("auth-enroll-totp", CreateAuthRateLimitPartition(rateLimitOptions));
             options.AddPolicy("auth-verify-totp", CreateAuthRateLimitPartition(rateLimitOptions));
+            options.AddPolicy("auth-verify-backup-code", CreateAuthRateLimitPartition(rateLimitOptions));
 
             options.AddPolicy("data-read", CreateDataReadRateLimitPartition(dataRateLimitOptions));
             options.AddPolicy("data-write", CreateDataWriteRateLimitPartition(dataRateLimitOptions));
@@ -203,6 +206,20 @@ public static class AuthServiceCollectionExtensions
                     {
                         PermitLimit = 60,
                         Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0,
+                    });
+            });
+
+            options.AddPolicy("admin-bypass-code", httpContext =>
+            {
+                var partitionKey = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                    ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey,
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 2,
+                        Window = TimeSpan.FromHours(1),
                         QueueLimit = 0,
                     });
             });

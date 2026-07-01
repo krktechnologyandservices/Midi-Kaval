@@ -1,0 +1,151 @@
+<!---
+Spine governance:
+- Component Patterns → Organisation Settings Toggles
+- State Patterns → Toggle ON/OFF, Toggle save failure
+- Key Flow → Flow 2 (step 6-7)
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organisation Settings — 2FA Toggles</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f5f5; display: flex; justify-content: center; padding: 40px 20px;
+  }
+  .browser-frame {
+    width: 720px; background: #fff; border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1); overflow: hidden;
+  }
+  .chrome { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f0f0f0; border-bottom: 1px solid #ddd; }
+  .chrome-dots { display: flex; gap: 6px; }
+  .chrome-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .chrome-dot:nth-child(1) { background: #ff5f57; }
+  .chrome-dot:nth-child(2) { background: #ffbd2e; }
+  .chrome-dot:nth-child(3) { background: #28c840; }
+  .chrome-addr { flex: 1; background: #fff; padding: 6px 12px; border-radius: 6px; font-size: 13px; color: #555; border: 1px solid #ddd; }
+  .nav { display: flex; align-items: center; padding: 8px 24px; background: #fff; border-bottom: 1px solid #e0e0e0; }
+  .nav-brand { font-weight: 700; font-size: 18px; color: #1565C0; margin-right: 32px; }
+  .nav-links { display: flex; gap: 24px; }
+  .nav-link { font-size: 14px; color: #555; cursor: default; padding: 8px 0; border-bottom: 2px solid transparent; }
+  .nav-link.active { color: #1565C0; border-bottom-color: #1565C0; font-weight: 600; }
+  .nav-spacer { flex: 1; }
+  .nav-user { font-size: 14px; color: #333; display: flex; align-items: center; gap: 8px; }
+  .nav-user .avatar { width: 32px; height: 32px; border-radius: 50%; background: #2E7D32; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; }
+  .content { padding: 32px; }
+  .page-title { font-size: 24px; font-weight: 700; color: #212121; margin-bottom: 24px; }
+
+  /* Sections */
+  .settings-section { margin-bottom: 32px; }
+  .section-header { font-size: 16px; font-weight: 600; color: #212121; margin-bottom: 4px; }
+  .section-desc { font-size: 14px; color: #757575; margin-bottom: 16px; }
+
+  /* Toggle row */
+  .toggle-row { display: flex; align-items: flex-start; gap: 16px; padding: 16px; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 12px; }
+  .toggle-switch { flex-shrink: 0; width: 44px; height: 24px; background: #1565C0; border-radius: 12px; position: relative; cursor: default; margin-top: 2px; }
+  .toggle-switch.off { background: #BDBDBD; }
+  .toggle-knob { width: 20px; height: 20px; background: #fff; border-radius: 50%; position: absolute; top: 2px; right: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .toggle-knob.left { left: 2px; right: auto; }
+  .toggle-content { flex: 1; }
+  .toggle-label { font-size: 14px; font-weight: 500; color: #212121; margin-bottom: 2px; }
+  .toggle-desc { font-size: 13px; color: #757575; line-height: 1.4; }
+  .toggle-info { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #e0e0e0; color: #757575; font-size: 12px; font-weight: 600; cursor: default; margin-left: 6px; }
+
+  /* Other section */
+  .section-divider { border: none; border-top: 1px solid #e0e0e0; margin: 32px 0; }
+</style>
+</head>
+<body>
+<div class="browser-frame">
+  <div class="chrome">
+    <div class="chrome-dots">
+      <div class="chrome-dot"></div>
+      <div class="chrome-dot"></div>
+      <div class="chrome-dot"></div>
+    </div>
+    <div class="chrome-addr">https://kaval.local/admin/settings</div>
+  </div>
+  <div class="nav">
+    <div class="nav-brand">Kaval Online</div>
+    <div class="nav-links">
+      <div class="nav-link">Dashboard</div>
+      <div class="nav-link">Cases</div>
+      <div class="nav-link">Staff</div>
+      <div class="nav-link active">Settings</div>
+      <div class="nav-link">Audit</div>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="nav-user">
+      <span>Raj@org</span>
+      <div class="avatar">R</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="page-title">Organisation Settings</div>
+
+    <!-- Security Section -->
+    <div class="settings-section">
+      <div class="section-header">Two-Factor Authentication</div>
+      <div class="section-desc">Manage two-factor authentication policies for your organisation.</div>
+
+      <!-- Toggle 1: Require 2FA -->
+      <div class="toggle-row">
+        <div class="toggle-switch">
+          <div class="toggle-knob"></div>
+        </div>
+        <div class="toggle-content">
+          <div class="toggle-label">
+            Require two-factor authentication for all staff
+            <span class="toggle-info" title="When enabled, users without two-factor authentication will be prompted to set it up on their next login.">?</span>
+          </div>
+          <div class="toggle-desc">When enabled, users without two-factor authentication will be prompted to set it up on their next login. They won't be able to access protected features until enrollment is complete.</div>
+        </div>
+      </div>
+
+      <!-- Toggle 2: Delegate (ON state) -->
+      <div class="toggle-row">
+        <div class="toggle-switch">
+          <div class="toggle-knob"></div>
+        </div>
+        <div class="toggle-content">
+          <div class="toggle-label">
+            Allow Coordinators to reset 2FA for field workers
+            <span class="toggle-info" title="Coordinators can reset two-factor authentication for SocialWorkers and CaseWorkers. They will not have access to generate bypass codes.">?</span>
+          </div>
+          <div class="toggle-desc">Coordinators can reset two-factor authentication for SocialWorkers and CaseWorkers. They will not have access to generate bypass codes.</div>
+        </div>
+      </div>
+
+      <!-- Delegate (OFF state) -- shown as hover/secondary -->
+      <div class="toggle-row" style="opacity:0.5;pointer-events:none;">
+        <div class="toggle-switch off">
+          <div class="toggle-knob left"></div>
+        </div>
+        <div class="toggle-content">
+          <div class="toggle-label" style="color:#999;">
+            Allow Coordinators to reset 2FA for field workers
+            <span class="toggle-info">?</span>
+          </div>
+          <div class="toggle-desc">When enabled, Coordinators can reset 2FA for SocialWorkers and CaseWorkers only.</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#999;margin-top:-8px;margin-bottom:16px;">← Toggle off state (shown for reference)</div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Other section placeholder -->
+    <div class="settings-section">
+      <div class="section-header">Organisation Details</div>
+      <div class="section-desc">Manage your organisation's profile and contact information.</div>
+      <div style="padding:12px 16px;background:#fafafa;border-radius:8px;border:1px solid #e0e0e0;">
+        <div style="font-size:13px;color:#757575;">Organisation: Hope Child Welfare Centre</div>
+        <div style="font-size:13px;color:#757575;margin-top:4px;">Users: 15 active</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

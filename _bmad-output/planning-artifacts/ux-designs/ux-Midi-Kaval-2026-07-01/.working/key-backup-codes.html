@@ -1,0 +1,134 @@
+<!---
+Spine governance:
+- Component Patterns → Backup Codes Display, Low Backup Codes Banner
+- State Patterns → Freshly generated, Low codes warning
+- Key Flow → Flow 1 (step 9-10), Flow 5
+- DESIGN.md → backup-code-chip
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backup Codes — Success & Warning States</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f5f5; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; gap: 40px;
+  }
+  /* Scene labels */
+  .scene-label { font-size: 13px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.05em; }
+  
+  /* Screen frame */
+  .screen {
+    width: 640px; background: #fff; border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1); overflow: hidden;
+  }
+  .screen-header { padding: 24px 32px 0; }
+  .screen-title { font-size: 20px; font-weight: 700; color: #212121; margin-bottom: 4px; }
+  .screen-desc { font-size: 14px; color: #757575; margin-bottom: 20px; line-height: 1.5; }
+  .screen-body { padding: 0 32px 32px; }
+
+  /* Success: Backup codes grid */
+  .codes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .code-chip { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 14px; background: #f5f5f5; padding: 10px 16px; border-radius: 6px; color: #333; letter-spacing: 0.1em; border: 1px solid #e0e0e0; }
+  .code-chip.used { background: #f0f0f0; color: #bbb; text-decoration: line-through; border-color: #eee; }
+  .btn-download { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; background: #1565C0; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: default; }
+  .btn-continue { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; background: #fff; color: #333; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: default; margin-left: 12px; }
+  .success-actions { display: flex; align-items: center; margin-bottom: 8px; }
+
+  /* Warning banner */
+  .warning-banner { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: #FFF3E0; border: 1px solid #FFE0B2; border-radius: 8px; margin-bottom: 24px; }
+  .warning-icon { font-size: 20px; flex-shrink: 0; }
+  .warning-text { flex: 1; font-size: 14px; color: #E65100; line-height: 1.4; }
+  .warning-text strong { color: #BF360C; }
+  .warning-cta { padding: 8px 16px; background: #E65100; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: default; white-space: nowrap; }
+  .warning-dismiss { font-size: 18px; color: #E65100; cursor: default; opacity: 0.5; }
+
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 32px 0; width: 640px; }
+
+  /* Profile page context */
+  .profile-row { display: flex; align-items: center; gap: 16px; padding: 16px 0; border-bottom: 1px solid #f0f0f0; }
+  .profile-row:last-child { border-bottom: none; }
+  .profile-label { width: 160px; font-size: 14px; font-weight: 500; color: #555; }
+  .profile-value { flex: 1; font-size: 14px; color: #333; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 16px; font-size: 13px; font-weight: 500; }
+  .badge-success { background: #E8F5E9; color: #2E7D32; }
+  .profile-section-title { font-size: 16px; font-weight: 600; color: #212121; margin: 24px 0 16px; }
+</style>
+</head>
+<body>
+<div class="scene-label">Scene 1: Enrollment Success — Backup Codes Display</div>
+<div class="screen">
+  <div class="screen-header">
+    <div class="screen-title">Two-Factor Authentication Enabled</div>
+    <div class="screen-desc">Your account is now protected with two-factor authentication. Save these backup codes in a secure place — each code can only be used once.</div>
+  </div>
+  <div class="screen-body">
+    <div class="codes-grid">
+      <div class="code-chip">A3K9-X7M2-P1</div>
+      <div class="code-chip">B4L0-Y8N3-Q2</div>
+      <div class="code-chip">C5M1-Z9O4-R3</div>
+      <div class="code-chip">D6N2-A0P5-S4</div>
+      <div class="code-chip">E7O3-B1Q6-T5</div>
+      <div class="code-chip">F8P4-C2R7-U6</div>
+      <div class="code-chip">G9Q5-D3S8-V7</div>
+      <div class="code-chip">H0R6-E4T9-W8</div>
+    </div>
+    <div class="success-actions">
+      <button class="btn-download">⬇ Download as .txt</button>
+      <button class="btn-continue">Continue</button>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<div class="scene-label">Scene 2: Profile — Low Backup Codes Warning Banner</div>
+<div class="screen">
+  <div class="screen-header">
+    <div class="screen-title">Profile Settings</div>
+    <div class="screen-desc">Manage your account</div>
+  </div>
+  <div class="screen-body">
+    <!-- Warning Banner -->
+    <div class="warning-banner">
+      <span class="warning-icon">⚠️</span>
+      <span class="warning-text">You have <strong>2 backup code(s)</strong> remaining. Consider <strong>re-enrolling</strong> two-factor authentication to generate new codes.</span>
+      <button class="warning-cta">Re-enroll 2FA</button>
+      <span class="warning-dismiss">×</span>
+    </div>
+
+    <!-- Profile fields -->
+    <div class="profile-section-title">Account Information</div>
+    <div class="profile-row">
+      <div class="profile-label">Name</div>
+      <div class="profile-value">Priya Sharma</div>
+    </div>
+    <div class="profile-row">
+      <div class="profile-label">Email</div>
+      <div class="profile-value">priya@example.org</div>
+    </div>
+    <div class="profile-row">
+      <div class="profile-label">Role</div>
+      <div class="profile-value"><span class="role-badge" style="background:#FFF3E0;color:#E65100;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:500;">SocialWorker</span></div>
+    </div>
+    <div class="profile-row">
+      <div class="profile-label">Two-Factor Auth</div>
+      <div class="profile-value">
+        <span class="badge badge-success">✓ Enabled</span>
+        <span style="font-size:13px;color:#757575;margin-left:8px;">Enrolled on June 15, 2026</span>
+      </div>
+    </div>
+
+    <div class="profile-section-title">Password</div>
+    <div class="profile-row">
+      <div class="profile-label">Change Password</div>
+      <div class="profile-value">
+        <button style="padding:8px 20px;background:#fff;color:#333;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;cursor:default;">Update Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

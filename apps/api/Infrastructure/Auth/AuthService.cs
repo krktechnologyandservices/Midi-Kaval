@@ -93,8 +93,14 @@ public sealed class AuthService(
             return null;
         }
 
-        // Director with TOTP enrolled → skip email OTP, return requiresTotp=true
-        if (user.Role == UserRoles.Director && user.TotpEnrolledAt is not null)
+        // Load organisation 2FA mandate flag — used by both enrolled and unenrolled paths
+        var orgRequires2fa = await db.Organisations
+            .Where(o => o.Id == user.OrganisationId)
+            .Select(o => o.Require2fa)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        // Any role with TOTP enrolled → skip email OTP, return requiresTotp=true
+        if (user.TotpEnrolledAt is not null)
         {
             // Create a binding challenge that ties TOTP verification to this password step
             var totpChallenge = new OtpChallenge
@@ -116,8 +122,15 @@ public sealed class AuthService(
                 UserId = user.Id,
                 TokenVersion = user.TokenVersion,
                 RequiresTotp = true,
+                Requires2faSetup = false,
+                SetupUrl = null,
+                OrgRequires2fa = orgRequires2fa,
             };
         }
+
+        // User is not enrolled in 2FA — populate setup hints
+
+        var setupUrl = user.Role == UserRoles.Vendor ? "/vendor/settings" : "/settings/2fa";
 
         var otpCode = GenerateOtpCode();
         var challenge = new OtpChallenge
@@ -163,6 +176,10 @@ public sealed class AuthService(
         {
             ChallengeId = challengeId,
             ExpiresInSeconds = otpChallengeStore.ExpirySeconds,
+            Requires2faSetup = true,
+            SetupUrl = setupUrl,
+            OrgRequires2fa = orgRequires2fa,
+            TotpChallengeId = null,
         };
     }
 
@@ -249,6 +266,12 @@ public sealed class AuthService(
             return null;
         }
 
+        // Check TOTP lockout — reject if user has exceeded failed attempts
+        if (await twoFactorService.IsTotpLockedOutAsync(user.Id))
+        {
+            return null;
+        }
+
         var verified = await twoFactorService.VerifyTotpCodeAsync(user.Id, trimmedCode, cancellationToken);
         if (!verified)
         {
@@ -258,6 +281,8 @@ public sealed class AuthService(
                 subjectUserId: user.Id,
                 metadata: new Dictionary<string, object?> { ["source"] = "totp-login" },
                 cancellationToken: cancellationToken);
+            // Record failed TOTP attempt for lockout tracking
+            await twoFactorService.RecordFailedTotpAttemptAsync(user.Id, null, cancellationToken);
             // Record failed attempt on challenge too
             await otpChallengeStore.RecordFailedAttemptAsync(request.TotpChallengeId, cancellationToken);
             return null;
@@ -265,6 +290,16 @@ public sealed class AuthService(
 
         // Consume the binding challenge after successful TOTP verification
         await otpChallengeStore.RemoveAsync(request.TotpChallengeId, cancellationToken);
+
+        return await IssueAuthTokensAsync(user, AuditEventTypes.LoginSuccess, cancellationToken);
+    }
+
+    /// <summary>Complete login after successful backup code verification and issue tokens.</summary>
+    public async Task<VerifyOtpResponse?> CompleteBackupCodeLoginAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null || !user.IsActive)
+            return null;
 
         return await IssueAuthTokensAsync(user, AuditEventTypes.LoginSuccess, cancellationToken);
     }

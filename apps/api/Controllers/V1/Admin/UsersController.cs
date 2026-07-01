@@ -18,7 +18,8 @@ namespace MidiKaval.Api.Controllers.V1.Admin;
 public class UsersController(
     UserManagementService userManagementService,
     LastDirectorGuard lastDirectorGuard,
-    TwoFactorService twoFactorService) : ControllerBase
+    TwoFactorService twoFactorService,
+    AdminTwoFactorService adminTwoFactorService) : ControllerBase
 {
     private static readonly string[] ValidSortByFields = ["name", "email", "role", "status", "createdAt"];
     private static readonly string[] SuspendConflictMessages = ["User is already suspended", "Cannot suspend a deleted user"];
@@ -368,25 +369,15 @@ public class UsersController(
         if (!TryResolveActorUserId(out var actorUserId, out var actorError))
             return actorError!;
 
-        // Prevent resetting the last active Director's 2FA — could strand the org
-        var isLastDirector = await lastDirectorGuard.IsLastActiveDirectorAsync(organisationId!.Value, id, ct);
-        if (isLastDirector)
-        {
-            return UnprocessableEntity(new ProblemDetails
-            {
-                Status = StatusCodes.Status422UnprocessableEntity,
-                Title = "Cannot Reset 2FA",
-                Detail = "This user is the last active Director. At least one Director must remain enrolled.",
-                Type = "https://tools.ietf.org/html/rfc4918#section-11.2",
-            });
-        }
-
         try
         {
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-            await twoFactorService.ResetTwoFactorAsync(actorUserId!.Value, id, organisationId!.Value, ipAddress, ct);
+            var actorRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            var result = await adminTwoFactorService.ResetTwoFactorAsync(
+                actorUserId!.Value, id, organisationId!.Value, actorRole, ipAddress, ct);
+
             return Ok(new ApiResponse<ResetTwoFactorResponse>(
-                new ResetTwoFactorResponse(id, "Two-factor authentication has been reset for this user."),
+                result,
                 new ApiMeta { RequestId = ResolveRequestId() }));
         }
         catch (KeyNotFoundException)

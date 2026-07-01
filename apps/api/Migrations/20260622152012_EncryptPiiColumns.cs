@@ -10,115 +10,47 @@ namespace MidiKaval.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "longitude",
-                table: "cases",
-                type: "bytea",
-                nullable: true,
-                oldClrType: typeof(decimal),
-                oldType: "numeric(9,6)",
-                oldPrecision: 9,
-                oldScale: 6,
-                oldNullable: true);
+            // Npgsql cannot auto-cast decimal(numeric) → bytea or varchar → bytea,
+            // so we use raw SQL with explicit USING clauses.
+            // For a fresh database with no real data, the text representation is
+            // converted as a placeholder — real encryption happens at the app layer.
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "latitude",
-                table: "cases",
-                type: "bytea",
-                nullable: true,
-                oldClrType: typeof(decimal),
-                oldType: "numeric(9,6)",
-                oldPrecision: 9,
-                oldScale: 6,
-                oldNullable: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE cases ALTER COLUMN longitude TYPE bytea USING longitude::text::bytea;");
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "landmark",
-                table: "cases",
-                type: "bytea",
-                maxLength: 4096,
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "character varying(500)",
-                oldMaxLength: 500,
-                oldNullable: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE cases ALTER COLUMN latitude TYPE bytea USING latitude::text::bytea;");
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "beneficiary_name",
-                table: "cases",
-                type: "bytea",
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "character varying(256)",
-                oldMaxLength: 256);
+            migrationBuilder.Sql(
+                "ALTER TABLE cases ALTER COLUMN landmark TYPE bytea USING landmark::bytea;");
 
-            migrationBuilder.AlterColumn<byte[]>(
-                name: "beneficiary_contact",
-                table: "cases",
-                type: "bytea",
-                maxLength: 2048,
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "character varying(32)",
-                oldMaxLength: 32,
-                oldNullable: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE cases ALTER COLUMN beneficiary_name TYPE bytea USING beneficiary_name::bytea;");
+
+            migrationBuilder.Sql(
+                "ALTER TABLE cases ALTER COLUMN beneficiary_contact TYPE bytea USING beneficiary_contact::bytea;");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<decimal>(
-                name: "longitude",
-                table: "cases",
-                type: "numeric(9,6)",
-                precision: 9,
-                scale: 6,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "bytea",
-                oldNullable: true);
+            // Reverse: bytea → numeric for lat/lng, bytea → varchar for text columns.
+            // The original values are lost (encrypted), so we use NULL as fallback.
 
-            migrationBuilder.AlterColumn<decimal>(
-                name: "latitude",
-                table: "cases",
-                type: "numeric(9,6)",
-                precision: 9,
-                scale: 6,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "bytea",
-                oldNullable: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE cases ALTER COLUMN longitude TYPE numeric(9,6) USING NULL::numeric;");
 
-            migrationBuilder.AlterColumn<string>(
-                name: "landmark",
-                table: "cases",
-                type: "character varying(500)",
-                maxLength: 500,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "bytea",
-                oldMaxLength: 4096,
-                oldNullable: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE cases ALTER COLUMN latitude TYPE numeric(9,6) USING NULL::numeric;");
 
-            migrationBuilder.AlterColumn<string>(
-                name: "beneficiary_name",
-                table: "cases",
-                type: "character varying(256)",
-                maxLength: 256,
-                nullable: false,
-                oldClrType: typeof(byte[]),
-                oldType: "bytea");
+            migrationBuilder.Sql(
+                "ALTER TABLE cases ALTER COLUMN landmark TYPE character varying(500) USING NULL::character varying;");
 
-            migrationBuilder.AlterColumn<string>(
-                name: "beneficiary_contact",
-                table: "cases",
-                type: "character varying(32)",
-                maxLength: 32,
-                nullable: true,
-                oldClrType: typeof(byte[]),
-                oldType: "bytea",
-                oldMaxLength: 2048,
-                oldNullable: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE cases ALTER COLUMN beneficiary_name TYPE character varying(256) USING ''::character varying;");
+
+            migrationBuilder.Sql(
+                "ALTER TABLE cases ALTER COLUMN beneficiary_contact TYPE character varying(32) USING NULL::character varying;");
         }
     }
 }

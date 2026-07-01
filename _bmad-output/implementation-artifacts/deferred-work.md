@@ -628,3 +628,12 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - **FieldWorker role validation not centralized in UserRoles** — Inline string comparison duplicates logic; maintainability enhancement for future role additions.
 - **Forgot-password unavailable for migrated users with non-deliverable seed emails** — Pre-existing concern; seed accounts should use real inboxes in production.
 - **Seed:FieldWorker:Role undocumented in spec** — Config key defines field worker role but not listed in Seed:* documentation.
+
+## Deferred from: code review of 25-3-login-response-contract.md (2026-07-02)
+
+- TOTP lockout returns `null` without differentiation - `AuthService.cs:268-270` returns `null` for both lockout and invalid TOTP; caller cannot distinguish. Not in story scope, would need client-side UX changes.
+- Backup code failures return 422 instead of 401 — Story spec explicitly defines 422 in AC 5. Spec-level design choice.
+- No audit events for failed backup code attempts — pre-existing gap from Story 25-1, not introduced by this story.
+- Attacker-supplied `UserId` on unauthenticated endpoint — `TwoFactorController.cs:162` accepts user-supplied userId. Rate limiting (2/hr) mitigates brute-force. Deliberate design per AC 5.
+- Race condition in `BackupCodeService.VerifyAsync` — pre-existing from Story 25-1, no optimistic concurrency on backup code consumption.
+- `OrgRequires2fa` returns `false` when Organisation record is missing — pre-existing data integrity concern, not introduced by this story.

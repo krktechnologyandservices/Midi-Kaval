@@ -1,0 +1,89 @@
+<!---
+Spine governance:
+- Component Patterns → Confirmation Dialog, Bypass Code Dialog
+- State Patterns → Bypass code generated, Confirmation
+- Key Flow → Flow 3: Field Worker Lockout Recovery
+- DESIGN.md → component tokens
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dialogs — Reset Confirmation & Bypass Code</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 40px 20px; gap: 40px; flex-wrap: wrap;
+  }
+  /* Dialog overlay */
+  .dialog-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .dialog { background: #fff; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,0.2); width: 440px; overflow: hidden; }
+  .dialog-header { padding: 24px 24px 16px; }
+  .dialog-title { font-size: 20px; font-weight: 600; color: #212121; margin-bottom: 8px; }
+  .dialog-body { padding: 0 24px 24px; font-size: 14px; color: #555; line-height: 1.5; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; border-top: 1px solid #f0f0f0; }
+  .btn-cancel { padding: 8px 20px; background: #fff; color: #333; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: default; }
+  .btn-danger { padding: 8px 20px; background: #C62828; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: default; }
+  .btn-primary { padding: 8px 20px; background: #1565C0; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: default; }
+
+  /* Bypass code specific */
+  .bypass-code-box { background: #fafafa; border: 2px dashed #e0e0e0; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 16px; }
+  .bypass-code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 32px; letter-spacing: 0.15em; color: #212121; font-weight: 600; }
+  .bypass-warning { display: flex; align-items: flex-start; gap: 8px; padding: 12px 16px; background: #FFF3E0; border: 1px solid #FFE0B2; border-radius: 8px; font-size: 13px; color: #E65100; line-height: 1.4; }
+  .bypass-warning-icon { font-size: 18px; flex-shrink: 0; }
+  .btn-copy-code { margin-top: 12px; padding: 8px 24px; background: #1565C0; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: default; display: inline-flex; align-items: center; gap: 8px; }
+
+  /* Label above the two dialogs */
+  .scene-label { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 8px 20px; border-radius: 8px; font-size: 14px; z-index: 2000; }
+  .dialog-wrapper { display: flex; gap: 40px; flex-wrap: wrap; justify-content: center; }
+  .dialog-scene { width: 440px; }
+  .dialog-scene-title { font-size: 14px; font-weight: 600; color: #fff; text-align: center; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="scene-label">Dialog States</div>
+
+<div class="dialog-wrapper">
+  <!-- Dialog 1: Reset Confirmation -->
+  <div class="dialog-scene">
+    <div class="dialog-scene-title">Reset 2FA Confirmation</div>
+    <div class="dialog">
+      <div class="dialog-header">
+        <div class="dialog-title">Reset Two-Factor Authentication</div>
+      </div>
+      <div class="dialog-body">
+        This will clear <strong>Priya Sharma</strong>'s two-factor authentication enrollment. They will need to re-enroll on their next login.
+      </div>
+      <div class="dialog-actions">
+        <button class="btn-cancel">Cancel</button>
+        <button class="btn-danger">Reset 2FA</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialog 2: Bypass Code -->
+  <div class="dialog-scene">
+    <div class="dialog-scene-title">Bypass Code Display</div>
+    <div class="dialog">
+      <div class="dialog-header">
+        <div class="dialog-title">Temporary Bypass Code</div>
+      </div>
+      <div class="dialog-body">
+        <div class="bypass-code-box">
+          <div class="bypass-code">A3K9-X7M2-P1Q8</div>
+          <button class="btn-copy-code">📋 Copy Code</button>
+        </div>
+        <div class="bypass-warning">
+          <span class="bypass-warning-icon">⚠️</span>
+          <span>This code expires in <strong>30 minutes</strong> and can only be used once. Share it securely with the user.</span>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn-primary">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

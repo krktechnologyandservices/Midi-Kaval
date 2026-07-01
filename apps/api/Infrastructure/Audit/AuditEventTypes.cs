@@ -92,4 +92,15 @@ public static class AuditEventTypes
     public const string OrganisationActivated = "organisation.activated";
 
     public const string UserNotificationSent = "user.notification_sent";
+
+    // 2FA events
+    public const string TwoFactorBackupUsed = "2fa_backup_used";
+    public const string TwoFactorFailedTotp = "2fa_failed_totp";
+    public const string TwoFactorBypassGenerated = "2fa_bypass_generated";
+    public const string TwoFactorBypassUsed = "2fa_bypass_used";
+    public const string TwoFactorMandateEnabled = "2fa_mandate_enabled";
+    public const string TwoFactorMandateDisabled = "2fa_mandate_disabled";
+    public const string TwoFactorDelegationEnabled = "2fa_delegation_enabled";
+    public const string TwoFactorDelegationDisabled = "2fa_delegation_disabled";
+    public const string TwoFactorReminderSent = "2fa_reminder_sent";
 }

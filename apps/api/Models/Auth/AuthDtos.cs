@@ -32,6 +32,15 @@ public sealed class LoginResponse
 
     /// <summary>If true, skip email OTP and prompt for TOTP code instead.</summary>
     public bool RequiresTotp { get; set; }
+
+    /// <summary>If true, the user should be prompted to set up 2FA after login.</summary>
+    public bool Requires2faSetup { get; set; }
+
+    /// <summary>Role-aware URL where the user can set up 2FA (e.g., "/vendor/settings" for Vendors).</summary>
+    public string? SetupUrl { get; set; }
+
+    /// <summary>If true, the organisation requires 2FA enrollment. Enforced by Require2FAAttribute.</summary>
+    public bool OrgRequires2fa { get; set; }
 }
 
 /// <summary>OTP verification request.</summary>
@@ -243,5 +252,16 @@ public sealed record ConfirmEmailResponse(
 public sealed class VerifyTotpRequest
 {
     /// <summary>Six-digit TOTP code from authenticator app.</summary>
+    public string Code { get; set; } = string.Empty;
+}
+
+/// <summary>Backup code verification during login (unauthenticated).</summary>
+public sealed class VerifyBackupCodeRequest
+{
+    /// <summary>User id from the login response.</summary>
+    public Guid UserId { get; set; }
+
+    /// <summary>Backup code to verify.</summary>
+    [Required, StringLength(64)]
     public string Code { get; set; } = string.Empty;
 }

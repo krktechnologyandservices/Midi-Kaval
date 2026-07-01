@@ -20,4 +20,6 @@ public class User
     public DateTime UpdatedAtUtc { get; set; }
 
     public Organisation Organisation { get; set; } = null!;
+
+    public ICollection<BackupCode> BackupCodes { get; set; } = new List<BackupCode>();
 }

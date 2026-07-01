@@ -10,8 +10,9 @@ namespace MidiKaval.Api.Infrastructure.Middleware;
 
 public sealed class TokenVersionMiddleware(RequestDelegate next)
 {
-    public async Task InvokeAsync(HttpContext context, AppDbContext db, CancellationToken ct)
+    public async Task InvokeAsync(HttpContext context, AppDbContext db)
     {
+        var ct = context.RequestAborted;
         if (context.User.Identity?.IsAuthenticated != true)
         {
             await next(context);

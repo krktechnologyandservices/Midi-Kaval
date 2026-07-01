@@ -40,5 +40,10 @@ public sealed class AuditEventConfiguration : IEntityTypeConfiguration<AuditEven
             .WithMany()
             .HasForeignKey(e => e.SubjectUserId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasMany(e => e.DigestEntries)
+            .WithOne()
+            .HasForeignKey(e => e.AuditEventId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

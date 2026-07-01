@@ -22,7 +22,7 @@ public class RegistrationController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> ValidateLink(
-        [FromQuery] string signature,
+        [FromQuery(Name = "sig")] string signature,
         [FromQuery] string token,
         CancellationToken cancellationToken)
     {

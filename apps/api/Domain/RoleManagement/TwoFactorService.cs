@@ -6,6 +6,7 @@ using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Models.Audit;
 using OtpNet;
+using StackExchange.Redis;
 
 namespace MidiKaval.Api.Domain.RoleManagement;
 
@@ -16,6 +17,7 @@ public class TwoFactorService(
     AppDbContext db,
     IOptions<TotpOptions> options,
     IAuditService auditService,
+    IConnectionMultiplexer redis,
     ILogger<TwoFactorService> logger)
 {
     public virtual async Task<TotpProvisioningResult> GenerateProvisioningAsync(Guid userId, string? actorIpAddress = null, CancellationToken ct = default)
@@ -117,6 +119,12 @@ public class TwoFactorService(
 
     public virtual async Task<bool> VerifyTotpCodeAsync(Guid userId, string code, CancellationToken ct)
     {
+        // Check TOTP lockout first
+        if (await IsTotpLockedOutAsync(userId))
+        {
+            return false;
+        }
+
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct);
         if (user is null || string.IsNullOrWhiteSpace(user.TotpSecret))
         {
@@ -125,7 +133,48 @@ public class TwoFactorService(
 
         var secret = Base32Encoding.ToBytes(user.TotpSecret);
         var totp = new Totp(secret, step: options.Value.StepSeconds, totpSize: options.Value.CodeLength);
-        return totp.VerifyTotp(code, out _, new VerificationWindow(1, 1));
+        var verified = totp.VerifyTotp(code, out _, new VerificationWindow(1, 1));
+
+        if (verified)
+        {
+            // Reset lockout counter on success
+            var redisDb = redis.GetDatabase();
+            await redisDb.KeyDeleteAsync($"totp_lockout:{userId}");
+        }
+
+        return verified;
+    }
+
+    public virtual async Task RecordFailedTotpAttemptAsync(Guid userId, string? actorIpAddress, CancellationToken ct)
+    {
+        // Resolve organisationId for audit event
+        var user = await db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+        var redisDb = redis.GetDatabase();
+        var key = $"totp_lockout:{userId}";
+
+        // Increment failure count, set TTL on first create
+        await redisDb.StringIncrementAsync(key);
+        await redisDb.KeyExpireAsync(key, TimeSpan.FromMinutes(15));
+
+        // Record audit event
+        await auditService.RecordAsync(
+            AuditEventTypes.TwoFactorFailedTotp,
+            user?.OrganisationId ?? Guid.Empty,
+            subjectUserId: userId,
+            actorIpAddress: actorIpAddress,
+            metadata: new Dictionary<string, object?> { ["lockoutKey"] = key },
+            cancellationToken: ct);
+    }
+
+    public virtual async Task<bool> IsTotpLockedOutAsync(Guid userId)
+    {
+        var redisDb = redis.GetDatabase();
+        var key = $"totp_lockout:{userId}";
+        var count = (int)await redisDb.StringGetAsync(key);
+        return count >= 5;
     }
 
     public virtual async Task ResetTwoFactorAsync(Guid actorUserId, Guid targetUserId, Guid? organisationId = null, string? actorIpAddress = null, CancellationToken ct = default)
@@ -184,5 +233,16 @@ public class TwoFactorService(
             .FirstOrDefaultAsync(ct);
 
         return enrolledAt is not null;
+    }
+
+    public virtual async Task<(bool Enrolled, DateTime? EnrolledAt)> GetEnrollmentStatusAsync(Guid userId, CancellationToken ct = default)
+    {
+        var enrolledAt = await db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.TotpEnrolledAt)
+            .FirstOrDefaultAsync(ct);
+
+        return (enrolledAt is not null, enrolledAt);
     }
 }

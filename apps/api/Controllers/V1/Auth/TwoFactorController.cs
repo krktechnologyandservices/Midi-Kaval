@@ -15,6 +15,7 @@ namespace MidiKaval.Api.Controllers.V1.Auth;
 public class TwoFactorController(
     TwoFactorService twoFactorService,
     AuthService authService,
+    BackupCodeService backupCodeService,
     ILogger<TwoFactorController> logger) : ControllerBase
 {
     private const string UserNotFoundMessage = "User not found.";
@@ -121,6 +122,77 @@ public class TwoFactorController(
 
         var enrolled = await twoFactorService.IsEnrolledAsync(userId.Value, ct);
         return Ok(new { enrolled });
+    }
+
+    /// <summary>Get 2FA enrollment status with timestamp.</summary>
+    [Authorize]
+    [HttpGet("2fa-status")]
+    [EnableRateLimiting("data-read")]
+    [ProducesResponseType(typeof(TwoFactorStatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Get2faStatus(CancellationToken ct)
+    {
+        var userId = TryGetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        var (enrolled, enrolledAt) = await twoFactorService.GetEnrollmentStatusAsync(userId.Value, ct);
+        return Ok(new TwoFactorStatusResponse { Enrolled = enrolled, EnrolledAt = enrolledAt });
+    }
+
+    /// <summary>Verify a backup code during login (unauthenticated) and issue JWT.</summary>
+    [HttpPost("verify-backup-code")]
+    [EnableRateLimiting("auth-verify-backup-code")]
+    [ProducesResponseType(typeof(ApiResponse<VerifyOtpResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> VerifyBackupCode([FromBody] VerifyBackupCodeRequest request, CancellationToken ct)
+    {
+        if (request is null)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Invalid Request",
+                Detail = "Request body is required.",
+            });
+        }
+
+        var trimmedCode = request.Code?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmedCode))
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Invalid Code",
+                Detail = "A verification code is required.",
+            });
+        }
+
+        var verified = await backupCodeService.VerifyAsync(request.UserId, trimmedCode, ct);
+        if (!verified)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Invalid Code",
+                Detail = "The backup code is invalid or has already been used.",
+            });
+        }
+
+        var result = await authService.CompleteBackupCodeLoginAsync(request.UserId, ct);
+        if (result is null)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Login Failed",
+                Detail = "Could not complete login. The account may be deactivated.",
+            });
+        }
+
+        return Ok(new ApiResponse<VerifyOtpResponse>(result, new ApiMeta { RequestId = ResolveRequestId() }));
     }
 
     /// <summary>Verify TOTP code during login (unauthenticated) and issue JWT.</summary>
