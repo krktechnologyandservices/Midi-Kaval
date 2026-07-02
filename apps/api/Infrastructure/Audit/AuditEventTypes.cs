@@ -10,6 +10,7 @@ public static class AuditEventTypes
     public const string SessionInvalidated = "auth.session.invalidated";
     public const string PasswordResetRequested = "auth.password_reset.requested";
     public const string PasswordResetCompleted = "auth.password_reset.completed";
+    public const string PasswordChanged = "auth.password.changed";
     public const string CaseCreated = "case.created";
     public const string CaseStageChanged = "case.stage.changed";
     public const string CaseMerged = "case.merged";

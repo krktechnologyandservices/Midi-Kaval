@@ -10,7 +10,7 @@ export const twoFactorSetupGuard: CanActivateFn = () => {
     return true;
   }
 
-  if (router.url.startsWith('/settings/2fa')) {
+  if (router.url.startsWith('/settings/2fa') || router.url.startsWith('/vendor/settings')) {
     return true;
   }
 

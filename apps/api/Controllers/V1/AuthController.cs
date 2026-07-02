@@ -171,6 +171,32 @@ public class AuthController(AuthService authService, IWebHostEnvironment environ
         }
     }
 
+    /// <summary>Change password for the authenticated user.</summary>
+    [Authorize]
+    [HttpPost("change-password")]
+    [EnableRateLimiting("data-write")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ChangePassword(
+        [FromBody] ChangePasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryResolveUserId(out var userId))
+        {
+            return UnauthorizedProblem("Invalid access token.");
+        }
+
+        var success = await authService.ChangePasswordAsync(userId, request, cancellationToken);
+        if (!success)
+        {
+            return BadRequestProblem("Current password is incorrect or the new password is invalid.");
+        }
+
+        return Ok(new { message = "Password updated successfully." });
+    }
+
     /// <summary>Return the authenticated user profile.</summary>
     [HttpGet("me")]
     [Authorize]

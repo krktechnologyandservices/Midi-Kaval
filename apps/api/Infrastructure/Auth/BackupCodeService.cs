@@ -15,7 +15,7 @@ public class BackupCodeService(
     private const int DefaultCodeCount = 8;
     private const int CodeLength = 10; // Dash-separated groups: A3K9-X7M2-P1
 
-    public virtual async Task<List<string>> GenerateAsync(Guid userId, int count = DefaultCodeCount)
+    public virtual async Task<List<string>> GenerateAsync(Guid userId, int count = DefaultCodeCount, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNullOrWhiteSpace(userId.ToString());
 
@@ -40,14 +40,14 @@ public class BackupCodeService(
         }
 
         db.BackupCodes.AddRange(backupCodes);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
 
         // Load user for organisation context
         var user = await db.Users
             .AsNoTracking()
             .Where(u => u.Id == userId)
             .Select(u => new { u.OrganisationId })
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(ct);
 
         await auditService.RecordAsync(
             AuditEventTypes.TwoFactorBypassGenerated,
@@ -56,8 +56,9 @@ public class BackupCodeService(
             metadata: new Dictionary<string, object?>
             {
                 ["backupCodesGenerated"] = count,
-                ["backupCodesRemainingCount"] = await GetRemainingCountAsync(userId),
-            });
+                ["backupCodesRemainingCount"] = await GetRemainingCountAsync(userId, ct),
+            },
+            cancellationToken: ct);
 
         return plaintextCodes;
     }
@@ -97,19 +98,31 @@ public class BackupCodeService(
         return true;
     }
 
-    public virtual async Task<int> GetRemainingCountAsync(Guid userId)
+    public virtual async Task<int> GetRemainingCountAsync(Guid userId, CancellationToken ct = default)
     {
         return await db.BackupCodes
-            .CountAsync(bc => bc.UserId == userId && !bc.Used);
+            .CountAsync(bc => bc.UserId == userId && !bc.Used, ct);
     }
 
-    public virtual async Task RevokeAllAsync(Guid userId)
+    public virtual async Task RevokeAllAsync(Guid userId, CancellationToken ct = default)
     {
         await db.BackupCodes
             .Where(bc => bc.UserId == userId && !bc.Used)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(bc => bc.Used, true)
-                .SetProperty(bc => bc.UsedAtUtc, DateTime.UtcNow));
+                .SetProperty(bc => bc.UsedAtUtc, DateTime.UtcNow), ct);
+    }
+
+    /// <summary>Atomically revokes all unused backup codes and generates a new set.</summary>
+    public virtual async Task<List<string>> RegenerateAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        await RevokeAllAsync(userId, ct);
+        var codes = await GenerateAsync(userId, DefaultCodeCount, ct);
+
+        await tx.CommitAsync(ct);
+        return codes;
     }
 
     private static string GenerateCode()

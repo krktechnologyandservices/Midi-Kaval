@@ -252,6 +252,14 @@ export const routes: Routes = [
       import('./features/vendor/vendor.component').then((m) => m.VendorComponent),
   },
   {
+    path: 'vendor/settings',
+    canActivate: [authGuard, twoFactorSetupGuard, vendorGuard],
+    loadComponent: () =>
+      import('./features/vendor/settings/vendor-settings.component').then(
+        (m) => m.VendorSettingsComponent,
+      ),
+  },
+  {
     path: '**',
     redirectTo: 'login',
   },

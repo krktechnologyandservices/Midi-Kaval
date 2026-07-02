@@ -1,0 +1,84 @@
+<header class="settings-header">
+  <h1>Account Settings</h1>
+  <a routerLink="/vendor" class="back-link">&larr; Back to Dashboard</a>
+</header>
+
+<main class="settings-content">
+  @if (loading()) {
+    <mat-spinner diameter="32" />
+  } @else {
+    <!-- Section 1: 2FA Enrollment Status & Card -->
+    <mat-card class="settings-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar [class.enabled]="enrolled()" [class.disabled]="!enrolled()">
+          {{ enrolled() ? 'verified_user' : 'lock' }}
+        </mat-icon>
+        <mat-card-title>Two-Factor Authentication</mat-card-title>
+        <mat-card-subtitle>Protect your account with an authenticator app</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (!enrolled()) {
+          <!-- Unenrolled state -->
+          <div class="info-banner" role="alert">
+            @if (!infoBannerDismissed()) {
+              <mat-icon>info</mat-icon>
+              <span>Two-factor authentication is required to access vendor features.</span>
+              <button class="dismiss-btn" (click)="dismissInfoBanner()" aria-label="Dismiss banner">&times;</button>
+            }
+          </div>
+          <div class="enrollment-section">
+            <app-two-factor-enrollment [pageMode]="true" />
+          </div>
+        } @else {
+          <!-- Enrolled state -->
+          <div class="status-row">
+            <span class="status-badge">
+              <mat-icon class="check-icon">check_circle</mat-icon>
+              Two-Factor Authentication: Enabled
+            </span>
+            @if (enrolledAt()) {
+              <span class="enrolled-date">Since {{ enrolledAt() | date }}</span>
+            }
+          </div>
+
+          <div class="backup-codes-section">
+            <p class="codes-label">Backup Codes Remaining: <strong>{{ backupCodesRemaining() }}</strong></p>
+
+            @if (backupCodesRemaining() < 3 && !lowCodesWarningDismissed()) {
+              <div class="warning-banner" role="alert">
+                <mat-icon>warning</mat-icon>
+                <span>You have {{ backupCodesRemaining() }} backup code(s) remaining. Consider re-enrolling 2FA.</span>
+                <button class="dismiss-btn" (click)="dismissLowCodesWarning()" aria-label="Dismiss banner">&times;</button>
+              </div>
+            }
+
+            <div class="actions-row">
+              <button mat-stroked-button (click)="openReEnrollDialog()">
+                <mat-icon>refresh</mat-icon> Re-enroll
+              </button>
+              <button mat-stroked-button (click)="regenerateBackupCodes()">
+                <mat-icon>vpn_key</mat-icon> Regenerate Backup Codes
+              </button>
+            </div>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Section 2: Change Password -->
+    <mat-card class="settings-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>password</mat-icon>
+        <mat-card-title>Password</mat-card-title>
+        <mat-card-subtitle>Update your account password</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <button mat-raised-button color="primary" (click)="openChangePasswordDialog()">
+          <mat-icon>lock</mat-icon> Update Password
+        </button>
+      </mat-card-content>
+    </mat-card>
+  }
+</main>

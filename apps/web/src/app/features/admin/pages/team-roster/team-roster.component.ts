@@ -1,9 +1,12 @@
 import { Component, DestroyRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog, MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -11,6 +14,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -26,15 +30,121 @@ interface RoleOption {
 }
 
 @Component({
+  selector: 'app-confirm-reset-2fa-dialog',
+  template: `
+    <h2 mat-dialog-title>Reset Two-Factor Authentication</h2>
+    <mat-dialog-content>
+      <p>This will clear <strong>{{ data.userName }}</strong>'s two-factor authentication enrollment. They will need to re-enroll on their next login.</p>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close cdkFocusInitial>Cancel</button>
+      <button mat-raised-button color="warn" [mat-dialog-close]="true">Reset 2FA</button>
+    </mat-dialog-actions>
+  `,
+  standalone: true,
+  imports: [MatDialogModule, MatButtonModule],
+})
+export class ConfirmReset2faDialogComponent {
+  readonly data = inject(MAT_DIALOG_DATA) as { userName: string; userId: string };
+}
+
+@Component({
+  selector: 'app-bypass-code-dialog',
+  template: `
+    <h2 mat-dialog-title>Temporary Bypass Code</h2>
+    <mat-dialog-content>
+      <div class="code-display">{{ data.bypassCode }}</div>
+
+      <div class="warning-banner">
+        <mat-icon>warning</mat-icon>
+        <span>This code expires in <strong>30 minutes</strong> and can only be used once. Share it securely with the user.</span>
+      </div>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-raised-button (click)="copyCode()" class="copy-btn">
+        <mat-icon>{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
+        {{ copied() ? 'Copied!' : 'Copy Code' }}
+      </button>
+      <button mat-button mat-dialog-close color="primary">Close</button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .code-display {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 32px;
+      letter-spacing: 0.15em;
+      text-align: center;
+      padding: 16px;
+      background: #F5F6FA;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .warning-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: #FFF3E0;
+      padding: 12px;
+      border-radius: 8px;
+      color: #E65100;
+      font-size: 14px;
+    }
+    .warning-banner mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+    .copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  `,
+  standalone: true,
+  imports: [MatDialogModule, MatButtonModule, MatIconModule],
+})
+export class BypassCodeDialogComponent {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly dialogRef = inject(MatDialogRef<BypassCodeDialogComponent>);
+  readonly data = inject(MAT_DIALOG_DATA) as { bypassCode: string; expiresInSeconds: number };
+  readonly copied = signal(false);
+  private copyTimerId: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      if (this.copyTimerId) clearTimeout(this.copyTimerId);
+    });
+  }
+
+  async copyCode(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.data.bypassCode);
+      this.copied.set(true);
+      if (this.copyTimerId) clearTimeout(this.copyTimerId);
+      this.copyTimerId = setTimeout(() => {
+        this.copied.set(false);
+        this.copyTimerId = null;
+      }, 2000);
+    } catch {
+      console.warn('Clipboard write failed. The page may not be served over HTTPS.');
+    }
+  }
+}
+
+@Component({
   selector: 'app-team-roster',
   imports: [
     CommonModule, FormsModule,
     MatTableModule, MatSortModule, MatPaginatorModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatChipsModule, MatMenuModule, MatTooltipModule,
+    MatDialogModule, MatDividerModule, MatSnackBarModule,
     MatProgressSpinnerModule,
     StatusBadgeComponent,
     UserDetailSheetComponent,
+    ConfirmReset2faDialogComponent,
+    BypassCodeDialogComponent,
   ],
   template: `
     <div class="roster-header">
@@ -134,6 +244,63 @@ interface RoleOption {
             </td>
           </ng-container>
 
+          <ng-container matColumnDef="2fa">
+            <th mat-header-cell *matHeaderCellDef style="text-align:center;width:60px">2FA</th>
+            <td mat-cell *matCellDef="let u" style="text-align:center;width:60px">
+              @if (getUserStatus(u) === 'deleted' || getUserStatus(u) === 'suspended') {
+                <span style="color:#ccc">—</span>
+              } @else {
+                <div
+                  class="fa-cell"
+                  [matTooltip]="getEnrollmentTooltip(u)"
+                  [matMenuTriggerFor]="faMenu"
+                  (click)="$event.stopPropagation()"
+                >
+                  @if (u.totpEnrolledAt) {
+                    <mat-icon class="fa-icon fa-enrolled">check_circle</mat-icon>
+                  } @else {
+                    <mat-icon class="fa-icon fa-not-enrolled">cancel</mat-icon>
+                  }
+                </div>
+                <mat-menu #faMenu="matMenu">
+                  @if (u.totpEnrolledAt) {
+                    <button
+                      mat-menu-item
+                      class="danger-item"
+                      [disabled]="isLastDirectorUser(u)"
+                      [matTooltip]="isLastDirectorUser(u) ? 'At least one Director must remain active.' : ''"
+                      (click)="confirmReset2fa(u)"
+                    >
+                      <mat-icon class="danger-icon">security</mat-icon>
+                      <span>Reset 2FA</span>
+                    </button>
+                    <mat-divider />
+                    <button mat-menu-item (click)="generateBypassCode(u)">
+                      <mat-icon>vpn_key</mat-icon>
+                      <span>Generate Bypass Code</span>
+                    </button>
+                  } @else {
+                    <button
+                      mat-menu-item
+                      class="danger-item"
+                      [disabled]="isLastDirectorUser(u)"
+                      [matTooltip]="isLastDirectorUser(u) ? 'At least one Director must remain active.' : ''"
+                      (click)="confirmReset2fa(u)"
+                    >
+                      <mat-icon class="danger-icon">security</mat-icon>
+                      <span>Reset 2FA</span>
+                    </button>
+                    <mat-divider />
+                    <button mat-menu-item (click)="sendReminder(u)">
+                      <mat-icon>notifications</mat-icon>
+                      <span>Send Reminder</span>
+                    </button>
+                  }
+                </mat-menu>
+              }
+            </td>
+          </ng-container>
+
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
             <td mat-cell *matCellDef="let u">
@@ -229,11 +396,20 @@ interface RoleOption {
     .roster-table td { border-bottom: 1px solid #E2E5EB; }
     .roster-table tr:hover td { background: #F5F6FA; cursor: pointer; }
     .role-pill { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 12px; background: #E8EDF5; color: #1B2A4A; }
+    .fa-cell { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; cursor: pointer; }
+    .fa-cell:hover { background: #f0f0f0; }
+    .fa-icon { font-size: 20px; width: 20px; height: 20px; }
+    .fa-enrolled { color: #2E7D32; }
+    .fa-not-enrolled { color: #C62828; }
+    .danger-item { color: #C62828; }
+    .danger-icon { color: #C62828; }
   `,
 })
 export class TeamRosterComponent implements OnInit {
   private readonly adminUserService = inject(AdminUserService);
   private readonly authSessionService = inject(AuthSessionService);
+  private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
   private readonly searchSubject = new Subject<string>();
   private currentRequest = 0;
@@ -254,7 +430,7 @@ export class TeamRosterComponent implements OnInit {
   readonly sortBy = signal('createdAtUtc');
   readonly sortDesc = signal(true);
 
-  readonly displayedColumns = ['name', 'email', 'role', 'status', 'createdAtUtc', 'actions'];
+  readonly displayedColumns = ['name', 'email', 'role', '2fa', 'status', 'createdAtUtc', 'actions'];
 
   readonly roleOptions: RoleOption[] = [
     { value: 'Director', label: 'Director' },
@@ -429,6 +605,78 @@ export class TeamRosterComponent implements OnInit {
       );
   }
 
+  getEnrollmentTooltip(user: AdminUserSummary): string {
+    if (!user) return '';
+    if (getUserStatus(user) === 'deleted' || getUserStatus(user) === 'suspended') return '';
+    if (!user.totpEnrolledAt) return 'Not enrolled';
+    const d = new Date(user.totpEnrolledAt);
+    return isNaN(d.getTime()) ? 'Enrolled' : `Enrolled on ${d.toLocaleDateString()}`;
+  }
+
+  confirmReset2fa(user: AdminUserSummary): void {
+    const dialogRef = this.dialog.open(ConfirmReset2faDialogComponent, {
+      data: { userName: `${user.firstName} ${user.lastName}`, userId: user.id },
+      width: '440px',
+      disableClose: false,
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (!result) return;
+
+      this.adminUserService.resetTwoFactor(user.id).then(() => {
+        this.snackBar.open(
+          `Two-factor authentication has been reset for ${user.firstName} ${user.lastName}.`,
+          'Close',
+          { duration: 4000 },
+        );
+        this.loadUsers();
+      }).catch(err => {
+        if (err instanceof HttpErrorResponse && err.status === 422) {
+          this.snackBar.open(
+            'Cannot reset 2FA for the last active Director.',
+            'Close',
+            { duration: 4000 },
+          );
+        } else {
+          this.snackBar.open(
+            'Failed to reset 2FA. Please try again.',
+            'Close',
+            { duration: 4000 },
+          );
+        }
+      });
+    });
+  }
+
+  async generateBypassCode(user: AdminUserSummary): Promise<void> {
+    try {
+      const result = await this.adminUserService.generateBypassCode(user.id);
+      if (!result?.bypassCode) {
+        this.snackBar.open('Failed to generate bypass code. Please try again.', 'Close', { duration: 4000 });
+        return;
+      }
+      this.dialog.open(BypassCodeDialogComponent, {
+        data: { bypassCode: result.bypassCode, expiresInSeconds: result.expiresInSeconds },
+        width: '480px',
+        disableClose: false,
+      });
+    } catch (err) {
+      if (err instanceof HttpErrorResponse && err.status === 429) {
+        this.snackBar.open(
+          'Bypass code limit reached. You can generate 2 codes per hour. Try again later.',
+          'Close',
+          { duration: 5000 },
+        );
+      } else {
+        this.snackBar.open(
+          'Failed to generate bypass code. Please try again.',
+          'Close',
+          { duration: 4000 },
+        );
+      }
+    }
+  }
+
   suspendUser(user: AdminUserSummary): void {
     this.openDetailSheet(user);
   }
@@ -436,4 +684,18 @@ export class TeamRosterComponent implements OnInit {
   reactivateUser(user: AdminUserSummary): void {
     this.openDetailSheet(user);
   }
+
+  sendReminder(user: AdminUserSummary): void {
+    this.adminUserService.sendReminder(user.id).then(() => {
+      this.snackBar.open(`Reminder sent to ${user.email ?? 'the user'}.`, 'Close', { duration: 4000 });
+    }).catch(err => {
+      if (err instanceof HttpErrorResponse && err.status === 404) {
+        this.snackBar.open('User not found.', 'Close', { duration: 4000 });
+      } else {
+        this.snackBar.open('Failed to send reminder. Please try again.', 'Close', { duration: 4000 });
+      }
+    });
+  }
 }
+
+

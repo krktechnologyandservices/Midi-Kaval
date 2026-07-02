@@ -74,10 +74,28 @@ export class AdminUserService {
     ).then(r => r.isLastDirector);
   }
 
-  resetTwoFactor(userId: string): Promise<{ id: string; message: string }> {
+    resetTwoFactor(userId: string): Promise<{ id: string; message: string }> {
     return firstValueFrom(
       this.http.post<ApiEnvelope<{ id: string; message: string }>>(
         `${environment.apiBaseUrl}/api/v1/admin/users/${userId}/reset-2fa`,
+        {},
+      ),
+    ).then(e => e.data);
+  }
+
+  generateBypassCode(userId: string): Promise<{ bypassCode: string; expiresInSeconds: number }> {
+    return firstValueFrom(
+      this.http.post<ApiEnvelope<{ bypassCode: string; expiresInSeconds: number }>>(
+        `${environment.apiBaseUrl}/api/v1/admin/users/${userId}/generate-bypass-code`,
+        {},
+      ),
+    ).then(e => e.data);
+  }
+
+  sendReminder(userId: string): Promise<{ message: string }> {
+    return firstValueFrom(
+      this.http.post<ApiEnvelope<{ message: string }>>(
+        `${environment.apiBaseUrl}/api/v1/admin/users/${userId}/send-2fa-reminder`,
         {},
       ),
     ).then(e => e.data);

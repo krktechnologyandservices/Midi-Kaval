@@ -24,4 +24,12 @@ export class TwoFactorService {
       ),
     );
   }
+
+  status(): Promise<{ enrolled: boolean; enrolledAt: string | null }> {
+    return firstValueFrom(
+      this.http.get<{ enrolled: boolean; enrolledAt: string | null }>(
+        `${environment.apiBaseUrl}/api/v1/auth/2fa-status`,
+      ),
+    );
+  }
 }

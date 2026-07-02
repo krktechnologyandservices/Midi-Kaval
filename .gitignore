@@ -32,6 +32,7 @@ apps/mobile/android/app/*.iml
 # Environment
 .env
 .env.local
+apps/api/appsettings.Development.json
 infra/.env
 
 # IDE
@@ -53,6 +54,7 @@ TestResults/
 
 # Angular PWA
 apps/web/dist/
+.angular/
 
 # Playwright
 tests/e2e/test-results/

@@ -81,4 +81,30 @@ export class VendorApiService {
       ),
     ).then(e => e.data);
   }
+
+  getBackupCodeRemainingCount(): Promise<{ remaining: number }> {
+    return firstValueFrom(
+      this.http.get<{ remaining: number }>(
+        `${environment.apiBaseUrl}/api/v1/auth/backup-codes/remaining`,
+      ),
+    );
+  }
+
+  regenerateBackupCodes(): Promise<{ codes: string[] }> {
+    return firstValueFrom(
+      this.http.post<{ codes: string[] }>(
+        `${environment.apiBaseUrl}/api/v1/auth/backup-codes/regenerate`,
+        {},
+      ),
+    );
+  }
+
+  changePassword(currentPassword: string, newPassword: string, confirmNewPassword: string): Promise<{ message: string }> {
+    return firstValueFrom(
+      this.http.post<{ message: string }>(
+        `${environment.apiBaseUrl}/api/v1/auth/change-password`,
+        { currentPassword, newPassword, confirmNewPassword },
+      ),
+    );
+  }
 }

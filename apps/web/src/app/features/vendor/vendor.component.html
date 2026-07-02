@@ -1,5 +1,6 @@
 <header>
   <nav>
+    <a routerLink="/vendor/settings" routerLinkActive="active" class="nav-link">Settings</a>
     @if (viewState() === 'create' || viewState() === 'detail') {
       <button type="button" class="back-btn" (click)="showList()">Back to List</button>
     }

@@ -554,6 +554,39 @@ public sealed class AuthService(
         return new ResetPasswordResponse { Message = ResetPasswordSuccessMessage };
     }
 
+    /// <summary>Change password for an authenticated user (validates current password first).</summary>
+    public async Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null || !user.IsActive)
+            return false;
+
+        var currentPassword = request.CurrentPassword?.Trim() ?? string.Empty;
+        var verification = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, currentPassword);
+        if (verification == PasswordVerificationResult.Failed)
+            return false;
+
+        var newPassword = request.NewPassword?.Trim() ?? string.Empty;
+        if (newPassword.Length < 8 || (request.ConfirmNewPassword?.Trim() ?? string.Empty) != newPassword)
+            return false;
+
+        user.PasswordHash = passwordHasher.HashPassword(user, newPassword);
+        user.UpdatedAtUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+
+        // Invalidate all existing sessions so the password change is effective immediately
+        await userSessionService.InvalidateUserSessionsAsync(user.Id, cancellationToken);
+
+        await auditService.RecordAsync(
+            AuditEventTypes.PasswordChanged,
+            user.OrganisationId,
+            actorUserId: user.Id,
+            subjectUserId: user.Id,
+            cancellationToken: cancellationToken);
+
+        return true;
+    }
+
     public async Task<StepUpResponse?> StepUpAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);

@@ -2,7 +2,9 @@
 
 **Epic:** Epic 25 — 2FA Universal Enrollment & Administration
 
-Status: ready-for-dev
+Status: done
+
+baseline_commit: bbc03cf20619dd4f00c964a3d6041ed4a2712f48
 
 ## Story
 
@@ -71,30 +73,30 @@ so that **I can see at a glance which users have 2FA enabled and take administra
 
 ## Tasks / Subtasks
 
-- [ ] Add `generateBypassCode()` and `sendReminder()` methods to `AdminUserService` (AC: 6)
-- [ ] Add `"2fa"` column to `team-roster.component.ts`:
-  - [ ] Insert `'2fa'` between `'role'` and `'status'` in `displayedColumns` (AC: 1)
-  - [ ] Add `<ng-container matColumnDef="2fa">` with icon + tooltip + MatMenu template
-  - [ ] Styles: icon size 20px, centered cell, hover background, green/red colors from DESIGN.md
-  - [ ] Import `MatMenuModule`, `MatTooltipModule`, and `MatDialogModule` (verify MatMenuModule and MatTooltipModule are already imported; `MatDialogModule` is NOT yet imported and must be added to the imports array)
-- [ ] Implement MatMenu with contextual items per enrollment state (AC: 2)
-  - [ ] "Reset 2FA" with `security` icon, `.danger` styling, disabled state for last-Director
-  - [ ] "Generate Bypass Code" with `vpn_key` icon (enrolled only)
-  - [ ] "Send Reminder" with `notifications` icon (unenrolled only)
-  - [ ] Divider between first item and remaining items
-  - [ ] `$event.stopPropagation()` on menu trigger click
-- [ ] Create "Reset 2FA" confirmation dialog flow (AC: 3)
-  - [ ] Create inline dialog in `team-roster.component.ts` with `color="warn"` on confirm button (the existing `ConfirmDialogComponent` uses `color="primary"` — do NOT reuse it)
-  - [ ] Wire confirm to `AdminUserService.resetTwoFactor()`
-  - [ ] Handle 422 (last Director) and generic errors with `MatSnackBar`
-- [ ] Create "Bypass Code" display dialog component (AC: 4)
-  - [ ] Inline dialog in `team-roster.component.ts` matching `user-detail-sheet` inline dialog pattern
-  - [ ] Monospace code display, Copy button, orange warning banner
-  - [ ] Handle clipboard API, 429 rate limit, generic errors
-- [ ] Implement "Send Reminder" direct action (AC: 5)
-  - [ ] No dialog, direct service call
-  - [ ] Success/error snackbar messages
-- [ ] Run `ng build` to verify compilation
+- [x] Add `generateBypassCode()` and `sendReminder()` methods to `AdminUserService` (AC: 6)
+- [x] Add `"2fa"` column to `team-roster.component.ts`:
+  - [x] Insert `'2fa'` between `'role'` and `'status'` in `displayedColumns` (AC: 1)
+  - [x] Add `<ng-container matColumnDef="2fa">` with icon + tooltip + MatMenu template
+  - [x] Styles: icon size 20px, centered cell, hover background, green/red colors from DESIGN.md
+  - [x] Import `MatMenuModule`, `MatTooltipModule`, and `MatDialogModule` (verify MatMenuModule and MatTooltipModule are already imported; `MatDialogModule` is NOT yet imported and must be added to the imports array)
+- [x] Implement MatMenu with contextual items per enrollment state (AC: 2)
+  - [x] "Reset 2FA" with `security` icon, `.danger` styling, disabled state for last-Director
+  - [x] "Generate Bypass Code" with `vpn_key` icon (enrolled only)
+  - [x] "Send Reminder" with `notifications` icon (unenrolled only)
+  - [x] Divider between first item and remaining items
+  - [x] `$event.stopPropagation()` on menu trigger click
+- [x] Create "Reset 2FA" confirmation dialog flow (AC: 3)
+  - [x] Create inline dialog in `team-roster.component.ts` with `color="warn"` on confirm button (the existing `ConfirmDialogComponent` uses `color="primary"` — do NOT reuse it)
+  - [x] Wire confirm to `AdminUserService.resetTwoFactor()`
+  - [x] Handle 422 (last Director) and generic errors with `MatSnackBar`
+- [x] Create "Bypass Code" display dialog component (AC: 4)
+  - [x] Inline dialog in `team-roster.component.ts` matching `user-detail-sheet` inline dialog pattern
+  - [x] Monospace code display, Copy button, orange warning banner
+  - [x] Handle clipboard API, 429 rate limit, generic errors
+- [x] Implement "Send Reminder" direct action (AC: 5)
+  - [x] No dialog, direct service call
+  - [x] Success/error snackbar messages
+- [x] Run `ng build` to verify compilation
 
 ## Dev Notes
 
@@ -336,3 +338,47 @@ Add this after the `role` column container:
 ### Agent Model Used
 
 deepseek-v4-flash
+
+### Completion Notes
+
+- Added `generateBypassCode()` and `sendReminder()` methods to `AdminUserService` following existing `ApiEnvelope<T>` pattern
+- Added `'2fa'` column to `displayedColumns` between `'role'` and `'status'`
+- Implemented 2FA column template with green/red icons, tooltip, and MatMenu per enrollment state
+- Created inline `ConfirmReset2faDialogComponent` with `color="warn"` confirm button (not reusing existing `ConfirmDialogComponent`)
+- Created inline `BypassCodeDialogComponent` with monospace code display, Copy button with clipboard API, and orange warning banner
+- Implemented "Send Reminder" as direct service call without confirmation dialog
+- All error handling follows existing patterns (422 for last Director, 429 for rate limit, 404 for user not found)
+- Used `MatDividerModule` for `<mat-divider>` in MatMenu
+- Used `MatSnackBarModule` for success/error messages
+- Build: 0 errors (pre-existing warnings only)
+
+### File List
+
+- `apps/web/src/app/features/admin/services/admin-user.service.ts` — MODIFIED: +generateBypassCode(), +sendReminder()
+- `apps/web/src/app/features/admin/pages/team-roster/team-roster.component.ts` — MODIFIED: +2FA column, MatMenu, inline dialogs, snackbar
+
+### Change Log
+
+- Implemented Story 25-6: Director Staff Management — 2FA Column, MatMenu Actions, Dialogs (2026-07-02)
+
+### Review Findings
+
+#### decision-needed
+- [x] [Review][Decision] ChangePasswordAsync invalidates own session after password change — Decision: keep current logout behavior (option 3). Deferred.
+
+#### patch
+- [x] [Review][Patch] Clipboard errors silently swallowed — `BypassCodeDialogComponent.copyCode()` has an empty `catch {}` that discards all clipboard write failures (HTTPS required, restricted contexts). At minimum add a `console.warn` for debugging. [team-roster.component.ts:686-688]
+- [x] [Review][Patch] `setTimeout` on signal with no cleanup — `copyCode()` calls `setTimeout(() => this.copied.set(false), 2000)` with no cancellation. If the dialog is closed before 2s, `this.copied.set()` fires on a potentially destroyed component's signal. [team-roster.component.ts:687]
+- [x] [Review][Patch] `getEnrollmentTooltip` called with null/undefined user — `getUserStatus(null)` returns `'active'`, then `null.totpEnrolledAt` throws TypeError. Add `if (!user) return '';` guard at top. [team-roster.component.ts:594-597]
+- [x] [Review][Patch] Invalid date string in tooltip — `new Date(invalidDate).toLocaleDateString()` produces "Invalid Date". Guard with `isNaN(d.getTime())` check. [team-roster.component.ts:596]
+- [x] [Review][Patch] API returns null `bypassCode` — if `result.bypassCode` is null/undefined, the dialog displays "null" as the code. Guard with `if (!result?.bypassCode) { snackBar; return; }`. [team-roster.component.ts:625-628]
+- [x] [Review][Patch] Null `user.email` in snackbar — `sendReminder` success message uses `${user.email}` which renders as "Reminder sent to null." if email is null. Use `user.email ?? 'the user'` fallback. [team-roster.component.ts:677]
+- [x] [Review][Patch] Close button missing `color="primary"` — AC 4 specifies "Close button (primary color)" but the implementation assigns `color="primary"` to "Copy Code" instead. Move `color="primary"` to the Close button. [team-roster.component.ts BypassCodeDialogComponent]
+- [x] [Review][Patch] `isLastDirectorUser` defensive comment removed — The original comment explaining why the method returns `false` on partial data was deleted. Restore the comment to preserve design intent for future maintainers. [team-roster.component.ts:579-582]
+
+#### defer
+- [x] [Review][Defer] Inline dialogs not reusable — `ConfirmReset2faDialogComponent` and `BypassCodeDialogComponent` are defined inline; other components needing similar dialogs would duplicate them. Intentional per AC requirement for `color="warn"` on confirm.
+- [x] [Review][Defer] ConfirmNewPassword lacks `[Compare]` attribute — server-side validation already checks the match in the service layer, but model-level validation would catch mismatches earlier. Pre-existing pattern.
+- [x] [Review][Defer] RegenerateBackupCodes no password/step-up re-verification — any authenticated session can regenerate backup codes. Already deferred in story 25-5 review; architectural decision beyond story scope.
+- [x] [Review][Defer] Missing `ProducesResponseType` for 429/422 on new endpoints — pre-existing pattern across the codebase, not introduced by this story.
+- [x] [Review][Defer] Same password not rejected in ChangePasswordAsync — user can "change" to the same value (hash is recomputed with new salt). Pre-existing, not scoped to this story.

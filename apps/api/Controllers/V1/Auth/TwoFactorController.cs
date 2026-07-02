@@ -173,6 +173,60 @@ public class TwoFactorController(
         return Ok(new { codes });
     }
 
+    /// <summary>Get remaining backup code count for the current user.</summary>
+    [Authorize]
+    [HttpGet("backup-codes/remaining")]
+    [EnableRateLimiting("data-read")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetBackupCodesRemaining(CancellationToken ct)
+    {
+        var userId = TryGetUserId();
+        if (userId is null)
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "Authentication is required.",
+            });
+
+        var remaining = await backupCodeService.GetRemainingCountAsync(userId.Value, ct);
+        return Ok(new { remaining });
+    }
+
+    /// <summary>Regenerate backup codes — invalidates existing unused codes and issues 8 new ones.</summary>
+    [Authorize]
+    [HttpPost("backup-codes/regenerate")]
+    [EnableRateLimiting("data-write")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> RegenerateBackupCodes(CancellationToken ct)
+    {
+        var userId = TryGetUserId();
+        if (userId is null)
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "Authentication is required.",
+            });
+
+        var enrolled = await twoFactorService.IsEnrolledAsync(userId.Value, ct);
+        if (!enrolled)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Not Enrolled",
+                Detail = "Two-factor authentication must be enrolled before regenerating backup codes.",
+            });
+        }
+
+        var codes = await backupCodeService.RegenerateAsync(userId.Value, ct);
+        return Ok(new { codes });
+    }
+
     /// <summary>Verify a backup code during login (unauthenticated) and issue JWT.</summary>
     [HttpPost("verify-backup-code")]
     [EnableRateLimiting("auth-verify-backup-code")]

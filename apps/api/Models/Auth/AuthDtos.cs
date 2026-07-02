@@ -265,3 +265,20 @@ public sealed class VerifyBackupCodeRequest
     [Required, StringLength(64)]
     public string Code { get; set; } = string.Empty;
 }
+
+/// <summary>Password change request (authenticated).</summary>
+public sealed class ChangePasswordRequest
+{
+    /// <summary>Current password for verification.</summary>
+    [Required(ErrorMessage = "Current password is required.")]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    /// <summary>New password (min 8 characters).</summary>
+    [Required(ErrorMessage = "New password is required.")]
+    [MinLength(8, ErrorMessage = "New password must be at least 8 characters.")]
+    public string NewPassword { get; set; } = string.Empty;
+
+    /// <summary>New password confirmation (must match NewPassword — validated client-side).</summary>
+    [Required(ErrorMessage = "Please confirm your new password.")]
+    public string ConfirmNewPassword { get; set; } = string.Empty;
+}

@@ -1,0 +1,161 @@
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+
+  h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
+
+  .back-link {
+    margin-left: auto;
+    color: var(--mat-primary-color, #0d6e6e);
+    text-decoration: none;
+    font-size: 0.875rem;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.settings-content {
+  max-width: 640px;
+  margin: 24px auto;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settings-card {
+  mat-card-header {
+    mat-icon {
+      &.enabled {
+        color: #2e7d32;
+      }
+      &.disabled {
+        color: rgba(0, 0, 0, 0.38);
+      }
+    }
+  }
+}
+
+// Unenrolled state
+.info-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #e3f2fd;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  color: #1565c0;
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+}
+
+.enrollment-section {
+  margin-top: 8px;
+}
+
+// Enrolled state
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #e8f5e9;
+    border-radius: 20px;
+    color: #2e7d32;
+    font-weight: 500;
+    font-size: 0.875rem;
+
+    .check-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  .enrolled-date {
+    font-size: 0.8rem;
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
+.backup-codes-section {
+  .codes-label {
+    margin: 0 0 8px;
+    font-size: 0.875rem;
+  }
+}
+
+.warning-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fff3e0;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  color: #e65100;
+  font-size: 0.875rem;
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+
+  .dismiss-btn {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: inherit;
+    padding: 0 4px;
+  }
+}
+
+.actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .settings-header {
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .info-banner {
+    background: #1a3a5c;
+    color: #90caf9;
+  }
+
+  .status-badge {
+    background: #1b5e20;
+  }
+
+  .warning-banner {
+    background: #3e2723;
+    color: #ffb74d;
+  }
+
+  .settings-card mat-card-header mat-icon.disabled {
+    color: rgba(255, 255, 255, 0.38);
+  }
+}
