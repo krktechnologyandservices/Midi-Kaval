@@ -73,7 +73,6 @@ export class OtpComponent implements OnInit, OnDestroy {
 
     const code = this.trimmedCode;
 
-    // Validate trimmed code
     if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
       this.errorMessage.set('Please enter a valid 6-digit verification code.');
       this.form.controls.code.setValue(code);
@@ -81,14 +80,16 @@ export class OtpComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Patch the form control with trimmed value so the API sends clean data
     this.form.controls.code.setValue(code);
 
     this.submitting.set(true);
     try {
       await this.auth.verifyOtp(code);
+      // Navigation happens inside verifyOtp success — but also try here in case
+      // navigateAfterLogin needs to run on the current component
       this.auth.navigateAfterLogin();
     } catch (error) {
+      console.error('OTP verify error:', error);
       this.errorMessage.set(this.auth.extractErrorMessage(error));
     } finally {
       this.submitting.set(false);

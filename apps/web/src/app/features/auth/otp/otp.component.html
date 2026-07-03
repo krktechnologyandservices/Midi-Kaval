@@ -41,7 +41,7 @@
         mat-flat-button
         color="primary"
         type="submit"
-        [disabled]="submitting() || !!expiredMessage() || form.invalid"
+        [disabled]="submitting() || !!expiredMessage()"
       >
         {{ submitting() ? 'Verifying…' : 'Verify' }}
       </button>

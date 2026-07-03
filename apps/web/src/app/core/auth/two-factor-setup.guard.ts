@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthSessionService } from './auth-session.service';
 
-export const twoFactorSetupGuard: CanActivateFn = () => {
+export const twoFactorSetupGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthSessionService);
   const router = inject(Router);
 
@@ -10,7 +10,7 @@ export const twoFactorSetupGuard: CanActivateFn = () => {
     return true;
   }
 
-  if (router.url.startsWith('/settings/2fa') || router.url.startsWith('/vendor/settings')) {
+  if (state.url.startsWith('/settings/2fa') || state.url.startsWith('/vendor/settings')) {
     return true;
   }
 
