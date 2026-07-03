@@ -1,8 +1,12 @@
+---
+baseline_commit: df1bab3079a4eab8e951f9460cb5dac7d405663d
+---
+
 # Story 25.7: Organisation Settings + Audit Log — Require 2FA Toggle, Delegate Toggle, 2FA Audit View
 
 **Epic:** Epic 25 — 2FA Universal Enrollment & Administration
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -62,30 +66,30 @@ so that **I can enforce security policies across my organisation and monitor 2FA
 
 ## Tasks / Subtasks
 
-- [ ] Add route `/admin/settings` in `app.routes.ts` (AC: 1)
-  - [ ] Add child route under `/admin` parent: `{ path: 'settings', loadComponent: ... }`
-  - [ ] Add "Settings" nav link to `AdminShellComponent` side nav
-- [ ] Create `OrganisationSettingsComponent` (AC: 2, 3, 4)
-  - [ ] Create `features/admin/pages/settings/organisation-settings.component.ts`
-  - [ ] Title and subtitle section
-  - [ ] "Require 2FA" `MatSlideToggle` with label, description, info tooltip (AC: 3)
-  - [ ] "Delegate 2FA Reset" `MatSlideToggle` with label, description, info tooltip (AC: 4)
-  - [ ] Load current states on init from `AdminUserService`
-  - [ ] Toggle change handler: write immediately with revert-on-failure
-  - [ ] Loading/disabled states during API calls (separate `loadingRequire2fa` / `loadingDelegation` signals so toggles don't block each other)
-  - [ ] Success/failure `MatSnackBar` messages
-- [ ] Add new methods to `AdminUserService` (AC: 6)
-  - [ ] `getRequire2faStatus()` / `setRequire2fa()`
-  - [ ] `getDelegationStatus()` / `setDelegation()`
-  - [ ] `get2faAuditLog(filter)` — requires importing `AuditLogFilter`, `AuditEventDto` from `audit.models.ts` and `AuditMeta` from `audit.service.ts`
-- [ ] Add 2FA audit tab to `AuditLogComponent` (AC: 5)
-  - [ ] Add tab/button group at top: "All Events" | "2FA Events"
-  - [ ] Wire 2FA tab to call `AdminUserService.get2faAuditLog()` instead of `AuditApiService.list()`
-  - [ ] Import and inject `AdminUserService` alongside existing `AuditApiService` (add `import { AdminUserService } from '../../services/admin-user.service';`)
-  - [ ] Add signal: `readonly activeAuditTab = signal<'all' | '2fa'>('all');`
-  - [ ] Reset pagination on tab switch
-  - [ ] Preserve all existing filter behavior for "All Events" tab
-- [ ] Run `ng build` to verify compilation
+- [x] Add route `/admin/settings` in `app.routes.ts` (AC: 1)
+  - [x] Add child route under `/admin` parent: `{ path: 'settings', loadComponent: ... }`
+  - [x] Add "Settings" nav link to `AdminShellComponent` side nav
+- [x] Create `OrganisationSettingsComponent` (AC: 2, 3, 4)
+  - [x] Create `features/admin/pages/settings/organisation-settings.component.ts`
+  - [x] Title and subtitle section
+  - [x] "Require 2FA" `MatSlideToggle` with label, description, info tooltip (AC: 3)
+  - [x] "Delegate 2FA Reset" `MatSlideToggle` with label, description, info tooltip (AC: 4)
+  - [x] Load current states on init from `AdminUserService`
+  - [x] Toggle change handler: write immediately with revert-on-failure
+  - [x] Loading/disabled states during API calls (separate `loadingRequire2fa` / `loadingDelegation` signals so toggles don't block each other)
+  - [x] Success/failure `MatSnackBar` messages
+- [x] Add new methods to `AdminUserService` (AC: 6)
+  - [x] `getRequire2faStatus()` / `setRequire2fa()`
+  - [x] `getDelegationStatus()` / `setDelegation()`
+  - [x] `get2faAuditLog(filter)` — requires importing `AuditLogFilter`, `AuditEventDto` from `audit.models.ts` and `AuditMeta` from `audit.service.ts`
+- [x] Add 2FA audit tab to `AuditLogComponent` (AC: 5)
+  - [x] Add tab/button group at top: "All Events" | "2FA Events"
+  - [x] Wire 2FA tab to call `AdminUserService.get2faAuditLog()` instead of `AuditApiService.list()`
+  - [x] Import and inject `AdminUserService` alongside existing `AuditApiService` (add `import { AdminUserService } from '../../services/admin-user.service';`)
+  - [x] Add signal: `readonly activeAuditTab = signal<'all' | '2fa'>('all');`
+  - [x] Reset pagination on tab switch
+  - [x] Preserve all existing filter behavior for "All Events" tab
+- [x] Run `ng build` to verify compilation
 
 ## Dev Notes
 
@@ -441,3 +445,100 @@ Add to `AuditLogComponent`:
 ### Agent Model Used
 
 deepseek-v4-flash
+
+### Implementation Plan
+
+1. **API — Added read-back GET endpoints** for organisation settings:
+   - `Require2faResponse.cs` and `DelegationResponse.cs` DTOs in `Models/Admin`
+   - `GetRequire2faStatusAsync()` method in `AdminTwoFactorService` — reads `Organisation.Require2fa` from DB
+   - `GetDelegationStatusAsync()` method in `AdminTwoFactorService` — reads Redis `delegate_2fa_reset:{orgId}` key
+   - `GET /api/v1/admin/settings/require-2fa` and `GET /api/v1/admin/settings/delegate-2fa-reset` endpoints in `AdminTwoFactorController`
+
+2. **Web Service — Extended `AdminUserService`** with 5 new methods:
+   - `getRequire2faStatus()` / `setRequire2fa()`
+   - `getDelegationStatus()` / `setDelegation()`
+   - `get2faAuditLog()` — calls the existing 2FA audit endpoint
+
+3. **Created `OrganisationSettingsComponent`** at `features/admin/pages/settings/`:
+   - Page header with title and subtitle
+   - Two `MatSlideToggle` controls with independent loading signals (`loadingRequire2fa` / `loadingDelegation`)
+   - Info tooltips on each toggle
+   - Optimistic update with revert-on-failure pattern
+   - `MatSnackBar` success/failure notifications
+
+4. **Added route & nav link**:
+   - `/admin/settings` child route under `/admin` parent in `app.routes.ts`
+   - "Settings" nav link with `settings` icon in `AdminShellComponent` side nav
+
+5. **Added 2FA audit tab to `AuditLogComponent`**:
+   - `MatButtonToggleGroup` tab bar with "All Events" | "2FA Events"
+   - Branched `loadEvents()` to call `AdminUserService.get2faAuditLog()` on 2FA tab
+   - Tab switch resets pagination to page 1
+   - Preserved all existing filter/pagination/expand behavior for "All Events" tab
+
+### Debug Log
+
+- Story loaded from `ready-for-dev` status
+- Baseline commit captured: `df1bab3079a4eab8e951f9460cb5dac7d405663d`
+- Both API and Web projects build with 0 errors
+
+### Completion Notes
+
+Implemented Story 25-7 in full. All acceptance criteria satisfied:
+- AC 1: `/admin/settings` route + nav link ✓
+- AC 2: `OrganisationSettingsComponent` with Material Design toggles ✓
+- AC 3: "Require 2FA" toggle with optimistic update, independent loading signal, tooltip ✓
+- AC 4: "Delegate 2FA Reset" toggle with independent loading signal, tooltip ✓
+- AC 5: 2FA audit tab on `AuditLogComponent` with tab switching ✓
+- AC 6: 5 new `AdminUserService` methods for settings and 2FA audit ✓
+
+Backend: Added 2 new DTOs + 2 GET endpoints + 2 service methods.
+Frontend: 1 new component, modified 4 files (routes, nav, service, audit log).
+
+## File List
+
+### New files
+- `apps/api/Models/Admin/Require2faResponse.cs`
+- `apps/api/Models/Admin/DelegationResponse.cs`
+- `apps/web/src/app/features/admin/pages/settings/organisation-settings.component.ts`
+
+### Modified files
+- `apps/api/Domain/RoleManagement/AdminTwoFactorService.cs`
+- `apps/api/Controllers/V1/Admin/AdminTwoFactorController.cs`
+- `apps/web/src/app/app.routes.ts`
+- `apps/web/src/app/features/admin/admin.component.ts`
+- `apps/web/src/app/features/admin/services/admin-user.service.ts`
+- `apps/web/src/app/features/admin/pages/audit-log/audit-log.component.ts`
+- `apps/web/src/app/features/admin/pages/audit-log/audit-log.component.scss`
+
+## Change Log
+
+- Added `Require2faResponse` and `DelegationResponse` DTOs to API
+- Added `GetRequire2faStatusAsync` and `GetDelegationStatusAsync` methods to `AdminTwoFactorService`
+- Added `GET /settings/require-2fa` and `GET /settings/delegate-2fa-reset` endpoints to `AdminTwoFactorController`
+- Added 5 new methods to `AdminUserService` (settings + 2fa audit)
+- Created `OrganisationSettingsComponent` with two `MatSlideToggle` controls
+- Added `/admin/settings` route and "Settings" nav link
+- Added 2FA audit tab to `AuditLogComponent` with tab switching
+- Added `.audit-tab-bar` styles to audit log SCSS
+
+## Review Findings
+
+### Blind Hunter (Adversarial) — 3 patch findings
+
+- [x] [Review][Patch] Stale filter values bleed through on tab switch [`audit-log.component.ts:314`] — When switching from "All Events" to "2FA Events" tab, existing event-type, actor, or subject filters persist and are sent to the 2FA audit endpoint. The 2FA backend auto-filters to `2fa_` event types, but a conflicting eventType filter (e.g. "auth.login.success") would return empty results. Fix: reset filter fields in `onTabChange`, or ignore `filter.eventType` in the 2fa branch.
+- [x] [Review][Patch] `KeyExistsAsync` does not forward CancellationToken [`AdminTwoFactorService.cs:302`] — `redisDb.KeyExistsAsync(key)` ignores the `ct` parameter, inconsistent with the DB query methods in the same class that forward the token. Fix: pass the cancellation token: `await redisDb.KeyExistsAsync(key);` (StackExchange.Redis does not accept CancellationToken on KeyExistsAsync).
+- [x] [Review][Patch] Duplicated response-handling in `loadEvents` if/else branches [`audit-log.component.ts:313-321`] — Both branches of the if/else in `loadEvents` share identical `items.set(result.items)` and `totalCount.set(...)` code. Fix: extract a shared handler or use a strategy pattern to assign the fetcher before calling.
+
+### Deferred (pre-existing patterns)
+
+- [x] [Review][Defer] Missing `500` response documentation on new endpoints — pre-existing pattern, many endpoints in the same controller lack 500 docs
+- [x] [Review][Defer] Magic string Redis key `delegate_2fa_reset:{orgId}` — pre-existing pattern also used in `SetDelegationAsync`; cross-method refactor
+
+### Dismissed
+
+- Query param collision (actorUserId/subjectUserId mapped to same `userId`) — by design, backend accepts single OR-matching param
+- Missing explicit `[Authorize]` on GET endpoints — class-level `[Authorize]` covers all actions
+- Rate-limit `"data-read"` too permissive — consistent with all other GET endpoints
+- `onTabChange` early-return signal race — theoretical, not practical
+- `extractErrorMessage` from wrong service — both services use identical HTTP error format

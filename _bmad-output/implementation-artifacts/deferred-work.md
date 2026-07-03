@@ -637,3 +637,8 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 - Attacker-supplied `UserId` on unauthenticated endpoint — `TwoFactorController.cs:162` accepts user-supplied userId. Rate limiting (2/hr) mitigates brute-force. Deliberate design per AC 5.
 - Race condition in `BackupCodeService.VerifyAsync` — pre-existing from Story 25-1, no optimistic concurrency on backup code consumption.
 - `OrgRequires2fa` returns `false` when Organisation record is missing — pre-existing data integrity concern, not introduced by this story.
+
+## Deferred from: code review of 25-7-organisation-settings-audit-log.md (2026-07-03)
+
+- Missing `500` response documentation on new GET endpoints — pre-existing pattern, many endpoints in the same controller lack 500 docs
+- Magic string Redis key `delegate_2fa_reset:{orgId}` — pre-existing pattern also used in `SetDelegationAsync`; cross-method refactor

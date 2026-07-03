@@ -234,6 +234,34 @@ public class AdminTwoFactorController(
             new ApiMeta { RequestId = ResolveRequestId() }));
     }
 
+    [HttpGet("settings/require-2fa")]
+    [EnableRateLimiting("data-read")]
+    [ProducesResponseType(typeof(ApiResponse<Require2faResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetRequire2fa(CancellationToken ct)
+    {
+        if (!TryResolveOrganisationId(out var orgId, out var actorError))
+            return actorError!;
+
+        var result = await adminTwoFactorService.GetRequire2faStatusAsync(orgId!.Value, ct);
+        return Ok(new ApiResponse<Require2faResponse>(result, new ApiMeta { RequestId = ResolveRequestId() }));
+    }
+
+    [HttpGet("settings/delegate-2fa-reset")]
+    [EnableRateLimiting("data-read")]
+    [ProducesResponseType(typeof(ApiResponse<DelegationResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetDelegation(CancellationToken ct)
+    {
+        if (!TryResolveOrganisationId(out var orgId, out var actorError))
+            return actorError!;
+
+        var result = await adminTwoFactorService.GetDelegationStatusAsync(orgId!.Value, ct);
+        return Ok(new ApiResponse<DelegationResponse>(result, new ApiMeta { RequestId = ResolveRequestId() }));
+    }
+
     private bool TryResolveOrganisationId(out Guid? organisationId, out IActionResult? error)
     {
         var claim = User.FindFirst(AuthClaimTypes.OrganisationId)?.Value;

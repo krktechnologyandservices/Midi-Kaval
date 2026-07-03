@@ -195,6 +195,13 @@ export const routes: Routes = [
               ),
           },
           {
+            path: 'settings',
+            loadComponent: () =>
+              import('./features/admin/pages/settings/organisation-settings.component').then(
+                (m) => m.OrganisationSettingsComponent,
+              ),
+          },
+          {
             path: 'audit',
             loadComponent: () =>
               import('./features/admin/pages/audit-log/audit-log.component').then(

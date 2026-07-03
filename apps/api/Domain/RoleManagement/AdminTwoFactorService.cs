@@ -287,6 +287,23 @@ public class AdminTwoFactorService(
         return enabled;
     }
 
+    public virtual async Task<Require2faResponse> GetRequire2faStatusAsync(Guid organisationId, CancellationToken ct)
+    {
+        var require2fa = await db.Organisations
+            .Where(o => o.Id == organisationId)
+            .Select(o => o.Require2fa)
+            .FirstOrDefaultAsync(ct);
+        return new Require2faResponse(require2fa);
+    }
+
+    public virtual async Task<DelegationResponse> GetDelegationStatusAsync(Guid organisationId, CancellationToken ct)
+    {
+        var redisDb = redis.GetDatabase();
+        var key = $"delegate_2fa_reset:{organisationId}";
+        var exists = await redisDb.KeyExistsAsync(key);
+        return new DelegationResponse(exists);
+    }
+
     private static string GenerateBypassCode()
     {
         var bytes = new byte[9];

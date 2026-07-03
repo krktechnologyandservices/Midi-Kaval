@@ -43,6 +43,14 @@ import { MatToolbarModule } from '@angular/material/toolbar';
           </a>
           <a
             mat-list-item
+            routerLink="/admin/settings"
+            routerLinkActive="active-link"
+          >
+            <mat-icon matListItemIcon>settings</mat-icon>
+            <span matListItemTitle>Settings</span>
+          </a>
+          <a
+            mat-list-item
             routerLink="/admin/audit"
             routerLinkActive="active-link"
           >

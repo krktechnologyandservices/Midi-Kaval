@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -12,6 +13,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
 import { AuditApiService } from '../../services/audit.service';
+import { AdminUserService } from '../../services/admin-user.service';
 import { AuditEventDto, AuditLogFilter } from '../../models/audit.models';
 import { EVENT_TYPE_OPTIONS, formatEventType } from '../../models/audit.utils';
 
@@ -22,6 +24,7 @@ import { EVENT_TYPE_OPTIONS, formatEventType } from '../../models/audit.utils';
     FormsModule,
     MatTableModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatIconModule,
     MatCardModule,
     MatPaginatorModule,
@@ -37,6 +40,16 @@ import { EVENT_TYPE_OPTIONS, formatEventType } from '../../models/audit.utils';
         <h1>Audit Log</h1>
         <p class="subtitle">Review data-changing events across the organisation</p>
       </header>
+
+      <mat-button-toggle-group
+        [value]="activeAuditTab()"
+        (change)="onTabChange($event.value)"
+        class="audit-tab-bar"
+        aria-label="Audit log filter tabs"
+      >
+        <mat-button-toggle value="all">All Events</mat-button-toggle>
+        <mat-button-toggle value="2fa">2FA Events</mat-button-toggle>
+      </mat-button-toggle-group>
 
       <mat-card class="filter-card">
         <mat-card-content>
@@ -243,6 +256,7 @@ import { EVENT_TYPE_OPTIONS, formatEventType } from '../../models/audit.utils';
 })
 export class AuditLogComponent {
   private readonly api = inject(AuditApiService);
+  private readonly adminUserService = inject(AdminUserService);
 
   readonly items: WritableSignal<AuditEventDto[]> = signal([]);
   readonly loading: WritableSignal<boolean> = signal(false);
@@ -250,6 +264,7 @@ export class AuditLogComponent {
   readonly totalCount: WritableSignal<number> = signal(0);
   readonly currentPage: WritableSignal<number> = signal(1);
   readonly pageSize: WritableSignal<number> = signal(50);
+  readonly activeAuditTab: WritableSignal<'all' | '2fa'> = signal('all');
 
   filterEventType = '';
   filterActorUserId = '';
@@ -295,9 +310,13 @@ export class AuditLogComponent {
         pageSize: this.pageSize(),
       };
 
-      const result = await this.api.list(filter);
+      const fetcher = this.activeAuditTab() === '2fa'
+        ? (f: AuditLogFilter) => this.adminUserService.get2faAuditLog(f)
+        : (f: AuditLogFilter) => this.api.list(f);
+      const result = await fetcher(filter);
       this.items.set(result.items);
       this.totalCount.set(result.meta.totalCount ?? 0);
+
       this.expandedRows.clear();
     } catch (error) {
       this.errorMessage.set(this.api.extractErrorMessage(error));
@@ -305,6 +324,18 @@ export class AuditLogComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  onTabChange(tab: 'all' | '2fa'): void {
+    if (tab === this.activeAuditTab()) return;
+    this.activeAuditTab.set(tab);
+    this.filterEventType = '';
+    this.filterActorUserId = '';
+    this.filterSubjectUserId = '';
+    this.filterFrom = null;
+    this.filterTo = null;
+    this.currentPage.set(1);
+    this.loadEvents();
   }
 
   applyFilters(): void {

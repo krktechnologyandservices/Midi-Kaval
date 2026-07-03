@@ -1,8 +1,10 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { AdminUserListResult, DeleteUserResponse, SuspendUserRequest, UserActionResponse } from '../models/admin.models';
+import { AuditEventDto, AuditLogFilter } from '../models/audit.models';
+import { AuditMeta } from './audit.service';
 
 interface ApiEnvelope<T> {
   data: T;
@@ -99,5 +101,57 @@ export class AdminUserService {
         {},
       ),
     ).then(e => e.data);
+  }
+
+  getRequire2faStatus(): Promise<{ require2fa: boolean }> {
+    return firstValueFrom(
+      this.http.get<ApiEnvelope<{ require2fa: boolean }>>(
+        `${environment.apiBaseUrl}/api/v1/admin/settings/require-2fa`,
+      ),
+    ).then(e => e.data);
+  }
+
+  setRequire2fa(require2fa: boolean): Promise<{ require2fa: boolean }> {
+    return firstValueFrom(
+      this.http.put<ApiEnvelope<{ require2fa: boolean }>>(
+        `${environment.apiBaseUrl}/api/v1/admin/settings/require-2fa`,
+        { require2fa },
+      ),
+    ).then(e => e.data);
+  }
+
+  getDelegationStatus(): Promise<{ enabled: boolean }> {
+    return firstValueFrom(
+      this.http.get<ApiEnvelope<{ enabled: boolean }>>(
+        `${environment.apiBaseUrl}/api/v1/admin/settings/delegate-2fa-reset`,
+      ),
+    ).then(e => e.data);
+  }
+
+  setDelegation(enabled: boolean): Promise<{ enabled: boolean }> {
+    return firstValueFrom(
+      this.http.put<ApiEnvelope<{ enabled: boolean }>>(
+        `${environment.apiBaseUrl}/api/v1/admin/settings/delegate-2fa-reset`,
+        { enabled },
+      ),
+    ).then(e => e.data);
+  }
+
+  get2faAuditLog(filter: AuditLogFilter): Promise<{ items: AuditEventDto[]; meta: AuditMeta }> {
+    let params = new HttpParams();
+    if (filter.eventType) params = params.set('eventType', filter.eventType);
+    if (filter.actorUserId) params = params.set('userId', filter.actorUserId);
+    if (filter.subjectUserId) params = params.set('userId', filter.subjectUserId);
+    if (filter.from) params = params.set('from', filter.from);
+    if (filter.to) params = params.set('to', filter.to);
+    if (filter.page != null) params = params.set('page', filter.page);
+    if (filter.pageSize != null) params = params.set('pageSize', filter.pageSize);
+
+    return firstValueFrom(
+      this.http.get<{ data: { items: AuditEventDto[] }; meta: AuditMeta }>(
+        `${environment.apiBaseUrl}/api/v1/admin/audit/2fa`,
+        { params },
+      ),
+    ).then(e => ({ items: e.data.items, meta: e.meta }));
   }
 }
