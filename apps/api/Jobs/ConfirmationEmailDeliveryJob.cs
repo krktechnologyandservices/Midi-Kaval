@@ -70,13 +70,17 @@ public sealed class ConfirmationEmailDeliveryJob(
         var baseUrl = configuration.GetValue<string>("ConfirmationLink:BaseUrl") ?? "http://localhost:4200";
         var confirmationUrl = $"{baseUrl.TrimEnd('/')}/confirm-email?token={rawToken}&sig={signature}";
 
+        var orgRequires2fa = token.Invitation?.Organisation?.Require2fa ?? false;
+
         var emailContext = new ConfirmationEmailContext(
             userName,
             orgName,
             role,
             confirmationUrl,
             ttlHours,
-            directorName);
+            directorName,
+            Include2faInfo: true,
+            OrgRequires2fa: orgRequires2fa);
 
         var subject = ConfirmationEmailTemplate.RenderSubject(emailContext);
         var body = ConfirmationEmailTemplate.RenderBody(emailContext);

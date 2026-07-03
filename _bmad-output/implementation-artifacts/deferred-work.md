@@ -642,3 +642,8 @@ Items deferred during BMad workflows — revisit in future stories or tooling pa
 
 - Missing `500` response documentation on new GET endpoints — pre-existing pattern, many endpoints in the same controller lack 500 docs
 - Magic string Redis key `delegate_2fa_reset:{orgId}` — pre-existing pattern also used in `SetDelegationAsync`; cross-method refactor
+
+## Deferred from: code review of 25-8-proactive-onboarding-emails.md (2026-07-03)
+
+- No distributed lock for concurrent legacy migration runs — Legacy2faMigrationJob lacks distributed locking for multi-instance deployments; pre-existing cross-cutting concern, no lock pattern exists in project yet
+- OTP promotional tone when 2FA is mandatory — OTP footer says "Did you know?" suggesting optional feature when org mandates 2FA; subjective wording choice, matches spec intent

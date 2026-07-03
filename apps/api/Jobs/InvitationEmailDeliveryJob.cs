@@ -22,6 +22,7 @@ public sealed class InvitationEmailDeliveryJob(
         string signature,
         string targetEmail,
         string role,
+        bool include2faInfo = false,
         CancellationToken cancellationToken = default)
     {
         var invitation = await db.Invitations
@@ -50,6 +51,7 @@ public sealed class InvitationEmailDeliveryJob(
         var invitationUrl = tokenService.BuildInvitationUrl(baseUrl, rawToken, signature);
 
         var orgName = invitation.Organisation?.Name ?? "your organisation";
+        var orgRequires2fa = invitation.Organisation?.Require2fa ?? false;
 
         var subject = $"You've been invited to join {orgName}";
         var body = $"""
@@ -58,6 +60,14 @@ public sealed class InvitationEmailDeliveryJob(
             <p><a href="{invitationUrl}">{invitationUrl}</a></p>
             <p>This link expires in 24 hours.</p>
             """;
+
+        if (include2faInfo || orgRequires2fa)
+        {
+            var setupUrl = role == "Vendor" ? "/vendor/settings" : "/settings/2fa";
+            body += $"""
+                <p>After logging in, set up two-factor authentication (2FA) to add an extra layer of security. You can set this up at {setupUrl}.</p>
+                """;
+        }
 
         try
         {

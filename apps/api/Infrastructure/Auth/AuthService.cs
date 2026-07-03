@@ -146,11 +146,18 @@ public sealed class AuthService(
         try
         {
             challengeId = await otpChallengeStore.CreateAsync(challenge, cancellationToken);
+
+            var otpBody = $"Your verification code is: {otpCode}\n\nEnter the 6-digit code from your email.";
+            if (user.TotpEnrolledAt is null && orgRequires2fa)
+            {
+                otpBody += $"\n\nDid you know? Two-factor authentication provides an extra layer of security to protect your account. Set it up at {setupUrl}.";
+            }
+
             await emailSender.SendAsync(
                 new EmailMessage(
                     user.Email,
                     "Your Kaval Online verification code",
-                    $"Your verification code is: {otpCode}\n\nEnter the 6-digit code from your email."),
+                    otpBody),
                 cancellationToken);
         }
         catch (OperationCanceledException)

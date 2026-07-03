@@ -300,7 +300,8 @@ export class AuthSessionService {
       return;
     }
 
-    void this.router.navigate(['/login']);
+    // Fallback: navigate to the root which applies rootRedirectGuard
+    void this.router.navigate(['/']);
   }
 
   handleSessionExpired(): void {
@@ -430,6 +431,14 @@ export class AuthSessionService {
       this.totpTokenVersion.set(state.tokenVersion);
       this.totpChallengeId.set(state.totpChallengeId);
     }
+  }
+
+  /** Clear the 2FA setup required flag and persist to session storage. */
+  clear2faSetupRequired(): void {
+    this.requires2faSetup.set(false);
+    this.setupUrl.set(null);
+    this.orgRequires2fa.set(false);
+    this.persist2faSetupState();
   }
 
   private persist2faSetupState(): void {

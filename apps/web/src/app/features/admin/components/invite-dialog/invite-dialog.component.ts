@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -20,7 +21,7 @@ interface RoleOption {
   imports: [
     MatDialogModule, MatButtonModule, MatFormFieldModule,
     MatInputModule, MatSelectModule, MatCardModule,
-    MatProgressSpinnerModule, FormsModule,
+    MatProgressSpinnerModule, FormsModule, MatCheckboxModule,
   ],
   template: `
     <h2 mat-dialog-title>Invite User</h2>
@@ -74,6 +75,13 @@ interface RoleOption {
               Inviting <strong>{{ email }}</strong> as <strong>{{ role }}</strong>.
               They will receive an email with a 24-hour invitation link. This will be logged.
             </p>
+            <mat-checkbox
+              [(ngModel)]="include2faInstructions"
+              [disabled]="submitting()"
+              class="checkbox-2fa"
+            >
+              Include 2FA setup instructions
+            </mat-checkbox>
           </mat-card-content>
         </mat-card>
 
@@ -105,6 +113,7 @@ interface RoleOption {
   styles: `
     .full-width { width: 100%; }
     .confirmation-card { background: #F5F6FA; margin-bottom: 8px; }
+    .checkbox-2fa { display: block; margin-top: 12px; }
     .error-message { color: #991B1B; background: #FEF2F2; padding: 8px 12px; border-radius: 4px; margin-top: 8px; font-size: 14px; }
     .btn-spinner { display: inline-block; margin-right: 6px; vertical-align: middle; }
     mat-dialog-content { min-width: 420px; padding-top: 8px; }
@@ -127,6 +136,7 @@ export class InviteDialogComponent {
 
   email = '';
   role = '';
+  include2faInstructions = signal(true);
 
   canSend(): boolean {
     return this.email.trim().length > 0
@@ -144,6 +154,7 @@ export class InviteDialogComponent {
       const request: SendInvitationRequest = {
         email: this.email.trim(),
         role: this.role,
+        include2faInstructions: this.include2faInstructions(),
       };
 
       const response = await this.invitationService.sendInvitation(request);

@@ -39,6 +39,7 @@ export interface SendInvitationRequest {
   email: string;
   role: string;
   message?: string;
+  include2faInstructions?: boolean;
 }
 
 export interface InvitationSummary {

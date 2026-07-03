@@ -4,7 +4,8 @@ namespace MidiKaval.Api.Models.Admin;
 
 public sealed record SendInvitationRequest(
     [Required, EmailAddress, MaxLength(254)] string Email,
-    [Required, MaxLength(50)] string Role
+    [Required, MaxLength(50)] string Role,
+    bool Include2faInstructions = false
 );
 
 public sealed record InvitationSummary(

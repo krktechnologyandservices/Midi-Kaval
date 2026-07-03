@@ -168,6 +168,7 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<ZeroDirectorAlertJob>();
     builder.Services.AddScoped<ZeroDirectorMonitorJob>();
     builder.Services.AddScoped<ConfirmationEmailDeliveryJob>();
+    builder.Services.AddScoped<Legacy2faMigrationJob>();
 
     // Hangfire background jobs
     var hangfireConnectionString = builder.Configuration.GetConnectionString("Hangfire");
@@ -251,6 +252,10 @@ if (!app.Environment.IsTesting())
         "zero-director-monitor",
         j => j.ExecuteAsync(CancellationToken.None),
         "0 * * * *"); // Every hour
+    RecurringJob.AddOrUpdate<Legacy2faMigrationJob>(
+        "legacy-2fa-migration",
+        j => j.ExecuteAsync(CancellationToken.None),
+        "0 * * * *"); // Every hour — cursor-based idempotency, max 100/hr
 }
 
 app.UseSwagger();

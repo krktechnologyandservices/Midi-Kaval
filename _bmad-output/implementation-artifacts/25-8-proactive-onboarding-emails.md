@@ -2,7 +2,11 @@
 
 **Epic:** Epic 25 — 2FA Universal Enrollment & Administration
 
-Status: ready-for-dev
+Status: done
+
+## Baseline Commit
+
+df1bab3079a4eab8e951f9460cb5dac7d405663d
 
 ## Story
 
@@ -53,43 +57,43 @@ so that **all users are aware of 2FA requirements from day one and can take acti
 
 ### API Changes
 
-- [ ] Extend `ConfirmationEmailTemplate.cs` to accept 2FA context (AC: 1)
-  - [ ] Add optional parameter `bool include2faInfo` and `bool orgRequires2fa` to render context
-  - [ ] Role-aware setup URL logic (Vendor → `/vendor/settings`, other → `/settings/2fa`)
-  - [ ] Only render 2FA paragraph when `include2faInfo` is true
-  - [ ] Add "Your organisation requires two-factor authentication." sentence when `orgRequires2fa` is true
-- [ ] Modify confirmation email sending path to pass 2FA info (AC: 1)
-  - [ ] Update `ConfirmationEmailDeliveryJob.ExecuteAsync` to pass `Include2faInfo: true` and `OrgRequires2fa: token.Invitation?.Organisation?.Require2fa ?? false` to the `ConfirmationEmailContext` constructor. The job already loads `token.Invitation.Organisation` via `.Include(t => t.Invitation).ThenInclude(i => i!.Organisation)`.
-  - [ ] Load `Organisation.Require2fa` and pass to template
-- [ ] Extend OTP email footer in `AuthService.LoginAsync` (AC: 2)
-  - [ ] Check `user.TotpEnrolledAt is null` (not enrolled)
-  - [ ] Check `user.Organisation.Require2fa` (org mandate is on)
-  - [ ] Append 2FA setup hint to email body string
-- [ ] Add `Include2faInstructions` to `SendInvitationRequest` DTO in C# (AC: 3)
-- [ ] Modify `InvitationService.SendInvitationAsync` to pass 2FA flag to job (AC: 3)
-- [ ] Modify `InvitationEmailDeliveryJob.ExecuteAsync` to render 2FA paragraph when applicable (AC: 3)
-  - [ ] Add `bool include2faInfo` and `bool orgRequires2fa` parameters to `ExecuteAsync` method signature
-  - [ ] Load org's `require_2fa` flag from invitation's organisation
-  - [ ] If `orgRequires2fa` is true, always include 2FA paragraph regardless of checkbox
-- [ ] Modify `InvitationService.ResendInvitationAsync` to pass `include2faInfo: true` to `EnqueueEmailJob` (AC: 3, resend path)
-- [ ] Create `Legacy2faMigrationJob` (AC: 4)
-  - [ ] Scan users: `totp_secret IS NULL AND is_active = true AND is_suspended = false`
-  - [ ] Redis cursor at key `legacy_2fa_migration_cursor` (ISO date string of last processed `CreatedAtUtc`)
-  - [ ] Process up to 100 per run, ordered by `CreatedAtUtc`
-  - [ ] Send email via `IEmailSender`, log audit event `2fa_migration_email_sent`
-  - [ ] Update cursor after each batch
-  - [ ] Error handling: log warning, continue processing
-  - [ ] Registration in `Program.cs` — add `builder.Services.AddScoped<Legacy2faMigrationJob>()` alongside other jobs and `RecurringJob.AddOrUpdate<Legacy2faMigrationJob>` with hourly cron
-- [ ] Add `TwoFactorMigrationEmailSent` to `AuditEventTypes.cs` (AC: 5)
+- [x] Extend `ConfirmationEmailTemplate.cs` to accept 2FA context (AC: 1)
+  - [x] Add optional parameter `bool include2faInfo` and `bool orgRequires2fa` to render context
+  - [x] Role-aware setup URL logic (Vendor → `/vendor/settings`, other → `/settings/2fa`)
+  - [x] Only render 2FA paragraph when `include2faInfo` is true
+  - [x] Add "Your organisation requires two-factor authentication." sentence when `orgRequires2fa` is true
+- [x] Modify confirmation email sending path to pass 2FA info (AC: 1)
+  - [x] Update `ConfirmationEmailDeliveryJob.ExecuteAsync` to pass `Include2faInfo: true` and `OrgRequires2fa: token.Invitation?.Organisation?.Require2fa ?? false` to the `ConfirmationEmailContext` constructor. The job already loads `token.Invitation.Organisation` via `.Include(t => t.Invitation).ThenInclude(i => i!.Organisation)`.
+  - [x] Load `Organisation.Require2fa` and pass to template
+- [x] Extend OTP email footer in `AuthService.LoginAsync` (AC: 2)
+  - [x] Check `user.TotpEnrolledAt is null` (not enrolled)
+  - [x] Check `user.Organisation.Require2fa` (org mandate is on)
+  - [x] Append 2FA setup hint to email body string
+- [x] Add `Include2faInstructions` to `SendInvitationRequest` DTO in C# (AC: 3)
+- [x] Modify `InvitationService.SendInvitationAsync` to pass 2FA flag to job (AC: 3)
+- [x] Modify `InvitationEmailDeliveryJob.ExecuteAsync` to render 2FA paragraph when applicable (AC: 3)
+  - [x] Add `bool include2faInfo` and `bool orgRequires2fa` parameters to `ExecuteAsync` method signature
+  - [x] Load org's `require_2fa` flag from invitation's organisation
+  - [x] If `orgRequires2fa` is true, always include 2FA paragraph regardless of checkbox
+- [x] Modify `InvitationService.ResendInvitationAsync` to pass `include2faInfo: true` to `EnqueueEmailJob` (AC: 3, resend path)
+- [x] Create `Legacy2faMigrationJob` (AC: 4)
+  - [x] Scan users: `totp_secret IS NULL AND is_active = true AND is_suspended = false`
+  - [x] Redis cursor at key `legacy_2fa_migration_cursor` (ISO date string of last processed `CreatedAtUtc`)
+  - [x] Process up to 100 per run, ordered by `CreatedAtUtc`
+  - [x] Send email via `IEmailSender`, log audit event `2fa_migration_email_sent`
+  - [x] Update cursor after each batch
+  - [x] Error handling: log warning, continue processing
+  - [x] Registration in `Program.cs` — add `builder.Services.AddScoped<Legacy2faMigrationJob>()` alongside other jobs and `RecurringJob.AddOrUpdate<Legacy2faMigrationJob>` with hourly cron
+- [x] Add `TwoFactorMigrationEmailSent` to `AuditEventTypes.cs` (AC: 5)
 
 ### Angular Changes
 
-- [ ] Add `Include2faInstructions` to `SendInvitationRequest` in `admin.models.ts` (AC: 3)
-- [ ] Extend `InviteDialogComponent` with MatCheckbox in confirmation step (AC: 3)
-  - [ ] Import `MatCheckboxModule`
-  - [ ] Add checkbox below confirmation text: "Include 2FA setup instructions" (default: checked)
-  - [ ] Pass checkbox value as `include2faInstructions` in the request
-- [ ] Run `ng build` and `dotnet build` to verify compilation
+- [x] Add `Include2faInstructions` to `SendInvitationRequest` in `admin.models.ts` (AC: 3)
+- [x] Extend `InviteDialogComponent` with MatCheckbox in confirmation step (AC: 3)
+  - [x] Import `MatCheckboxModule`
+  - [x] Add checkbox below confirmation text: "Include 2FA setup instructions" (default: checked)
+  - [x] Pass checkbox value as `include2faInstructions` in the request
+- [x] Run `ng build` and `dotnet build` to verify compilation
 
 ## Dev Notes
 
@@ -477,3 +481,66 @@ protected virtual void EnqueueEmailJob(
 ### Agent Model Used
 
 deepseek-v4-flash
+
+### Implementation Plan
+
+1. Extended `ConfirmationEmailTemplate.cs` — added `Include2faInfo` and `OrgRequires2fa` optional parameters to the context record, with role-aware setup URL logic (Vendor → `/vendor/settings`, other → `/settings/2fa`). Only renders 2FA paragraph when `Include2faInfo` is true, with additional org mandate sentence when `OrgRequires2fa` is true.
+
+2. Modified `ConfirmationEmailDeliveryJob.cs` — passes `Include2faInfo: true` and `OrgRequires2fa: token.Invitation?.Organisation?.Require2fa ?? false` to the `ConfirmationEmailContext` constructor. The job already loads `token.Invitation.Organisation` via existing Include chain.
+
+3. Extended OTP email footer in `AuthService.LoginAsync` — checks `user.TotpEnrolledAt is null` and `orgRequires2fa` (already loaded from separate query at line 97-100). Appends 2FA setup hint to email body string.
+
+4. Added `Include2faInstructions` to `SendInvitationRequest` DTO as optional trailing parameter with default `false`.
+
+5. Modified `InvitationService.EnqueueEmailJob` — accepts `bool include2faInfo = false` parameter and passes it to the Hangfire job expression tree.
+
+6. Modified `InvitationService.SendInvitationAsync` — passes `request.Include2faInstructions` to `EnqueueEmailJob`.
+
+7. Modified `InvitationService.ResendInvitationAsync` — passes `include2faInfo: true` on resend (checkbox default, original flag not stored on Invitation entity).
+
+8. Extended `InvitationEmailDeliveryJob.ExecuteAsync` — accepts `bool include2faInfo = false` parameter, loads `orgRequires2fa` from invitation's organisation. Renders 2FA paragraph when `include2faInfo || orgRequires2fa` (mandate overrides checkbox).
+
+9. Created `Legacy2faMigrationJob` — scans unenrolled active users (`totp_secret IS NULL AND is_active = true AND is_suspended = false`), processes max 100 per hour using Redis cursor at key `legacy_2fa_migration_cursor`, sends migration email, records `2fa_migration_email_sent` audit event, logs completion.
+
+10. Added `TwoFactorMigrationEmailSent` to `AuditEventTypes.cs`.
+
+11. Registered `Legacy2faMigrationJob` as scoped service and hourly recurring Hangfire job in `Program.cs`.
+
+12. Updated Angular `admin.models.ts` — added `include2faInstructions?: boolean` to `SendInvitationRequest`.
+
+13. Extended `InviteDialogComponent` — imported `MatCheckboxModule`, added checkbox "Include 2FA setup instructions" (default: checked) in the confirmation step, passes value as `include2faInstructions` in the request.
+
+### Completion Notes
+
+- All 4 FR requirements implemented (FR-3.1 welcome email, FR-3.2 OTP footer, FR-3.3 invitation checkbox, FR-3.4 legacy migration job)
+- Both API (dotnet build) and Web (ng build) compile with 0 errors (only pre-existing warnings)
+- Confirmation email template extended with backward-compatible optional parameters — no callers needed updates
+- Invitation delivery job signature changed to accept `bool include2faInfo` — all enqueue call sites updated
+- Legacy migration uses cursor-based idempotency via Redis — safe for hourly recurring schedule
+- Angular invite dialog checkbox defaults to checked, mandate override always includes 2FA instructions regardless of checkbox state
+
+### File List
+
+**New files:**
+- `apps/api/Jobs/Legacy2faMigrationJob.cs`
+
+**Modified files:**
+- `apps/api/Infrastructure/Email/Templates/ConfirmationEmailTemplate.cs`
+- `apps/api/Infrastructure/Auth/AuthService.cs`
+- `apps/api/Domain/RoleManagement/InvitationService.cs`
+- `apps/api/Jobs/InvitationEmailDeliveryJob.cs`
+- `apps/api/Jobs/ConfirmationEmailDeliveryJob.cs`
+- `apps/api/Models/Admin/InvitationDtos.cs`
+- `apps/api/Infrastructure/Audit/AuditEventTypes.cs`
+- `apps/api/Program.cs`
+- `apps/web/src/app/features/admin/models/admin.models.ts`
+- `apps/web/src/app/features/admin/components/invite-dialog/invite-dialog.component.ts`
+
+### Review Findings
+
+- [x] [Review][Patch] Use `DateTime.TryParse` instead of `DateTime.Parse` in `Legacy2faMigrationJob` [Legacy2faMigrationJob.cs:29]
+- [x] [Review][Patch] Include 2FA setup URL in OTP email footer body [AuthService.cs:152]
+- [x] [Review][Patch] Interpolate `setupUrl` into invitation email body paragraph (currently dead code) [InvitationEmailDeliveryJob.cs:63-68]
+- [x] [Review][Patch] Change zero-user early return log message to match spec format [Legacy2faMigrationJob.cs:42]
+- [x] [Review][Defer] No distributed lock for concurrent migration runs — deferred, pre-existing cross-cutting concern
+- [x] [Review][Defer] OTP promotional tone when 2FA is mandatory — subjective, matches spec intent

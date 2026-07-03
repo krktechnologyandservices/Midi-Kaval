@@ -18,5 +18,7 @@ export const supervisorGuard: CanActivateFn = () => {
     return router.createUrlTree(['/mobile-only']);
   }
 
-  return router.createUrlTree(['/login']);
+  // Other roles (Accountant, etc.) — let them through to the shell
+  // Individual child routes handle their own role-based access control
+  return true;
 };

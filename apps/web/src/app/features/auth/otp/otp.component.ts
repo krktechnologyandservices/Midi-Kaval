@@ -33,6 +33,11 @@ export class OtpComponent implements OnInit, OnDestroy {
     code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
   });
 
+  /** Returns the trimmed 6-digit code (or empty string if invalid). */
+  get trimmedCode(): string {
+    return this.form.controls.code.value?.trim() ?? '';
+  }
+
   private timerId: ReturnType<typeof setInterval> | null = null;
 
   ngOnInit(): void {
@@ -61,18 +66,27 @@ export class OtpComponent implements OnInit, OnDestroy {
 
   async submit(): Promise<void> {
     this.errorMessage.set(null);
+
     if (this.expiredMessage()) {
       return;
     }
 
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+    const code = this.trimmedCode;
+
+    // Validate trimmed code
+    if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
+      this.errorMessage.set('Please enter a valid 6-digit verification code.');
+      this.form.controls.code.setValue(code);
+      this.form.controls.code.markAsTouched();
       return;
     }
 
+    // Patch the form control with trimmed value so the API sends clean data
+    this.form.controls.code.setValue(code);
+
     this.submitting.set(true);
     try {
-      await this.auth.verifyOtp(this.form.controls.code.value);
+      await this.auth.verifyOtp(code);
       this.auth.navigateAfterLogin();
     } catch (error) {
       this.errorMessage.set(this.auth.extractErrorMessage(error));

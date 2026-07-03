@@ -8,7 +8,9 @@ public sealed record ConfirmationEmailContext(
     string Role,
     string ConfirmationUrl,
     int TokenTtlHours,
-    string? DirectorName
+    string? DirectorName,
+    bool Include2faInfo = false,
+    bool OrgRequires2fa = false
 );
 
 public static class ConfirmationEmailTemplate
@@ -23,7 +25,7 @@ public static class ConfirmationEmailTemplate
             ? $"You've been invited by {HttpUtility.HtmlEncode(context.DirectorName)} to join {HttpUtility.HtmlEncode(context.OrganisationName)} as a {HttpUtility.HtmlEncode(context.Role)}."
             : $"You've been invited to join {HttpUtility.HtmlEncode(context.OrganisationName)} as a {HttpUtility.HtmlEncode(context.Role)}.";
 
-        return $"""
+        var body = $"""
         {welcome}
 
         {invitationLine}
@@ -36,5 +38,24 @@ public static class ConfirmationEmailTemplate
 
         If you did not expect this invitation, please ignore this email.
         """;
+
+        if (context.Include2faInfo)
+        {
+            var setupUrl = context.Role == "Vendor" ? "/vendor/settings" : "/settings/2fa";
+            body += $$"""
+
+
+            After logging in, set up two-factor authentication (2FA) to add an extra layer of security to your account. You can set this up at {{setupUrl}}.
+            """;
+            if (context.OrgRequires2fa)
+            {
+                body += """
+
+                Your organisation requires two-factor authentication. You will be prompted to set it up on your next login.
+                """;
+            }
+        }
+
+        return body;
     }
 }

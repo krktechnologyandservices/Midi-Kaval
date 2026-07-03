@@ -117,7 +117,7 @@ export class TwoFactorEnrollmentComponent {
   }
 
   goToDashboard(): void {
-    this.authSession.requires2faSetup.set(false);
+    this.authSession.clear2faSetupRequired();
     this.authSession.navigateAfterLogin();
   }
 

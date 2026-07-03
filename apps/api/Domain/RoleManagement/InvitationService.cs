@@ -94,7 +94,7 @@ public class InvitationService(
 
             await transaction.CommitAsync(ct);
 
-            EnqueueEmailJob(invitation.Id, rawToken, signature, request.Email, request.Role);
+            EnqueueEmailJob(invitation.Id, rawToken, signature, request.Email, request.Role, request.Include2faInstructions);
         }
         catch
         {
@@ -229,7 +229,7 @@ public class InvitationService(
             await transaction.CommitAsync(ct);
 
             // Enqueue email to target recipient (after commit)
-            EnqueueEmailJob(invitationId, rawToken, signature, invitation.TargetEmail, invitation.Role);
+            EnqueueEmailJob(invitationId, rawToken, signature, invitation.TargetEmail, invitation.Role, include2faInfo: true);
 
             // Enqueue notification to original inviter (after commit)
             if (invitation.InvitedByUser is not null)
@@ -259,10 +259,10 @@ public class InvitationService(
             $"Invitation resent to {invitation.TargetEmail}.");
     }
 
-    protected virtual void EnqueueEmailJob(Guid invitationId, string rawToken, string signature, string email, string role)
+    protected virtual void EnqueueEmailJob(Guid invitationId, string rawToken, string signature, string email, string role, bool include2faInfo = false)
     {
         BackgroundJob.Enqueue<InvitationEmailDeliveryJob>(j =>
-            j.ExecuteAsync(invitationId, rawToken, signature, email, role, CancellationToken.None));
+            j.ExecuteAsync(invitationId, rawToken, signature, email, role, include2faInfo, CancellationToken.None));
     }
 
     protected virtual void EnqueueResendNotificationJob(

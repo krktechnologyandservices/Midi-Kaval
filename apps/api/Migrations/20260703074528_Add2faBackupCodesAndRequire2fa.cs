@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,11 +6,18 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MidiKaval.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class AddBackupCodesTable : Migration
+    public partial class Add2faBackupCodesAndRequire2fa : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<bool>(
+                name: "require_2fa",
+                table: "organisations",
+                type: "boolean",
+                nullable: false,
+                defaultValue: false);
+
             migrationBuilder.CreateTable(
                 name: "backup_codes",
                 columns: table => new
@@ -20,7 +27,7 @@ namespace MidiKaval.Api.Migrations
                     code_hash = table.Column<string>(type: "text", nullable: false),
                     used = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    used_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    used_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -50,6 +57,10 @@ namespace MidiKaval.Api.Migrations
         {
             migrationBuilder.DropTable(
                 name: "backup_codes");
+
+            migrationBuilder.DropColumn(
+                name: "require_2fa",
+                table: "organisations");
         }
     }
 }

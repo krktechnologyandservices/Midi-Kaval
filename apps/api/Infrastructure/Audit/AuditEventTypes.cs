@@ -104,4 +104,5 @@ public static class AuditEventTypes
     public const string TwoFactorDelegationEnabled = "2fa_delegation_enabled";
     public const string TwoFactorDelegationDisabled = "2fa_delegation_disabled";
     public const string TwoFactorReminderSent = "2fa_reminder_sent";
+    public const string TwoFactorMigrationEmailSent = "2fa_migration_email_sent";
 }

@@ -1,5 +1,5 @@
 # generated: 2026-07-01
-# last_updated: 2026-07-03T12:15+05:30
+# last_updated: 2026-07-03T12:37+05:30
 # project: Midi-Kaval
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-07-01
-last_updated: 2026-07-03T12:15+05:30
+last_updated: 2026-07-03T12:37+05:30
 
 # Epic 24 added: DevOps & Deployment Infrastructure — Story 24-1 (local dev scripts) created
 
@@ -224,5 +224,5 @@ development_status:
   25-5-vendor-settings-page: done
   25-6-director-staff-management: done
   25-7-organisation-settings-audit-log: done
-  25-8-proactive-onboarding-emails: ready-for-dev
+  25-8-proactive-onboarding-emails: done
   epic-25-retrospective: optional
