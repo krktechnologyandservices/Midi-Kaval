@@ -127,10 +127,10 @@ public class BackupCodeService(
 
     private static string GenerateCode()
     {
-        var bytes = new byte[6];
+        var bytes = new byte[CodeLength];
         RandomNumberGenerator.Fill(bytes);
 
-        // Map 6 random bytes to 10 alphanumeric characters (0-9, A-Z excluding I,O,0,1)
+        // Map each random byte to one alphanumeric character (0-9, A-Z excluding I,O,0,1)
         const string chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
         var codeChars = new char[CodeLength];
         for (var i = 0; i < CodeLength; i++)

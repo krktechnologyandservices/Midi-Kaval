@@ -93,32 +93,29 @@ public sealed class DashboardService(
     {
         var now = DateTime.UtcNow;
 
-        var casesByStageTask = QueryCasesByStageAsync(organisationId, ct);
-        var casesByOffenceClassificationTask = QueryCasesByOffenceClassificationAsync(organisationId, ct);
-        var casesByDomicileTask = QueryCasesByDomicileAsync(organisationId, ct);
-        var casesByStaffTask = QueryCasesByStaffAsync(organisationId, ct);
-        var overdueVisitsTask = QueryOverdueVisitsAsync(organisationId, now, ct);
-        var interventionsGaugeTask = QueryInterventionsGaugeAsync(organisationId, now, ct);
-        var courtThisWeekTask = QueryCourtThisWeekAsync(organisationId, now, ct);
-        var pendingClaimsTask = QueryPendingClaimsAsync(organisationId, now, ct);
-        var intakeTrendTask = QueryIntakeTrendAsync(organisationId, now, ct);
-
-        await Task.WhenAll(
-            casesByStageTask, casesByOffenceClassificationTask, casesByDomicileTask,
-            casesByStaffTask, overdueVisitsTask, interventionsGaugeTask,
-            courtThisWeekTask, pendingClaimsTask, intakeTrendTask);
+        // These queries share a single scoped DbContext, which EF Core does not allow to run
+        // concurrently — each query must be awaited before starting the next one.
+        var casesByStage = await QueryCasesByStageAsync(organisationId, ct);
+        var casesByOffenceClassification = await QueryCasesByOffenceClassificationAsync(organisationId, ct);
+        var casesByDomicile = await QueryCasesByDomicileAsync(organisationId, ct);
+        var casesByStaff = await QueryCasesByStaffAsync(organisationId, ct);
+        var overdueVisits = await QueryOverdueVisitsAsync(organisationId, now, ct);
+        var interventionsGauge = await QueryInterventionsGaugeAsync(organisationId, now, ct);
+        var courtThisWeek = await QueryCourtThisWeekAsync(organisationId, now, ct);
+        var pendingClaims = await QueryPendingClaimsAsync(organisationId, now, ct);
+        var intakeTrend = await QueryIntakeTrendAsync(organisationId, now, ct);
 
         return new DashboardResultDto
         {
-            CasesByStage = casesByStageTask.Result,
-            CasesByOffenceClassification = casesByOffenceClassificationTask.Result,
-            CasesByDomicile = casesByDomicileTask.Result,
-            CasesByStaff = casesByStaffTask.Result,
-            OverdueVisits = overdueVisitsTask.Result,
-            InterventionsGauge = interventionsGaugeTask.Result,
-            CourtThisWeek = courtThisWeekTask.Result,
-            PendingClaims = pendingClaimsTask.Result,
-            IntakeTrend = intakeTrendTask.Result,
+            CasesByStage = casesByStage,
+            CasesByOffenceClassification = casesByOffenceClassification,
+            CasesByDomicile = casesByDomicile,
+            CasesByStaff = casesByStaff,
+            OverdueVisits = overdueVisits,
+            InterventionsGauge = interventionsGauge,
+            CourtThisWeek = courtThisWeek,
+            PendingClaims = pendingClaims,
+            IntakeTrend = intakeTrend,
         };
     }
 
@@ -228,12 +225,12 @@ public sealed class DashboardService(
     {
         var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        var inProgressTask = db.Interventions
+        var inProgress = await db.Interventions
             .Where(i => i.OrganisationId == organisationId
                 && (i.Status == InterventionStatus.Open || i.Status == InterventionStatus.InProgress))
             .CountAsync(ct);
 
-        var overdueTask = db.Interventions
+        var overdue = await db.Interventions
             .Where(i => i.OrganisationId == organisationId
                 && i.DueAtUtc != null
                 && i.DueAtUtc < now
@@ -241,19 +238,17 @@ public sealed class DashboardService(
                 && i.Status != InterventionStatus.Cancelled)
             .CountAsync(ct);
 
-        var completedThisMonthTask = db.Interventions
+        var completedThisMonth = await db.Interventions
             .Where(i => i.OrganisationId == organisationId
                 && i.Status == InterventionStatus.Completed
                 && i.ProvidedAtUtc >= monthStart)
             .CountAsync(ct);
 
-        await Task.WhenAll(inProgressTask, overdueTask, completedThisMonthTask);
-
         return new InterventionsGaugeDto
         {
-            InProgress = inProgressTask.Result,
-            Overdue = overdueTask.Result,
-            CompletedThisMonth = completedThisMonthTask.Result,
+            InProgress = inProgress,
+            Overdue = overdue,
+            CompletedThisMonth = completedThisMonth,
         };
     }
 

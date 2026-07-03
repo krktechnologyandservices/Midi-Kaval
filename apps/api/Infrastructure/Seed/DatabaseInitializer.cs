@@ -23,13 +23,6 @@ public static class DatabaseInitializer
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
 
-        // Dev-only: reset any stale 2FA state so test users can re-enroll
-        await db.Users
-            .Where(u => u.TotpSecret != null || u.TotpEnrolledAt != null)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(u => u.TotpSecret, (string?)null)
-                .SetProperty(u => u.TotpEnrolledAt, (DateTime?)null));
-
         var seeder = scope.ServiceProvider.GetRequiredService<AdminUserSeeder>();
         await seeder.SeedAsync();
 

@@ -31,6 +31,16 @@ public class TwoFactorService(
             throw new InvalidOperationException("Two-factor authentication is already enrolled.");
         }
 
+        // Enrollment is still pending (e.g. QR already shown for a previous call on this
+        // session) — reuse the existing secret instead of silently regenerating it, otherwise
+        // any code from an authenticator app that already scanned the earlier QR will never verify.
+        if (!string.IsNullOrWhiteSpace(user.TotpSecret))
+        {
+            var existingUri = new OtpUri(OtpType.Totp, user.TotpSecret, user.Email, options.Value.Issuer)
+                .ToString();
+            return new TotpProvisioningResult(existingUri, user.TotpSecret);
+        }
+
         var secret = KeyGeneration.GenerateRandomKey(20);
         var base32Secret = Base32Encoding.ToString(secret);
 
@@ -86,6 +96,10 @@ public class TwoFactorService(
 
         if (!verified)
         {
+            var expectedCode = totp.ComputeTotp();
+            logger.LogWarning(
+                "TOTP enrollment verification failed for user {UserId}: submitted {SubmittedCode}, expected {ExpectedCode} at server time {ServerTimeUtc:o}",
+                user.Id, code, expectedCode, DateTime.UtcNow);
             return new TotpEnrollmentResult(false, "Invalid code. Please try again.");
         }
 
