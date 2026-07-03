@@ -12,6 +12,7 @@ import { TwoFactorService } from '../../services/two-factor.service';
 import { BackupCodeService } from '../../services/backup-code.service';
 import { BackupCodesDisplayComponent } from './backup-codes-display.component';
 import { AuthSessionService } from '../../../core/auth/auth-session.service';
+import QRCode from 'qrcode';
 
 type EnrollmentStep = 'initiate' | 'qr-display' | 'verify' | 'backup-codes' | 'success';
 
@@ -63,12 +64,40 @@ export class TwoFactorEnrollmentComponent {
     this.submitting.set(true);
     this.errorMessage.set(null);
     try {
-      const result = await this.twoFactorService.enroll();
+      const response = await this.twoFactorService.enroll();
+      console.log('Enroll API response:', response);
+      const result = (response as any)?.data ?? response;
+
+      if (!result?.provisioningUri || !result?.secretBase32) {
+        console.error(
+          'Enrollment response is missing provisioningUri/secretBase32:',
+          response,
+        );
+        this.errorMessage.set(
+          'Failed to initiate enrollment: the server response was incomplete. ' +
+            'Check the browser console for details.',
+        );
+        this.currentStep.set('initiate');
+        return;
+      }
+
       this.provisioningUri.set(result.provisioningUri);
       this.secretBase32.set(result.secretBase32);
-      await this.generateQrCode(result.provisioningUri);
+      // Generate QR code client-side from the provisioning URI
+      try {
+        const url = await QRCode.toDataURL(result.provisioningUri, {
+          width: 250,
+          margin: 2,
+          color: { dark: '#000000', light: '#ffffff' },
+        });
+        this.qrCodeDataUrl.set(url);
+        console.log('QR code generated successfully');
+      } catch (qrErr) {
+        console.warn('QR generation failed, showing manual entry only', qrErr);
+      }
       this.currentStep.set('qr-display');
     } catch (error) {
+      console.error('Enroll API error:', error);
       this.errorMessage.set(
         error instanceof HttpErrorResponse
           ? error.error?.detail ?? 'Failed to initiate enrollment.'
@@ -129,30 +158,6 @@ export class TwoFactorEnrollmentComponent {
     const secret = this.secretBase32();
     if (secret) {
       void navigator.clipboard.writeText(secret);
-    }
-  }
-
-  private async generateQrCode(uri: string): Promise<void> {
-    try {
-      const { default: qrcodeGenerator } = await import(
-        'qrcode-generator'
-      ) as unknown as {
-        default: (
-          typeNumber: number,
-          errorCorrectionLevel: string,
-        ) => {
-          addData: (data: string) => void;
-          make: () => void;
-          createDataURL: (cellSize: number, margin: number) => string;
-        };
-      };
-      const qr = qrcodeGenerator(0, 'M');
-      qr.addData(uri);
-      qr.make();
-      const dataUrl = qr.createDataURL(4, 4);
-      this.qrCodeDataUrl.set(dataUrl);
-    } catch {
-      this.qrCodeDataUrl.set(null);
     }
   }
 

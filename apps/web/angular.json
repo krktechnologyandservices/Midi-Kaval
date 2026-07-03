@@ -40,6 +40,9 @@
               "../../node_modules/material-icons/iconfont/material-icons.css"
             ],
             "scripts": [],
+            "allowedCommonJsDependencies": [
+              "qrcode-generator"
+            ],
             "serviceWorker": "ngsw-config.json"
           },
           "configurations": {

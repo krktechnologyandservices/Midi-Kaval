@@ -79,12 +79,14 @@ Kaval Online is a comprehensive case management platform designed for child prot
 
 A 6-digit code is sent to your registered email address. Enter the code within 5 minutes.
 
-**Step 3 — Set 2FA (Recommended for Directors):**
+**Step 3 — Set Up Two-Factor Authentication (2FA):**
 
 After first login, you will be prompted to set up Two-Factor Authentication:
-1. Scan the QR code with Google Authenticator or Authy
-2. Enter the 6-digit code from the app
-3. On subsequent logins, you'll use the authenticator code instead of email OTP
+1. Click **Set Up Two-Factor Authentication**
+2. Scan the QR code with your authenticator app (Google Authenticator, Microsoft Authenticator, or Authy)
+3. Enter the 6-digit code from the app to verify
+4. Save your backup codes
+5. On subsequent logins, you'll use the authenticator code instead of email OTP
 
 **Step 4 — Change Password:**
 
@@ -107,25 +109,63 @@ Email + Password → OTP via Email → Access Granted
 
 > Note: OTP codes expire after 5 minutes. Click "Resend Code" if needed.
 
-### 3.2 Two-Factor Authentication (2FA) — Directors
+### 3.2 Two-Factor Authentication (2FA) Setup
 
-If you have enrolled in 2FA (recommended):
+All users with supervisor-level roles (Director, Coordinator) and Vendor accounts are required to set up 2FA on their first login.
+
+**Step 1 — Initiate Setup:**
+
+1. After verifying the OTP, you'll be taken to the **Two-Factor Authentication Setup** page
+2. Click **Set Up Two-Factor Authentication**
+
+**Step 2 — Add to Your Authenticator App:**
+
+1. The page will display a QR code and a secret key
+
+   > **If you don't see a QR code**, the secret key (a long string of letters and numbers) will still be shown below — you can enter it manually in your authenticator app.
+
+2. Open your authenticator app (Google Authenticator, Microsoft Authenticator, or Authy)
+3. Tap the **+** (plus) icon to add a new account
+4. **For Microsoft Authenticator users:**
+   - Choose **"Other account (Google, Facebook, etc.)"**
+   - Do NOT sign in to your Microsoft account
+   - The 8-digit code shown on the Microsoft account sign-in screen is NOT for Kaval Online
+5. Scan the QR code, or tap "Enter key manually" and type the secret key
+6. The app will display a **6-digit code** that changes every 30 seconds — this is the code for Kaval Online
+
+**Step 3 — Verify Setup:**
+
+1. After adding the account, click **"I've added the account — Continue"**
+2. Enter the 6-digit code from your authenticator app
+3. Click **Verify & Activate**
+
+**Step 4 — Save Backup Codes:**
+
+1. A list of 8 backup codes will be displayed
+2. **Save these codes in a secure place** — each can be used once to regain access if you lose your phone
+3. Click **"I've Saved These Codes"** to confirm
+
+**Step 5 — Complete:**
+
+- You'll see a success message and be redirected to the dashboard
+- On subsequent logins, you'll enter your email + password, then the 6-digit code from your authenticator app (no email OTP)
+
+### 3.3 Returning User 2FA Login
+
+For users who have already enrolled in 2FA:
 
 ```
 Email + Password → TOTP Code → Access Granted
 ```
 
 1. Enter your email and password
-2. Instead of email OTP, you'll be asked for a 6-digit TOTP code
-3. Open your authenticator app and enter the current code
+2. Open your authenticator app
+3. Enter the current 6-digit code shown next to the Kaval Online entry
 4. You are now logged in
 
-**To enroll in 2FA:**
-- Go to **Admin → My Profile → Enable 2FA**
-- Scan the QR code with your authenticator app
-- Enter the verification code to confirm
+> **Note:** After 2FA is enabled, you will NOT receive email OTPs on login — only the authenticator app code is required.
 
-### 3.3 Password Reset
+### 3.4 Password Reset
 
 1. On the login page, click **Forgot Password?**
 2. Enter your registered email address
@@ -133,14 +173,14 @@ Email + Password → TOTP Code → Access Granted
 4. Click the link and enter your new password (minimum 8 characters)
 5. Log in with your new password
 
-### 3.4 Session Management
+### 3.5 Session Management
 
 - Access tokens expire after **15 minutes**
 - Refresh tokens expire after **7 days**
 - You'll be automatically logged out after prolonged inactivity
 - Log out manually using the profile menu
 
-### 3.5 Step-Up Authentication (Field Workers)
+### 3.6 Step-Up Authentication (Field Workers)
 
 When revealing personally identifiable information (PII) for a case:
 1. Click **Reveal PII** on a case detail page
@@ -623,21 +663,48 @@ The Vendor role provides backstage access for managing organisations and the act
 - Managing activation tokens
 - Generating activation links for Directors
 
-### 14.2 Vendor Endpoints (via Swagger UI)
+### 14.2 Vendor Web Dashboard
 
-Vendor operations are API-only (no web UI). Access via Swagger:
+Vendors have access to a dedicated web UI at `/vendor`:
+
+1. Log in using your vendor credentials at `http://localhost:4200`
+2. After OTP verification, you'll be prompted to set up **Two-Factor Authentication (2FA)**
+3. After completing 2FA enrollment, you'll be redirected to the Vendor Dashboard
+4. Access **Account Settings** via `/vendor/settings` to:
+   - View your 2FA enrollment status
+   - Re-enroll or regenerate backup codes
+   - Change your password
+
+### 14.3 Creating an Organisation
+
+1. On the Vendor Dashboard, fill in:
+   - **Organisation Name** — name of the new organisation
+   - **Director Email** — email address of the Director who will activate the organisation
+2. Click **Create**
+3. An activation link is sent to the Director's email
+4. The organisation appears in your organisation list
+
+### 14.4 Managing Organisations
+
+1. Click **View Organisations** to see all created organisations
+2. For each organisation, you can:
+   - View its status (Active, Pending, Deactivated)
+   - Reissue the activation link
+   - See the activation status (used/unused)
+
+### 14.5 2FA Requirement
+
+All vendor operations require Two-Factor Authentication. If your 2FA session expires:
+1. Go to **Account Settings** (`/vendor/settings`)
+2. Click **Re-enroll** to set up 2FA again
+3. Follow the on-screen instructions
+
+### 14.6 API Access (Alternative)
+
+Vendor operations can also be accessed via Swagger UI:
 1. Open `http://localhost:5049/swagger`
 2. Authorize with your vendor JWT token
 3. Use the Organisations and Admin endpoints
-
-### 14.3 2FA Requirement
-
-All vendor API operations require Two-Factor Authentication enrollment. To enroll:
-1. Login via Swagger UI
-2. Call `POST /api/v1/auth/enroll-2fa`
-3. Scan the provisioning URI with your authenticator app
-4. Call `POST /api/v1/auth/verify-enroll-2fa` with the code
-5. You can now access vendor-protected endpoints
 
 ---
 
@@ -698,26 +765,29 @@ For sensitive field operations:
 | "Contact your coordinator" | Your account has been deactivated. |
 | "Token version mismatch" | Your session was revoked (password change, 2FA reset). Log in again. |
 
-### 16.2 API Not Responding (Web)
+### 16.2 Two-Factor Authentication Issues
+
+| Problem | Solution |
+|---------|----------|
+| QR code not showing | Refresh the page and click **Set Up** again. The secret key will still be displayed — enter it manually in your authenticator app. |
+| Authenticator shows 8-digit code, not 6 | You may be looking at your Microsoft account sign-in code. In Microsoft Authenticator, choose **"Other account (Google, Facebook, etc.)"** — do NOT sign in to Microsoft. The 6-digit code appears next to the Kaval Online entry after adding it. |
+| "Invalid code" during enrollment | Ensure you entered the current 6-digit code from the Kaval Online entry in your authenticator app, not a code from another account. |
+| "Two-Factor Authentication Required" | Log in and go to `/settings/2fa` or your **Account Settings** to complete enrollment. |
+| Lost access to authenticator app | Contact your Director to **Reset 2FA** on your account. You can then re-enroll. |
+| Backup codes not working | Each backup code can be used only once. If all are used, contact your Director to reset your 2FA. |
+
+### 16.3 API Not Responding (Web)
 
 1. Check that Docker containers are running: `docker ps`
 2. Check API is running: open `http://localhost:5049/swagger`
 3. If not, run `scripts\start-api.bat`
 4. Check console for error messages
 
-### 16.3 API Not Responding (Mobile)
+### 16.4 API Not Responding (Mobile)
 
 1. Ensure ADB reverse proxy is set: `adb reverse tcp:5049 tcp:5049`
 2. Confirm API is running on your computer
 3. Reconnect USB cable
-
-### 16.4 "Two-Factor Authentication Required"
-
-You attempted an action that requires 2FA enrollment:
-1. Log in to the web app
-2. Go to **Admin → Enable 2FA**
-3. Follow the setup instructions
-4. Retry the action
 
 ### 16.5 Page Not Loading / Blank Screen
 

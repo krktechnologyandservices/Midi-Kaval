@@ -25,28 +25,61 @@
       </button>
     }
     @case ('qr-display') {
-      <p>Scan the QR code below with your authenticator app, or enter the secret manually.</p>
+      <div class="setup-steps">
+        <h3 class="step-title">Step 1: Add to Your Authenticator App</h3>
+        <ol class="instruction-list">
+          <li>Open your authenticator app (Google Authenticator, Microsoft Authenticator, or Authy)</li>
+          <li>Tap the <strong>+</strong> (plus) icon to add a new account</li>
+          <li>
+            <strong>Microsoft Authenticator users:</strong> Choose
+            <em>"Other account (Google, Facebook, etc.)"</em> — do NOT sign in
+            to your Microsoft account
+          </li>
+          <li>Scan the QR code below, OR tap <em>"Enter key manually"</em> and type the secret key</li>
+        </ol>
+        <div class="important-note" role="note">
+          <mat-icon class="note-icon">info</mat-icon>
+          <span>
+            The authenticator app will show a <strong>6-digit code</strong> that
+            changes every 30 seconds. Some apps also show an 8-digit code for
+            your Microsoft account — ignore that and look for the 6-digit code
+            next to the Kaval Online entry.
+          </span>
+        </div>
+      </div>
+
       <div class="qr-container">
         @if (qrCodeDataUrl()) {
           <img [src]="qrCodeDataUrl()" alt="TOTP QR Code — scan with your authenticator app" class="qr-code" />
         }
         <div class="secret-fallback">
-          <p>Can't scan the QR code? Enter this secret manually:</p>
+          <p>Can't scan the QR code? Enter this secret manually in your authenticator app:</p>
           <div class="secret-row">
-            <code class="secret-value">{{ secretBase32() }}</code>
-            <button
-              mat-icon-button
-              matTooltip="Copy secret key"
-              aria-label="Copy secret key"
-              (click)="copySecret()"
-            >
-              <mat-icon>content_copy</mat-icon>
-            </button>
+            @if (secretBase32()) {
+              <code class="secret-value">{{ secretBase32() }}</code>
+              <button
+                mat-icon-button
+                matTooltip="Copy secret key"
+                aria-label="Copy secret key"
+                (click)="copySecret()"
+              >
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            } @else {
+              <p class="secret-error">Waiting for secret key...</p>
+            }
           </div>
         </div>
       </div>
+
+      <div class="setup-steps">
+        <h3 class="step-title">Step 2: Complete Verification</h3>
+        <p>After adding the account, your authenticator app will show a 6-digit code.</p>
+        <p>Click the button below to proceed.</p>
+      </div>
+
       <button mat-stroked-button color="primary" (click)="goToVerify()" class="action-button">
-        I've scanned the code — Continue
+        I've added the account — Continue
       </button>
     }
     @case ('verify') {
@@ -62,7 +95,7 @@
           inputmode="numeric"
           maxlength="6"
           placeholder="000000"
-          [(ngModel)]="verificationCode"
+          [ngModel]="verificationCode()"
           (input)="onCodeInput($event)"
           aria-describedby="totp-verify-hint"
         />
