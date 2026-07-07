@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DocumentPicker, {types} from 'react-native-document-picker';
+import {launchCamera} from 'react-native-image-picker';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {AccessibleErrorRegion} from '../../components/AccessibleErrorRegion';
@@ -331,6 +332,66 @@ export function TravelClaimFormScreen(): React.JSX.Element {
     }
   };
 
+  const captureReceiptPhoto = async (): Promise<void> => {
+    if (readOnly || isLocalDraft) {
+      return;
+    }
+
+    const response = await launchCamera({
+      mediaType: 'photo',
+      saveToPhotos: false,
+      quality: 0.8,
+    });
+
+    if (response.didCancel) {
+      return;
+    }
+
+    if (response.errorCode) {
+      setErrorMessage(
+        response.errorCode === 'camera_unavailable' || response.errorCode === 'permission'
+          ? 'Camera is not available. Check camera permission in device settings.'
+          : 'Could not capture photo.',
+      );
+      return;
+    }
+
+    const asset = response.assets?.[0];
+    if (!asset?.uri) {
+      setErrorMessage('Could not capture photo.');
+      return;
+    }
+
+    const mime = asset.type ?? 'image/jpeg';
+    if (
+      !ALLOWED_ATTACHMENT_CONTENT_TYPES.includes(
+        mime as (typeof ALLOWED_ATTACHMENT_CONTENT_TYPES)[number],
+      )
+    ) {
+      setErrorMessage('Photo format not allowed. Use JPEG, PNG, or WebP.');
+      return;
+    }
+
+    const size = asset.fileSize;
+    if (size == null || size <= 0) {
+      setErrorMessage('Could not determine photo size. Try again.');
+      return;
+    }
+
+    if (size > MAX_ATTACHMENT_BYTES) {
+      setErrorMessage('Photo exceeds 10 MiB limit.');
+      return;
+    }
+
+    setPickedReceipt({
+      uri: asset.uri,
+      name: asset.fileName ?? `receipt-${Date.now()}.jpg`,
+      type: mime,
+      size,
+    });
+    setErrorMessage(null);
+  };
+
   const uploadReceipt = async (targetClaimId: string): Promise<void> => {
     if (!pickedReceipt) {
       return;
@@ -647,17 +708,26 @@ export function TravelClaimFormScreen(): React.JSX.Element {
             <Text style={styles.receiptName}>{pickedReceipt.name}</Text>
           ) : null}
           {!isLocalDraft ? (
-            <Pressable
-              style={styles.secondaryButton}
-              onPress={() => void pickReceipt()}
-              accessibilityRole="button"
-              accessibilityLabel="Pick receipt">
-              <Text style={styles.secondaryButtonText}>
-                {pickedReceipt || claim?.attachments?.length
-                  ? 'Replace receipt'
-                  : 'Add receipt'}
-              </Text>
-            </Pressable>
+            <View style={styles.receiptButtonRow}>
+              <Pressable
+                style={[styles.secondaryButton, styles.receiptButton]}
+                onPress={() => void captureReceiptPhoto()}
+                accessibilityRole="button"
+                accessibilityLabel="Take photo of receipt">
+                <Text style={styles.secondaryButtonText}>Take photo</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.secondaryButton, styles.receiptButton]}
+                onPress={() => void pickReceipt()}
+                accessibilityRole="button"
+                accessibilityLabel="Pick receipt">
+                <Text style={styles.secondaryButtonText}>
+                  {pickedReceipt || claim?.attachments?.length
+                    ? 'Replace file'
+                    : 'Choose file'}
+                </Text>
+              </Pressable>
+            </View>
           ) : null}
         </>
       ) : null}
@@ -861,6 +931,13 @@ const styles = StyleSheet.create({
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  receiptButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  receiptButton: {
+    flex: 1,
   },
   buttonDisabled: {
     opacity: 0.6,

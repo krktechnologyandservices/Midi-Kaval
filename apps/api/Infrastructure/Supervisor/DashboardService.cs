@@ -2,10 +2,12 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Options;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Domain.Enums;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Persistence;
+using MidiKaval.Api.Jobs;
 using MidiKaval.Api.Models.Supervisor;
 
 namespace MidiKaval.Api.Infrastructure.Supervisor;
@@ -13,7 +15,8 @@ namespace MidiKaval.Api.Infrastructure.Supervisor;
 public sealed class DashboardService(
     AppDbContext db,
     IHttpContextAccessor httpContextAccessor,
-    IDistributedCache cache)
+    IDistributedCache cache,
+    IOptions<BudgetThresholdJobOptions> budgetThresholdOptions)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> CacheLocks = new();
@@ -104,6 +107,7 @@ public sealed class DashboardService(
         var courtThisWeek = await QueryCourtThisWeekAsync(organisationId, now, ct);
         var pendingClaims = await QueryPendingClaimsAsync(organisationId, now, ct);
         var intakeTrend = await QueryIntakeTrendAsync(organisationId, now, ct);
+        var budgetHealth = await QueryBudgetHealthAsync(organisationId, ct);
 
         return new DashboardResultDto
         {
@@ -115,6 +119,7 @@ public sealed class DashboardService(
             InterventionsGauge = interventionsGauge,
             CourtThisWeek = courtThisWeek,
             PendingClaims = pendingClaims,
+            BudgetHealth = budgetHealth,
             IntakeTrend = intakeTrend,
         };
     }
@@ -344,6 +349,53 @@ public sealed class DashboardService(
                 Count = countLookup.GetValueOrDefault(key, 0),
             };
         }).ToList();
+    }
+
+    private async Task<BudgetHealthDto> QueryBudgetHealthAsync(Guid organisationId, CancellationToken ct)
+    {
+        // Shared with BudgetThresholdMonitorJob so the dashboard's "nearing limit" list always matches
+        // what actually triggers a notification, instead of drifting if the job's threshold is reconfigured.
+        var nearingLimitThresholdPercent = budgetThresholdOptions.Value.ThresholdPercent;
+
+        var lineItems = await (
+            from li in db.BudgetLineItems
+            join pb in db.ProjectBudgets on li.ProjectBudgetId equals pb.Id
+            where pb.OrganisationId == organisationId
+                && (pb.ApprovalStatus == BudgetApprovalStatus.Approved || pb.ApprovalStatus == BudgetApprovalStatus.Executed)
+            select new
+            {
+                li.BudgetHead,
+                li.AmountAllocated,
+                li.AmountUtilized,
+                pb.Source,
+            }).ToListAsync(ct);
+
+        var totalAllocated = lineItems.Sum(li => li.AmountAllocated);
+        var totalUtilized = lineItems.Sum(li => li.AmountUtilized);
+
+        var headsNearingLimit = lineItems
+            .Select(li => new BudgetHeadHealthDto
+            {
+                BudgetHead = li.BudgetHead.ToString(),
+                Source = li.Source.ToString(),
+                UtilizationPercentage = li.AmountAllocated > 0
+                    ? Math.Round(li.AmountUtilized / li.AmountAllocated * 100, 1)
+                    : 0m,
+            })
+            .Where(h => h.UtilizationPercentage >= nearingLimitThresholdPercent)
+            .OrderByDescending(h => h.UtilizationPercentage)
+            .ToList();
+
+        return new BudgetHealthDto
+        {
+            TotalAllocated = totalAllocated,
+            TotalUtilized = totalUtilized,
+            TotalBalance = totalAllocated - totalUtilized,
+            OverallUtilizationPercentage = totalAllocated > 0
+                ? Math.Round(totalUtilized / totalAllocated * 100, 1)
+                : 0m,
+            HeadsNearingLimit = headsNearingLimit,
+        };
     }
 
     private Guid ResolveOrganisationId()

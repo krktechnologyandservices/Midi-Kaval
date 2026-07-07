@@ -24,10 +24,21 @@ export interface ProblemDetails {
 }
 
 export const CHALLENGE_KEY = 'midi_kaval_otp_challenge';
+export const TOTP_CHALLENGE_KEY = 'midi_kaval_totp_challenge';
 
 export interface OtpChallengeState {
   challengeId: string;
   expiresInSeconds: number;
+}
+
+// LoginResponse's requiresTotp/totpChallengeId/userId/tokenVersion fields are read via
+// Record<string, unknown> casts in AuthSessionService — the generated OpenAPI client
+// (@midi-kaval/api-client) lags behind the API contract for these fields, same as the
+// web app's auth.models.ts documents. This is intentional, not a typo.
+export interface TotpChallengeState {
+  userId: string;
+  tokenVersion: number;
+  totpChallengeId: string;
 }
 
 export interface StepUpResponse {

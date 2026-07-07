@@ -142,7 +142,11 @@ public class InvitationService(
                 i.InvitedByUser != null ? i.InvitedByUser.Email : null,
                 i.InvitedByUser != null
                     ? ((i.InvitedByUser.FirstName ?? "") + " " + (i.InvitedByUser.LastName ?? "")).Trim()
-                    : null))
+                    : null,
+                db.ConfirmationTokens
+                    .Where(t => t.InvitationId == i.Id)
+                    .Select(t => t.ConsumedAtUtc)
+                    .FirstOrDefault()))
             .ToListAsync(ct);
 
         return new InvitationListResult(items, totalCount, page, pageSize);

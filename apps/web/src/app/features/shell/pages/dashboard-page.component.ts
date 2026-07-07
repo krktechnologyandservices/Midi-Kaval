@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { DashboardApiService } from '../services/dashboard-api.service';
 import { DashboardResultDto } from '../shell.models';
@@ -7,12 +8,12 @@ import { OnlineStateService } from '../../../core/services/online-state.service'
 import { OfflineCacheService } from '../../../core/services/offline-cache.service';
 import { StaleBannerComponent } from '../../../shared/stale-banner/stale-banner.component';
 
-const SKELETON_WIDGET_COUNT = 9;
+const SKELETON_WIDGET_COUNT = 10;
 const CACHE_KEY = 'dashboard';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [CommonModule, MatButtonModule, StaleBannerComponent],
+  imports: [CommonModule, RouterLink, MatButtonModule, StaleBannerComponent],
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.scss',
 })

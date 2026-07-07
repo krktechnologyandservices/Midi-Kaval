@@ -6,7 +6,7 @@ public sealed class NotificationDto
     public string EventType { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
-    public Guid CaseId { get; set; }
+    public Guid? CaseId { get; set; }
     public string ResourceType { get; set; } = string.Empty;
     public Guid ResourceId { get; set; }
     public bool IsRead { get; set; }

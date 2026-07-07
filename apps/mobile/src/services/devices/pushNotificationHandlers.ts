@@ -69,25 +69,36 @@ export function registerPushNotificationHandlers(
     }
   };
 
-  const unsubscribeOpened = messaging().onNotificationOpenedApp(remoteMessage => {
-    void navigateFromPayload(parsePushData(remoteMessage.data));
-  });
-
-  void messaging()
-    .getInitialNotification()
-    .then(remoteMessage => {
-      if (remoteMessage) {
-        void navigateFromPayload(parsePushData(remoteMessage.data));
-      }
+  // The require() above only confirms the JS/native module is linked — it does not
+  // confirm Firebase itself was initialized (needs a real google-services.json + the
+  // Google Services Gradle plugin, neither of which this project has yet). Calling
+  // messaging() without that throws "No Firebase App '[DEFAULT]' has been created"
+  // synchronously, which would otherwise crash the effect that calls this function
+  // right as an authenticated field worker reaches the main tabs.
+  try {
+    const unsubscribeOpened = messaging().onNotificationOpenedApp(remoteMessage => {
+      void navigateFromPayload(parsePushData(remoteMessage.data));
     });
 
-  const unsubscribeForeground = messaging().onMessage(remoteMessage => {
-    const payload = parsePushData(remoteMessage.data);
-    console.info('[PushNotification] Foreground message received.', payload);
-  });
+    void messaging()
+      .getInitialNotification()
+      .then(remoteMessage => {
+        if (remoteMessage) {
+          void navigateFromPayload(parsePushData(remoteMessage.data));
+        }
+      });
 
-  return () => {
-    unsubscribeOpened();
-    unsubscribeForeground();
-  };
+    const unsubscribeForeground = messaging().onMessage(remoteMessage => {
+      const payload = parsePushData(remoteMessage.data);
+      console.info('[PushNotification] Foreground message received.', payload);
+    });
+
+    return () => {
+      unsubscribeOpened();
+      unsubscribeForeground();
+    };
+  } catch (error) {
+    console.warn('[PushNotification] Firebase messaging is not available.', error);
+    return () => undefined;
+  }
 }

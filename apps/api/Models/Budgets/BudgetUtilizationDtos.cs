@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using MidiKaval.Api.Models.Attachments;
 
 namespace MidiKaval.Api.Models.Budgets;
 
@@ -13,6 +14,7 @@ public sealed class BudgetUtilizationListDto
     public DateOnly UtilizationDate { get; set; }
     public string Description { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; }
+    public IReadOnlyList<AttachmentSummaryDto> Attachments { get; set; } = Array.Empty<AttachmentSummaryDto>();
 }
 
 public sealed class CreateBudgetUtilizationRequest

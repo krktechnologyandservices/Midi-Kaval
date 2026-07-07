@@ -1,9 +1,17 @@
 import { Routes } from '@angular/router';
+import { AppRole } from '@midi-kaval/shared-types';
 import { authGuard, guestGuard, otpGuard } from './core/auth/auth.guard';
 import { directorGuard } from './core/auth/director.guard';
+import { roleGuard } from './core/auth/role.guard';
 import { supervisorGuard } from './core/auth/supervisor.guard';
 import { twoFactorSetupGuard } from './core/auth/two-factor-setup.guard';
 import { vendorGuard } from './core/auth/vendor.guard';
+
+const coordinatorOrAboveGuard = roleGuard([AppRole.Director, AppRole.Coordinator], '/budgets');
+const budgetViewerGuard = roleGuard(
+  [AppRole.Director, AppRole.Coordinator, AppRole.Accountant],
+  '/crisis-queue',
+);
 
 export const routes: Routes = [
   {
@@ -102,6 +110,7 @@ export const routes: Routes = [
       },
       {
         path: 'crisis-queue',
+        canActivate: [coordinatorOrAboveGuard],
         loadComponent: () =>
           import('./features/shell/pages/crisis-queue-page.component').then(
             (m) => m.CrisisQueuePageComponent,
@@ -109,6 +118,7 @@ export const routes: Routes = [
       },
       {
         path: 'crisis-queue/travel-claims/:id',
+        canActivate: [coordinatorOrAboveGuard],
         loadComponent: () =>
           import('./features/travel/travel-claim-review.component').then(
             (m) => m.TravelClaimReviewComponent,
@@ -117,6 +127,7 @@ export const routes: Routes = [
       },
       {
         path: 'dashboard',
+        canActivate: [coordinatorOrAboveGuard],
         loadComponent: () =>
           import('./features/shell/pages/dashboard-page.component').then(
             (m) => m.DashboardPageComponent,
@@ -124,6 +135,7 @@ export const routes: Routes = [
       },
       {
         path: 'cases',
+        canActivate: [coordinatorOrAboveGuard],
         loadComponent: () =>
           import('./features/cases/registry/case-registry.component').then(
             (m) => m.CaseRegistryComponent,
@@ -131,6 +143,7 @@ export const routes: Routes = [
       },
       {
         path: 'cases/new',
+        canActivate: [coordinatorOrAboveGuard],
         loadComponent: () =>
           import('./features/cases/create/case-create.component').then(
             (m) => m.CaseCreateComponent,
@@ -138,6 +151,7 @@ export const routes: Routes = [
       },
       {
         path: 'cases/:id',
+        canActivate: [coordinatorOrAboveGuard],
         loadComponent: () =>
           import('./features/cases/detail/case-detail-placeholder.component').then(
             (m) => m.CaseDetailPlaceholderComponent,
@@ -145,6 +159,7 @@ export const routes: Routes = [
       },
       {
         path: 'reports',
+        canActivate: [coordinatorOrAboveGuard],
         loadComponent: () =>
           import('./features/shell/pages/reports-page.component').then(
             (m) => m.ReportsPageComponent,
@@ -152,6 +167,7 @@ export const routes: Routes = [
       },
       {
         path: 'legends',
+        canActivate: [coordinatorOrAboveGuard],
         loadComponent: () =>
           import('./features/shell/pages/legends-page.component').then(
             (m) => m.LegendsPageComponent,
@@ -159,13 +175,23 @@ export const routes: Routes = [
       },
       {
         path: 'budgets',
+        canActivate: [budgetViewerGuard],
         loadComponent: () =>
           import('./features/budgets/budgets-list-page.component').then(
             (m) => m.BudgetsListPageComponent,
           ),
       },
       {
+        path: 'budgets/:id/utilizations',
+        canActivate: [budgetViewerGuard],
+        loadComponent: () =>
+          import('./features/budgets/budget-utilizations-page.component').then(
+            (m) => m.BudgetUtilizationsPageComponent,
+          ),
+      },
+      {
         path: 'budgets/:id',
+        canActivate: [budgetViewerGuard],
         loadComponent: () =>
           import('./features/budgets/budget-detail-page.component').then(
             (m) => m.BudgetDetailPageComponent,

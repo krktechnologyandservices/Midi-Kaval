@@ -130,6 +130,12 @@ public static class AuthServiceCollectionExtensions
                 UserRoles.Accountant);
             AddActiveUserRolePolicy(
                 options,
+                Policies.BudgetViewer,
+                UserRoles.Director,
+                UserRoles.Coordinator,
+                UserRoles.Accountant);
+            AddActiveUserRolePolicy(
+                options,
                 Policies.VendorOnly,
                 UserRoles.Vendor);
         });

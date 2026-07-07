@@ -5,6 +5,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { AuthSessionService } from '../../core/auth/auth-session.service';
@@ -22,6 +23,7 @@ import {
 } from './budget.models';
 import { BudgetApproveDialogComponent } from './budget-approve-dialog.component';
 import { BudgetReportDialogComponent } from './budget-report-dialog.component';
+import { BudgetRecordUtilizationDialogComponent } from './budget-record-utilization-dialog.component';
 
 @Component({
   selector: 'app-budget-detail-page',
@@ -32,6 +34,7 @@ import { BudgetReportDialogComponent } from './budget-report-dialog.component';
     MatButtonModule,
     MatIconModule,
     MatCardModule,
+    MatTooltipModule,
   ],
   template: `
     <div class="detail-page">
@@ -119,6 +122,12 @@ import { BudgetReportDialogComponent } from './budget-report-dialog.component';
                   <button mat-flat-button color="primary" (click)="execute()" [disabled]="actionLoading">
                     <mat-icon>play_arrow</mat-icon>
                     Execute
+                  </button>
+                }
+                @if (showRecordUtilization()) {
+                  <button mat-flat-button color="primary" (click)="recordUtilization()" [disabled]="actionLoading">
+                    <mat-icon>receipt_long</mat-icon>
+                    Record Utilization
                   </button>
                 }
                 @if (isDirector) {
@@ -223,7 +232,10 @@ import { BudgetReportDialogComponent } from './budget-report-dialog.component';
         <!-- Recent Utilization Entries -->
         <mat-card>
           <mat-card-content>
-            <h2>Recent Utilization Entries</h2>
+            <div class="section-header">
+              <h2>Recent Utilization Entries</h2>
+              <a [routerLink]="['/budgets', budgetId, 'utilizations']">View all</a>
+            </div>
             @if (utilizations.loading) {
               <div class="skeleton-list">
                 @for (row of [1, 2, 3]; track row) {
@@ -260,6 +272,29 @@ import { BudgetReportDialogComponent } from './budget-report-dialog.component';
                   <ng-container matColumnDef="created">
                     <th mat-header-cell *matHeaderCellDef>Created At</th>
                     <td mat-cell *matCellDef="let item">{{ item.createdAtUtc | date:'medium' }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="receipt">
+                    <th mat-header-cell *matHeaderCellDef>Receipt</th>
+                    <td mat-cell *matCellDef="let item">
+                      @if (item.attachments?.length > 0) {
+                        <mat-icon class="receipt-icon" matTooltip="Receipt attached">description</mat-icon>
+                      } @else {
+                        —
+                      }
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef></th>
+                    <td mat-cell *matCellDef="let item">
+                      @if (canEditUtilization()) {
+                        <button mat-icon-button (click)="editUtilization(item)" aria-label="Edit">
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                        <button mat-icon-button color="warn" (click)="deleteUtilization(item)" aria-label="Delete">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      }
+                    </td>
                   </ng-container>
                   <tr mat-header-row *matHeaderRowDef="utilizationColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: utilizationColumns"></tr>
@@ -314,6 +349,11 @@ import { BudgetReportDialogComponent } from './budget-report-dialog.component';
     .skeleton-list { display: flex; flex-direction: column; gap: 0.5rem; }
     .skeleton { background: #E5E7EB; border-radius: 0.25rem; height: 1rem; }
     .skeleton-text--medium { width: 60%; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+    .section-header h2 { margin: 0; }
+    .section-header a { font-size: 0.875rem; color: var(--mat-sys-primary, #0D6E6E); text-decoration: none; }
+    .section-header a:hover { text-decoration: underline; }
+    .receipt-icon { color: var(--mat-sys-primary, #0D6E6E); font-size: 1.125rem; width: 1.125rem; height: 1.125rem; vertical-align: middle; }
   `,
 })
 export class BudgetDetailPageComponent implements OnInit {
@@ -330,13 +370,13 @@ export class BudgetDetailPageComponent implements OnInit {
 
   readonly lineItemColumns = ['head', 'allocated', 'utilized', 'balance', 'percentage'];
   readonly summaryColumns = ['head', 'allocated', 'utilized', 'balance', 'percentage'];
-  readonly utilizationColumns = ['date', 'head', 'amount', 'description', 'case', 'created'];
+  readonly utilizationColumns = ['date', 'head', 'amount', 'description', 'case', 'created', 'receipt', 'actions'];
 
   utilizations: { items: BudgetUtilizationListDto[]; loading: boolean } = { items: [], loading: true };
 
   actionLoading = false;
 
-  private budgetId = '';
+  budgetId = '';
 
   formatFinancialYear = formatFinancialYear;
   formatAmount = formatAmount;
@@ -391,7 +431,7 @@ export class BudgetDetailPageComponent implements OnInit {
   get showActions(): boolean {
     const b = this.budget();
     if (!b) return false;
-    return this.showPropose() || this.showApproveReturn() || this.showExecute();
+    return this.showPropose() || this.showApproveReturn() || this.showExecute() || this.showRecordUtilization();
   }
 
   showPropose(): boolean {
@@ -408,8 +448,61 @@ export class BudgetDetailPageComponent implements OnInit {
       && (this.role === AppRole.Accountant || this.role === AppRole.Director);
   }
 
+  showRecordUtilization(): boolean {
+    const status = this.budget()?.approvalStatus;
+    return (status === 'Approved' || status === 'Executed')
+      && (this.role === AppRole.Accountant || this.role === AppRole.Director);
+  }
+
   get isDirector(): boolean {
     return this.role === AppRole.Director;
+  }
+
+  async recordUtilization(): Promise<void> {
+    const b = this.budget();
+    if (!b) return;
+    const result = await firstValueFrom(
+      this.dialog.open(BudgetRecordUtilizationDialogComponent, {
+        data: { budgetId: this.budgetId, lineItems: b.lineItems },
+        width: '480px',
+      }).afterClosed(),
+    );
+    if (!result) return;
+    await this.loadDetail();
+  }
+
+  canEditUtilization(): boolean {
+    return this.role === AppRole.Accountant || this.role === AppRole.Director;
+  }
+
+  async editUtilization(item: BudgetUtilizationListDto): Promise<void> {
+    const b = this.budget();
+    if (!b) return;
+    const result = await firstValueFrom(
+      this.dialog.open(BudgetRecordUtilizationDialogComponent, {
+        data: { budgetId: this.budgetId, lineItems: b.lineItems, existing: item },
+        width: '480px',
+      }).afterClosed(),
+    );
+    if (!result) return;
+    await this.loadDetail();
+  }
+
+  async deleteUtilization(item: BudgetUtilizationListDto): Promise<void> {
+    if (!confirm(`Remove this utilization entry (${this.formatAmount(item.amountUtilized)} on ${item.utilizationDate})? It will be hidden from reports but kept in the record; contact an admin to restore it.`)) {
+      return;
+    }
+    this.actionLoading = true;
+    try {
+      // force=true takes the soft-delete path on the API (keeps the row, sets DeletedAtUtc) instead of
+      // permanently removing the financial record — the UI should never trigger the irreversible path.
+      await this.api.deleteUtilization(this.budgetId, item.id, true);
+      await this.loadDetail();
+    } catch (error) {
+      this.errorMessage.set(this.api.extractErrorMessage(error));
+    } finally {
+      this.actionLoading = false;
+    }
   }
 
   async exportReport(): Promise<void> {

@@ -21,7 +21,7 @@ public class UsersController(
     TwoFactorService twoFactorService,
     AdminTwoFactorService adminTwoFactorService) : ControllerBase
 {
-    private static readonly string[] ValidSortByFields = ["name", "email", "role", "status", "createdAt"];
+    private static readonly string[] ValidSortByFields = ["name", "email", "role", "status", "createdAt", "createdAtUtc"];
     private static readonly string[] SuspendConflictMessages = ["User is already suspended", "Cannot suspend a deleted user"];
     private static readonly string[] ReactivateConflictMessages = ["User is not suspended", "Cannot reactivate a deleted user"];
     private static readonly string[] DeleteConflictMessages = ["User has already been deleted"];

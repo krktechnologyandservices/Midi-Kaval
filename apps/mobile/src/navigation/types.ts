@@ -4,6 +4,7 @@ import {VisitListItemDto} from '../services/visits/visit.models';
 export type AuthStackParamList = {
   Login: {resetSuccess?: string} | undefined;
   Otp: undefined;
+  Totp: undefined;
   SessionExpired: undefined;
   ForgotPassword: undefined;
   ResetPassword: {token?: string} | undefined;

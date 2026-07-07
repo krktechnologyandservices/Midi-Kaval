@@ -13,7 +13,7 @@ public sealed class SmtpOptions
     public int Port { get; set; } = 587;
     public string? User { get; set; }
     public string? Password { get; set; }
-    public string From { get; set; } = "noreply@kaval.local";
+    public string From { get; set; } = string.Empty;
 }
 
 public sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSender
@@ -25,6 +25,15 @@ public sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSende
         if (string.IsNullOrWhiteSpace(_options.Host))
         {
             throw new EmailDeliveryException("SMTP host is not configured.");
+        }
+
+        // Deliberately fail fast rather than fall back to a made-up domain: a From address
+        // that doesn't match the authenticated mailbox (e.g. a fake domain with no SPF/DKIM)
+        // is a common cause of mail landing in spam or being silently dropped downstream —
+        // the send itself succeeds against the relay, so no exception would otherwise surface.
+        if (string.IsNullOrWhiteSpace(_options.From))
+        {
+            throw new EmailDeliveryException("SMTP From address is not configured.");
         }
 
         var mime = new MimeMessage();

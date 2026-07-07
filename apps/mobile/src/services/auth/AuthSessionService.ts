@@ -9,6 +9,8 @@ import {
   ProblemDetails,
   RefreshResponse,
   SessionUserDto,
+  TOTP_CHALLENGE_KEY,
+  TotpChallengeState,
   VerifyOtpRequest,
   VerifyOtpResponse,
   StepUpResponse,
@@ -26,6 +28,7 @@ const DEACTIVATED_MESSAGE = 'Contact your coordinator';
 
 export class AuthSessionService {
   private challenge: OtpChallengeState | null = null;
+  private totpChallenge: TotpChallengeState | null = null;
   private stepUpChallenge: OtpChallengeState | null = null;
   private lastLoginOtpVerifiedAtUtc: string | null = null;
   private user: SessionUserDto | null = null;
@@ -35,6 +38,10 @@ export class AuthSessionService {
 
   getOtpChallenge(): OtpChallengeState | null {
     return this.challenge;
+  }
+
+  getTotpChallenge(): TotpChallengeState | null {
+    return this.totpChallenge;
   }
 
   getUser(): SessionUserDto | null {
@@ -52,11 +59,35 @@ export class AuthSessionService {
 
   async login(request: LoginRequest): Promise<LoginResponse> {
     const envelope = await this.post<LoginResponse>('/api/v1/auth/login', request);
+
+    // requiresTotp/totpChallengeId/userId/tokenVersion aren't on the generated LoginResponse
+    // type yet (see auth.models.ts) but are always present on the real API response for
+    // users enrolled in TOTP — read them via an unknown-record cast, matching the same
+    // workaround already used on web (apps/web/.../auth-session.service.ts).
+    const loginData = envelope.data as unknown as Record<string, unknown>;
+
+    if (loginData['requiresTotp']) {
+      this.totpChallenge = {
+        userId: loginData['userId'] as string,
+        tokenVersion: (loginData['tokenVersion'] as number) ?? 0,
+        totpChallengeId: loginData['totpChallengeId'] as string,
+      };
+      await AsyncStorage.setItem(
+        TOTP_CHALLENGE_KEY,
+        JSON.stringify(this.totpChallenge),
+      );
+      this.challenge = null;
+      await AsyncStorage.removeItem(CHALLENGE_KEY);
+      return envelope.data;
+    }
+
     this.challenge = {
       challengeId: envelope.data.challengeId!,
       expiresInSeconds: envelope.data.expiresInSeconds ?? 300,
     };
     await AsyncStorage.setItem(CHALLENGE_KEY, JSON.stringify(this.challenge));
+    this.totpChallenge = null;
+    await AsyncStorage.removeItem(TOTP_CHALLENGE_KEY);
     return envelope.data;
   }
 
@@ -98,6 +129,50 @@ export class AuthSessionService {
 
     this.challenge = null;
     await AsyncStorage.removeItem(CHALLENGE_KEY);
+    this.lastLoginOtpVerifiedAtUtc = new Date().toISOString();
+    return envelope.data;
+  }
+
+  async verifyTotpLogin(code: string): Promise<VerifyOtpResponse> {
+    if (!this.totpChallenge) {
+      const stored = await AsyncStorage.getItem(TOTP_CHALLENGE_KEY);
+      if (stored) {
+        try {
+          this.totpChallenge = JSON.parse(stored) as TotpChallengeState;
+        } catch {
+          await AsyncStorage.removeItem(TOTP_CHALLENGE_KEY);
+        }
+      }
+    }
+
+    if (!this.totpChallenge) {
+      throw new Error('No TOTP login in progress.');
+    }
+
+    const body = {
+      userId: this.totpChallenge.userId,
+      totpChallengeId: this.totpChallenge.totpChallengeId,
+      tokenVersion: this.totpChallenge.tokenVersion,
+      code,
+    };
+
+    const envelope = await this.post<VerifyOtpResponse>(
+      '/api/v1/auth/verify-totp-login',
+      body,
+    );
+
+    await this.applySession(
+      envelope.data.accessToken!,
+      envelope.data.refreshToken!,
+      {
+        id: envelope.data.user!.id,
+        email: envelope.data.user!.email,
+        role: envelope.data.user!.role,
+      },
+    );
+
+    this.totpChallenge = null;
+    await AsyncStorage.removeItem(TOTP_CHALLENGE_KEY);
     this.lastLoginOtpVerifiedAtUtc = new Date().toISOString();
     return envelope.data;
   }
@@ -198,6 +273,15 @@ export class AuthSessionService {
       }
     }
 
+    const storedTotpChallenge = await AsyncStorage.getItem(TOTP_CHALLENGE_KEY);
+    if (storedTotpChallenge) {
+      try {
+        this.totpChallenge = JSON.parse(storedTotpChallenge) as TotpChallengeState;
+      } catch {
+        await AsyncStorage.removeItem(TOTP_CHALLENGE_KEY);
+      }
+    }
+
     const token = await secureStorage.getAccessToken();
     if (!token) {
       return null;
@@ -225,10 +309,12 @@ export class AuthSessionService {
   async clearSession(): Promise<void> {
     this.user = null;
     this.challenge = null;
+    this.totpChallenge = null;
     this.stepUpChallenge = null;
     this.lastLoginOtpVerifiedAtUtc = null;
     await secureStorage.clearTokens();
     await AsyncStorage.removeItem(CHALLENGE_KEY);
+    await AsyncStorage.removeItem(TOTP_CHALLENGE_KEY);
     await clearCommandStripCache();
   }
 

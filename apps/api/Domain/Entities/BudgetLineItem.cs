@@ -9,6 +9,7 @@ public sealed class BudgetLineItem
     public BudgetHead BudgetHead { get; set; }
     public decimal AmountAllocated { get; set; }
     public decimal AmountUtilized { get; set; }
+    public DateTime? ThresholdNotifiedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }

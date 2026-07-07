@@ -55,3 +55,8 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+// Must be applied after the android/react plugins above and the dependencies block — it
+// reads google-services.json (present in this directory) to configure the Firebase app
+// that @react-native-firebase/messaging needs at runtime.
+apply plugin: "com.google.gms.google-services"

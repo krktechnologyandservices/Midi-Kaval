@@ -4,4 +4,5 @@ public enum AttachmentResourceType
 {
     CaseNote,
     TravelClaim,
+    BudgetUtilization,
 }

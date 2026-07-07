@@ -155,6 +155,31 @@
         </p>
       </section>
 
+      <!-- Budget Health -->
+      <section class="widget metric-card" aria-label="Budget Health">
+        <h2 class="widget-title">Budget Health</h2>
+        @if (data()?.budgetHealth; as bh) {
+          <p class="metric-primary">{{ bh.overallUtilizationPercentage }}%</p>
+          <p class="metric-sub">
+            Utilized ₹{{ formatAmount(bh.totalUtilized) }} of ₹{{ formatAmount(bh.totalAllocated) }}
+            &middot; Balance ₹{{ formatAmount(bh.totalBalance) }}
+          </p>
+          @if (bh.headsNearingLimit.length > 0) {
+            <ul class="budget-alert-list">
+              @for (h of bh.headsNearingLimit; track h.budgetHead + h.source) {
+                <li class="budget-alert-item">
+                  <span class="budget-alert-dot" [class.over]="h.utilizationPercentage >= 100"></span>
+                  {{ h.budgetHead }} ({{ h.source }}) — {{ h.utilizationPercentage }}%
+                </li>
+              }
+            </ul>
+          }
+          <a class="widget-link" routerLink="/budgets">View budgets</a>
+        } @else {
+          <p class="metric-primary">—</p>
+        }
+      </section>
+
       <!-- Intake Trend -->
       <section class="widget widget-trend" aria-label="12-month Intake Trend">
         <h2 class="widget-title">Intake Trend (12 months)</h2>

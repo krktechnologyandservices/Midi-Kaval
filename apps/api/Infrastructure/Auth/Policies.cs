@@ -11,6 +11,7 @@ public static class Policies
     public const string CaseWorker = nameof(CaseWorker);
     public const string Accountant = nameof(Accountant);
     public const string AccountantOrAbove = nameof(AccountantOrAbove);
+    public const string BudgetViewer = nameof(BudgetViewer);
     public const string VendorOnly = nameof(VendorOnly);
 
     public const string ForbiddenByRoleMessage =

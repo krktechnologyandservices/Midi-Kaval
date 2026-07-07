@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
@@ -22,6 +23,8 @@ export function CasesListScreen({navigation}: Props): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [overdueOnly, setOverdueOnly] = useState(false);
 
   const loadAssigned = useCallback(async () => {
     if (!auth.isFieldRole) {
@@ -58,6 +61,23 @@ export function CasesListScreen({navigation}: Props): React.JSX.Element {
     return new Date(value).getTime() < Date.now();
   };
 
+  const filteredItems = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return items.filter(item => {
+      if (overdueOnly && !isOverdue(item.nextVisitDueAtUtc)) {
+        return false;
+      }
+      if (!term) {
+        return true;
+      }
+      return (
+        item.crimeNumber?.toLowerCase().includes(term)
+        || item.stNumber?.toLowerCase().includes(term)
+        || item.beneficiaryName?.toLowerCase().includes(term)
+      );
+    });
+  }, [items, searchTerm, overdueOnly]);
+
   return (
     <ScrollView
       style={styles.container}
@@ -69,22 +89,52 @@ export function CasesListScreen({navigation}: Props): React.JSX.Element {
       }>
       <Text style={styles.title}>Cases</Text>
       <Text style={styles.subtitle}>
-        {auth.isFieldRole ? 'Your assigned cases' : 'Case registry in Epic 2'}
+        {auth.isFieldRole ? 'Your assigned cases' : 'Case registry'}
       </Text>
 
-      {!auth.isFieldRole ? (
-        <Pressable
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('CaseCreate')}>
-          <Text style={styles.primaryButtonText}>New case</Text>
-        </Pressable>
+      <Pressable
+        style={styles.primaryButton}
+        onPress={() => navigation.navigate('CaseCreate')}>
+        <Text style={styles.primaryButtonText}>New case</Text>
+      </Pressable>
+
+      {auth.isFieldRole ? (
+        <>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search crime no., ST no., or beneficiary"
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Pressable
+            style={[styles.filterChip, overdueOnly && styles.filterChipActive]}
+            onPress={() => setOverdueOnly(prev => !prev)}>
+            <Text
+              style={[
+                styles.filterChipText,
+                overdueOnly && styles.filterChipTextActive,
+              ]}>
+              Overdue only
+            </Text>
+          </Pressable>
+        </>
       ) : null}
 
       {loading ? <ActivityIndicator style={styles.loader} /> : null}
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
+      {auth.isFieldRole && !loading && filteredItems.length === 0 ? (
+        <Text style={styles.emptyState}>
+          {items.length === 0
+            ? 'No cases assigned to you yet.'
+            : 'No cases match your search.'}
+        </Text>
+      ) : null}
+
       {auth.isFieldRole
-        ? items.map(item => (
+        ? filteredItems.map(item => (
             <Pressable
               key={item.id}
               style={styles.row}
@@ -135,6 +185,41 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+  },
+  filterChip: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+  },
+  filterChipActive: {
+    backgroundColor: '#0D6E6E',
+    borderColor: '#0D6E6E',
+  },
+  filterChipText: {
+    color: '#475569',
+    fontSize: 13,
+  },
+  filterChipTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  emptyState: {
+    color: '#475569',
+    marginTop: 8,
+    marginBottom: 8,
   },
   loader: {
     marginTop: 12,

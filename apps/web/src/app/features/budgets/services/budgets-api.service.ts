@@ -9,8 +9,10 @@ import {
   BudgetUtilizationListDto,
   BudgetUtilizationSummaryDto,
   CreateBudgetRequest,
+  CreateBudgetUtilizationRequest,
   PaginatedResult,
   UpdateBudgetRequest,
+  UpdateBudgetUtilizationRequest,
 } from '../budget.models';
 
 @Injectable({ providedIn: 'root' })
@@ -111,16 +113,71 @@ export class BudgetsApiService {
     budgetId: string,
     page = 1,
     pageSize = 20,
+    fromDate?: string,
+    toDate?: string,
   ): Promise<PaginatedResult<BudgetUtilizationListDto>> {
     if (!budgetId?.trim()) throw new Error('budgetId is required');
     const p = Math.max(1, page);
     const s = Math.max(1, pageSize);
     try {
-      const params = new HttpParams().set('page', p).set('pageSize', s);
+      let params = new HttpParams().set('page', p).set('pageSize', s);
+      if (fromDate) params = params.set('fromDate', fromDate);
+      if (toDate) params = params.set('toDate', toDate);
       const envelope = await firstValueFrom(
         this.http.get<ApiEnvelope<PaginatedResult<BudgetUtilizationListDto>>>(
           `${this.baseUrl}/${budgetId}/utilizations`,
           { params },
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async updateUtilization(
+    budgetId: string,
+    id: string,
+    request: UpdateBudgetUtilizationRequest,
+  ): Promise<BudgetUtilizationListDto> {
+    if (!budgetId?.trim()) throw new Error('budgetId is required');
+    if (!id?.trim()) throw new Error('id is required');
+    try {
+      const envelope = await firstValueFrom(
+        this.http.put<ApiEnvelope<BudgetUtilizationListDto>>(
+          `${this.baseUrl}/${budgetId}/utilizations/${id}`,
+          request,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async deleteUtilization(budgetId: string, id: string, force = false): Promise<void> {
+    if (!budgetId?.trim()) throw new Error('budgetId is required');
+    if (!id?.trim()) throw new Error('id is required');
+    try {
+      const params = new HttpParams().set('force', force);
+      await firstValueFrom(
+        this.http.delete(`${this.baseUrl}/${budgetId}/utilizations/${id}`, { params }),
+      );
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async createUtilization(
+    budgetId: string,
+    request: CreateBudgetUtilizationRequest,
+  ): Promise<BudgetUtilizationListDto> {
+    if (!budgetId?.trim()) throw new Error('budgetId is required');
+    try {
+      const envelope = await firstValueFrom(
+        this.http.post<ApiEnvelope<BudgetUtilizationListDto>>(
+          `${this.baseUrl}/${budgetId}/utilizations`,
+          request,
         ),
       );
       return envelope.data;

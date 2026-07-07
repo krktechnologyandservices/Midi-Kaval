@@ -308,6 +308,20 @@ public class UserManagementService(
             user.SuspendedAtUtc = null;
             user.TokenVersion++;
             user.UpdatedAtUtc = now;
+
+            // Invalidate any outstanding email-confirmation links for this user. Without this,
+            // an old confirmation email still sitting in someone's inbox from before this user
+            // was deleted stays clickable — it silently reactivates the now-anonymised account
+            // instead of erroring, which is especially confusing if the same email address is
+            // later re-invited under a new account (the stale link has nothing to do with it).
+            var outstandingConfirmationTokens = await db.ConfirmationTokens
+                .Where(t => t.UserId == targetUserId && t.ConsumedAtUtc == null)
+                .ToListAsync(ct);
+            foreach (var token in outstandingConfirmationTokens)
+            {
+                token.ExpiresAtUtc = now;
+            }
+
             await db.SaveChangesAsync(ct);
 
             await auditService.RecordAsync(

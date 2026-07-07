@@ -20,6 +20,7 @@ import {
   LoginRequest,
   OtpChallengeState,
   SessionUserDto,
+  TotpChallengeState,
 } from '../services/auth/auth.models';
 
 export type AuthPhase = 'loading' | 'ready';
@@ -29,12 +30,14 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   user: SessionUserDto | null;
   otpChallenge: OtpChallengeState | null;
+  totpChallenge: TotpChallengeState | null;
   sessionExpired: boolean;
   destination: ReturnType<typeof resolveAuthDestination>;
   isFieldRole: boolean;
   isSupervisorRole: boolean;
-  login: (request: LoginRequest) => Promise<void>;
+  login: (request: LoginRequest) => Promise<{requiresTotp: boolean}>;
   verifyOtp: (code: string) => Promise<void>;
+  verifyTotpLogin: (code: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<{message?: string}>;
   resetPassword: (token: string, newPassword: string) => Promise<{message?: string}>;
   logout: () => Promise<void>;
@@ -59,6 +62,9 @@ export function AuthProvider({
   const [otpChallenge, setOtpChallenge] = useState<OtpChallengeState | null>(
     null,
   );
+  const [totpChallenge, setTotpChallenge] = useState<TotpChallengeState | null>(
+    null,
+  );
   const [sessionExpired, setSessionExpired] = useState(false);
 
   const syncFromService = useCallback(async () => {
@@ -66,6 +72,7 @@ export function AuthProvider({
     setIsAuthenticated(authenticated);
     setUser(service.getUser());
     setOtpChallenge(service.getOtpChallenge());
+    setTotpChallenge(service.getTotpChallenge());
   }, [service]);
 
   useEffect(() => {
@@ -74,6 +81,7 @@ export function AuthProvider({
       setIsAuthenticated(false);
       setUser(null);
       setOtpChallenge(null);
+      setTotpChallenge(null);
     };
 
     service.onDeactivated = () => {
@@ -81,6 +89,7 @@ export function AuthProvider({
       setIsAuthenticated(false);
       setUser(null);
       setOtpChallenge(null);
+      setTotpChallenge(null);
     };
 
     return () => {
@@ -108,9 +117,10 @@ export function AuthProvider({
 
   const login = useCallback(
     async (request: LoginRequest) => {
-      await service.login(request);
+      const response = await service.login(request);
       setSessionExpired(false);
       await syncFromService();
+      return {requiresTotp: !!(response as unknown as Record<string, unknown>)['requiresTotp']};
     },
     [service, syncFromService],
   );
@@ -118,6 +128,16 @@ export function AuthProvider({
   const verifyOtp = useCallback(
     async (code: string) => {
       await service.verifyOtp(code);
+      setSessionExpired(false);
+      await syncFromService();
+      void deviceRegistrationService.registerIfAuthenticated();
+    },
+    [service, syncFromService],
+  );
+
+  const verifyTotpLogin = useCallback(
+    async (code: string) => {
+      await service.verifyTotpLogin(code);
       setSessionExpired(false);
       await syncFromService();
       void deviceRegistrationService.registerIfAuthenticated();
@@ -142,6 +162,7 @@ export function AuthProvider({
     setIsAuthenticated(false);
     setUser(null);
     setOtpChallenge(null);
+    setTotpChallenge(null);
   }, [service]);
 
   const clearSessionExpired = useCallback(() => {
@@ -161,12 +182,14 @@ export function AuthProvider({
       isAuthenticated,
       user,
       otpChallenge,
+      totpChallenge,
       sessionExpired,
       destination,
       isFieldRole: isFieldRole(user?.role),
       isSupervisorRole: isSupervisorRole(user?.role),
       login,
       verifyOtp,
+      verifyTotpLogin,
       forgotPassword,
       resetPassword,
       logout,
@@ -178,10 +201,12 @@ export function AuthProvider({
       isAuthenticated,
       user,
       otpChallenge,
+      totpChallenge,
       sessionExpired,
       destination,
       login,
       verifyOtp,
+      verifyTotpLogin,
       forgotPassword,
       resetPassword,
       logout,

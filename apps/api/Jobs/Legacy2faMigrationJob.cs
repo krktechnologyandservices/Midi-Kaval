@@ -28,7 +28,11 @@ public sealed class Legacy2faMigrationJob(
         DateTime cursor = DateTime.MinValue;
         if (cursorStr.HasValue)
         {
-            if (!DateTime.TryParse(cursorStr!, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out cursor))
+            if (!DateTime.TryParse(
+                    cursorStr!,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out cursor))
             {
                 logger.LogWarning("Legacy2faMigrationJob: Cursor value '{Cursor}' is not parseable. Resetting to MinValue.", cursorStr);
                 cursor = DateTime.MinValue;

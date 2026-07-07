@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "519491202648",
+    "project_id": "midikavalmobile",
+    "storage_bucket": "midikavalmobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:519491202648:android:2018e9a318f0f5fd63242d",
+        "android_client_info": {
+          "package_name": "com.midikaval.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsk3go5GM72d-Vpby4x7VtszrzhpzBB2A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

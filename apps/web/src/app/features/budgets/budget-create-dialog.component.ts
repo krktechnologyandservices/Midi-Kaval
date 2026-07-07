@@ -22,6 +22,15 @@ interface LineItemForm {
   amountAllocated: number | null;
 }
 
+// Date.toISOString() converts through UTC, which shifts local midnight back a day in
+// timezones ahead of UTC (e.g. IST) — format from local Y/M/D components instead.
+function toLocalDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 @Component({
   selector: 'app-budget-create-dialog',
   imports: [
@@ -167,8 +176,8 @@ export class BudgetCreateDialogComponent {
 
     const request: CreateBudgetRequest = {
       source: this.source,
-      financialYearStart: this.financialYearStart!.toISOString().substring(0, 10),
-      financialYearEnd: this.financialYearEnd!.toISOString().substring(0, 10),
+      financialYearStart: toLocalDateString(this.financialYearStart!),
+      financialYearEnd: toLocalDateString(this.financialYearEnd!),
       notes: this.notes || undefined,
       lineItems: this.lineItems.map(
         (li) =>

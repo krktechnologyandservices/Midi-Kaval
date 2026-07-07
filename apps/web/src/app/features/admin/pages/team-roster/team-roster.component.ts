@@ -221,6 +221,7 @@ export class BypassCodeDialogComponent {
         <table
           mat-table
           [dataSource]="users()"
+          [trackBy]="trackByUserId"
           matSort
           (matSortChange)="onSortChange($event)"
           [matSortActive]="sortBy()"
@@ -348,7 +349,7 @@ export class BypassCodeDialogComponent {
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr
             mat-row
-            *matRowDef="let row; columns: displayedColumns; trackBy: trackByUserId"
+            *matRowDef="let row; columns: displayedColumns"
             [class.clickable-row]="true"
             (click)="openDetailSheet(row)"
             role="button"

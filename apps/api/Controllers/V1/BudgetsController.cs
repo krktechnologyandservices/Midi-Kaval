@@ -33,7 +33,7 @@ public class BudgetsController : ControllerBase
     /// List budgets (paginated).
     /// </summary>
     [HttpGet]
-    [Authorize(Policy = Policies.CoordinatorOrAbove)]
+    [Authorize(Policy = Policies.BudgetViewer)]
     [ProducesResponseType(typeof(PaginatedResult<BudgetListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -58,7 +58,7 @@ public class BudgetsController : ControllerBase
     /// Get budget by ID with line items.
     /// </summary>
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = Policies.CoordinatorOrAbove)]
+    [Authorize(Policy = Policies.BudgetViewer)]
     [ProducesResponseType(typeof(BudgetDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -284,7 +284,7 @@ public class BudgetsController : ControllerBase
     /// List utilization entries for a budget (paginated, date-filtered).
     /// </summary>
     [HttpGet("{budgetId:guid}/utilizations")]
-    [Authorize(Policy = Policies.CoordinatorOrAbove)]
+    [Authorize(Policy = Policies.BudgetViewer)]
     [ProducesResponseType(typeof(PaginatedResult<BudgetUtilizationListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -322,7 +322,7 @@ public class BudgetsController : ControllerBase
     /// Get utilization summary per budget head.
     /// </summary>
     [HttpGet("{budgetId:guid}/utilizations/summary")]
-    [Authorize(Policy = Policies.CoordinatorOrAbove)]
+    [Authorize(Policy = Policies.BudgetViewer)]
     [ProducesResponseType(typeof(BudgetUtilizationSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

@@ -1,14 +1,20 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
 import { AppRole } from '@midi-kaval/shared-types';
 import { AuthSessionService } from '../../core/auth/auth-session.service';
-import { NotificationBellComponent } from '../notifications/notification-bell/notification-bell.component';
 
-type NavItem = { label: string; path: string; requiresDirector?: boolean };
+type NavItem = { label: string; path: string; icon: string; roles: readonly string[] };
+
+// Mirrors the backend Authorize policies for each area (see apps/api/Infrastructure/Auth/Policies.cs
+// and the [Authorize(Policy = ...)] attributes on the corresponding controllers) — a nav item must
+// only be shown to roles that can actually load the page behind it.
+const COORDINATOR_OR_ABOVE = [AppRole.Director, AppRole.Coordinator];
+const BUDGET_VIEWERS = [AppRole.Director, AppRole.Coordinator, AppRole.Accountant];
 
 @Component({
   selector: 'app-supervisor-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NotificationBellComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatIconModule],
   templateUrl: './supervisor-shell.component.html',
   styleUrl: './supervisor-shell.component.scss',
 })
@@ -18,25 +24,21 @@ export class SupervisorShellComponent {
   readonly user = this.auth.currentUser;
 
   private readonly allNavItems: NavItem[] = [
-    { label: 'Crisis queue', path: '/crisis-queue' },
-    { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Cases', path: '/cases' },
-    { label: 'Reports', path: '/reports' },
-    { label: 'Budgets', path: '/budgets' },
-    { label: 'Legends', path: '/legends' },
-    { label: 'Admin', path: '/admin', requiresDirector: true },
+    { label: 'Crisis queue', path: '/crisis-queue', icon: 'emergency', roles: COORDINATOR_OR_ABOVE },
+    { label: 'Dashboard', path: '/dashboard', icon: 'dashboard', roles: COORDINATOR_OR_ABOVE },
+    { label: 'Cases', path: '/cases', icon: 'folder_shared', roles: COORDINATOR_OR_ABOVE },
+    { label: 'Reports', path: '/reports', icon: 'bar_chart', roles: COORDINATOR_OR_ABOVE },
+    { label: 'Budgets', path: '/budgets', icon: 'account_balance_wallet', roles: BUDGET_VIEWERS },
+    { label: 'Legends', path: '/legends', icon: 'list_alt', roles: COORDINATOR_OR_ABOVE },
+    { label: 'Admin', path: '/admin', icon: 'admin_panel_settings', roles: [AppRole.Director] },
   ];
 
   readonly navItems = computed(() => {
     const role = this.user()?.role;
-    return this.allNavItems.filter((item) => {
-      if (!item.requiresDirector) {
-        return true;
-      }
-
-      return role === AppRole.Director;
-    });
+    if (!role) {
+      return [];
+    }
+    return this.allNavItems.filter((item) => item.roles.includes(role));
   });
-
 }
 

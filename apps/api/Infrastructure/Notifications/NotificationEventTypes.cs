@@ -10,4 +10,5 @@ public static class NotificationEventTypes
     public const string TravelClaimSubmitted = "travel.claim.submitted";
     public const string CaseTransferred = "case.transferred";
     public const string ReportExportReady = "report.export.ready";
+    public const string BudgetThresholdReached = "budget.threshold.reached";
 }

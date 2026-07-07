@@ -182,9 +182,10 @@ if errorlevel 1 (
     exit /b 1
 )
 REM "adb --version" line looks like: "Android Debug Bridge version 1.0.41"
-REM tokens 1-2 were "Android"/"Debug", so %%j (token 2) printed "Debug" instead
-REM of the version. The version is token 4.
-for /f "tokens=4 delims= " %%i in ('adb --version 2^>nul ^| findstr /i "version"') do set ADB_VERSION=%%i
+REM Token 4 is the literal word "version", not the number — that's token 5.
+REM Filter on "Android Debug Bridge" specifically (not just "version") so the
+REM second output line ("Version 34.0.4-xxxxxxxx") can't also match and overwrite it.
+for /f "tokens=5 delims= " %%i in ('adb --version 2^>nul ^| findstr /i "Android Debug Bridge"') do set ADB_VERSION=%%i
 if not defined ADB_VERSION set ADB_VERSION=unknown
 echo [PASS] ADB version %ADB_VERSION% found.
 exit /b 0

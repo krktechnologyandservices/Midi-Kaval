@@ -12,33 +12,31 @@ import {AccessibleErrorRegion} from '../../components/AccessibleErrorRegion';
 import {useAuth} from '../../context/AuthContext';
 import {AuthStackParamList} from '../../navigation/types';
 
-type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
+type Props = NativeStackScreenProps<AuthStackParamList, 'Totp'>;
 
-export function LoginScreen({navigation, route}: Props): React.JSX.Element {
+export function TotpLoginScreen({navigation}: Props): React.JSX.Element {
   const auth = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (route.params?.resetSuccess) {
-      setSuccessMessage(route.params.resetSuccess);
+    if (!auth.totpChallenge) {
+      navigation.replace('Login');
     }
-  }, [route.params?.resetSuccess]);
+  }, [auth.totpChallenge, navigation]);
 
   const submit = async (): Promise<void> => {
     setErrorMessage(null);
-    if (!email.trim() || password.length < 8) {
-      setErrorMessage('Enter a valid email and password (min 8 characters).');
+
+    if (!/^\d{6}$/.test(code)) {
+      setErrorMessage('Enter a 6-digit code.');
       return;
     }
 
     setSubmitting(true);
     try {
-      const {requiresTotp} = await auth.login({email: email.trim(), password});
-      navigation.navigate(requiresTotp ? 'Totp' : 'Otp');
+      await auth.verifyTotpLogin(code);
     } catch (error) {
       setErrorMessage(auth.extractErrorMessage(error));
     } finally {
@@ -48,34 +46,22 @@ export function LoginScreen({navigation, route}: Props): React.JSX.Element {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sign in</Text>
-      <Text style={styles.subtitle}>Field access — Kaval Online</Text>
+      <Text style={styles.title}>Two-factor authentication</Text>
+      <Text style={styles.subtitle}>
+        Enter the 6-digit code from your authenticator app.
+      </Text>
 
-      <Text style={styles.label}>Email</Text>
+      <Text style={styles.label}>Authentication code</Text>
       <TextInput
         style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        accessibilityLabel="Email"
-      />
-
-      <Text style={styles.label}>Password</Text>
-      <TextInput
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        accessibilityLabel="Password"
+        value={code}
+        onChangeText={setCode}
+        keyboardType="number-pad"
+        maxLength={6}
+        accessibilityLabel="Authentication code"
       />
 
       <AccessibleErrorRegion message={errorMessage} />
-      {successMessage ? (
-        <Text style={styles.successText} accessibilityLiveRegion="polite">
-          {successMessage}
-        </Text>
-      ) : null}
 
       <Pressable
         style={styles.button}
@@ -85,15 +71,18 @@ export function LoginScreen({navigation, route}: Props): React.JSX.Element {
         {submitting ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>Verify</Text>
         )}
       </Pressable>
 
       <Pressable
         style={styles.linkButton}
-        onPress={() => navigation.navigate('ForgotPassword')}
+        onPress={async () => {
+          await auth.logout();
+          navigation.replace('Login');
+        }}
         accessibilityRole="button">
-        <Text style={styles.linkText}>Forgot password?</Text>
+        <Text style={styles.linkText}>Lost access to your authenticator app?</Text>
       </Pressable>
     </View>
   );
@@ -115,7 +104,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#475467',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   label: {
     fontSize: 14,
@@ -145,20 +134,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
-  successText: {
-    color: '#047857',
-    marginBottom: 12,
-    fontSize: 14,
-  },
   linkButton: {
     marginTop: 16,
-    minHeight: 44,
     alignItems: 'center',
+    minHeight: 44,
     justifyContent: 'center',
   },
   linkText: {
     color: '#0D6E6E',
     fontWeight: '600',
-    fontSize: 16,
   },
 });

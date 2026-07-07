@@ -47,6 +47,20 @@ export interface IntakeTrendPointDto {
   count: number;
 }
 
+export interface BudgetHeadHealthDto {
+  budgetHead: string;
+  source: string;
+  utilizationPercentage: number;
+}
+
+export interface BudgetHealthDto {
+  totalAllocated: number;
+  totalUtilized: number;
+  totalBalance: number;
+  overallUtilizationPercentage: number;
+  headsNearingLimit: BudgetHeadHealthDto[];
+}
+
 export interface DashboardResultDto {
   casesByStage: CasesByStageDto[];
   casesByOffenceClassification: CasesByOffenceClassificationDto[];
@@ -57,4 +71,5 @@ export interface DashboardResultDto {
   courtThisWeek: CourtThisWeekDto;
   pendingClaims: PendingClaimsDto;
   intakeTrend: IntakeTrendPointDto[];
+  budgetHealth: BudgetHealthDto;
 }

@@ -17,7 +17,12 @@ public sealed record InvitationSummary(
     DateTime ExpiresAtUtc,
     DateTime? ConfirmedAtUtc,
     string? InvitedByUserEmail = null,
-    string? InvitedByUserName = null
+    string? InvitedByUserName = null,
+    // When Status == "confirmed", the invited user has submitted the sign-up form but their
+    // account only becomes active once they click the separate confirmation-email link. This
+    // is that link's actual consumption time — null means the account is still not yet active,
+    // even though the invitation itself already reads "confirmed".
+    DateTime? EmailConfirmedAtUtc = null
 );
 
 public sealed record InvitationListResult(

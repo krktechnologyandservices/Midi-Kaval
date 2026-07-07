@@ -50,6 +50,116 @@ Kaval Online is a comprehensive case management platform designed for child prot
 - **Mobile App**: Android (React Native) — installed via APK
 - **API Swagger**: `http://localhost:5049/swagger`
 
+### 1.4 System Architecture & Data Flow
+
+Kaval Online is one API serving three distinct front ends. Which front end a
+user lands on is decided entirely by their **role**, not by which URL they
+type — the API returns a `destination` after login (`tabs`, `web-only`, or
+vendor) and the client routes accordingly.
+
+```mermaid
+graph TB
+    subgraph Clients
+        WEB["Web App (Angular 19)<br/>Supervisor Shell + Admin + Vendor Portal"]
+        MOB["Mobile App (React Native, Android)<br/>Today / Cases / More tabs"]
+    end
+
+    subgraph API["ASP.NET Core API"]
+        CTRL["Controllers (/api/v1/*)"]
+        SVC["Domain Services<br/>(Cases, Budgets, Visits, Attachments, Notifications)"]
+        JOBS["Hangfire Background Jobs"]
+    end
+
+    subgraph Stores["Data Stores"]
+        PG[("PostgreSQL<br/>Cases, Budgets, Visits, Users, Audit")]
+        REDIS[("Redis<br/>OTP / Refresh Tokens / Rate Limits")]
+        BLOB[("Azurite (dev) / Azure Blob (prod)<br/>Attachments")]
+    end
+
+    WEB -- "HTTPS + JWT" --> CTRL
+    MOB -- "HTTPS + JWT" --> CTRL
+    CTRL --> SVC
+    SVC --> PG
+    SVC --> REDIS
+    SVC -. "presigned SAS URL" .-> BLOB
+    JOBS --> PG
+    JOBS --> SVC
+```
+
+**Who ends up where:**
+
+```mermaid
+graph LR
+    Vendor([Vendor]) --> WebVendor["Web: /vendor portal<br/>Org onboarding, activation links"]
+    Director([Director]) --> WebSup["Web: Supervisor Shell<br/>Crisis queue, Dashboard, Cases,<br/>Reports, Budgets, Admin"]
+    Coordinator([Coordinator]) --> WebSup
+    Accountant([Accountant]) --> WebSup
+    SocialWorker([SocialWorker]) --> MobileApp["Mobile: Today / Cases / More<br/>(offline-first, field use)"]
+    CaseWorker([CaseWorker]) --> MobileApp
+```
+
+Directors and Coordinators do **not** get the mobile field-worker screens —
+opening the mobile app on a supervisor account routes to a "Web only" screen,
+since crisis-queue oversight, budget approval, and staff admin are desk
+workflows. Conversely, SocialWorker/CaseWorker accounts only ever see the
+mobile tabs; case creation/visits/travel claims are mobile-first because
+they happen in the field.
+
+**Login + 2FA data flow:**
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Web / Mobile Client
+    participant A as API
+    participant R as Redis
+    participant P as Postgres
+
+    U->>C: Email + password
+    C->>A: POST /auth/login
+    A->>P: Verify credentials, load role + organisation
+    A->>R: Store OTP/TOTP challenge (short TTL)
+    A-->>C: Challenge issued
+    U->>C: Enter email OTP (first login) or authenticator TOTP code
+    C->>A: POST /auth/verify
+    A->>R: Validate challenge
+    A-->>C: Access token (15 min) + Refresh token (7 days)
+    Note over C,A: All later requests carry the access token;<br/>organisation_id in the JWT scopes every query.
+```
+
+**Attachment upload flow** (case notes, travel-claim receipts, budget
+utilization receipts all share this same generic path):
+
+```mermaid
+sequenceDiagram
+    participant C as Client (Web/Mobile)
+    participant A as API
+    participant B as Blob Storage
+
+    C->>A: POST /attachments/presign (resourceType, contentType, size)
+    A->>A: Check role + organisation + resource ownership
+    A-->>C: SAS upload URL + attachment id
+    C->>B: PUT file directly to Blob Storage
+    C->>A: POST /attachments/{id}/confirm
+    A->>A: Verify blob exists, record metadata in Postgres
+    A-->>C: Attachment confirmed, now visible on the record
+    Note over C,A: Later downloads use GET /attachments/{id}/download-url,<br/>which returns a fresh time-limited SAS link — never a permanent URL.
+```
+
+**Background automation (Hangfire, backed by Postgres):**
+
+| Job | What it does |
+|-----|---------------|
+| `BudgetThresholdMonitorJob` | Flags budget line items that cross the utilization threshold (default 80%) and raises a one-time notification per line item until it drops back below threshold |
+| `CourtReminderBackgroundService` | Sends 24-hour-ahead reminders for scheduled court sittings |
+| `CourtMissEscalationBackgroundService` | Escalates cases with missed court appearances into the crisis queue |
+| `InterventionOverdueBackgroundService` | Flags interventions past their due date on dashboards and notifications |
+| `CaseAnonymizationBackgroundService` | Processes GDPR-style PII erasure requests |
+| `AuditDigestBackgroundService` | Rolls up audit log activity for periodic digests |
+| `ZeroDirectorMonitorJob` / `ZeroDirectorAlertJob` | Detects organisations left with no active Director and alerts vendors |
+| `Legacy2faMigrationJob` | One-time migration sweep for pre-2FA accounts |
+| Invitation/email jobs | Deliver invitation, activation, confirmation, and status-change emails asynchronously |
+
 ---
 
 ## 2. Getting Started
@@ -216,14 +326,22 @@ The dashboard provides a real-time overview of your organisation's operations:
 
 ### 5.1 Case Lifecycle
 
-A case progresses through these stages:
+A case progresses through these stages, always in order — a stage cannot be
+skipped, only advanced or logged with a transition note:
 
-```
-Process Initiation → Preliminary Assessment → Social Investigation →
-Community Based Intervention → Placement → Reintegration → Termination/Exclusion
+```mermaid
+flowchart LR
+    A[Process Initiation] --> B[Preliminary Assessment]
+    B --> C[Social Investigation]
+    C --> D[Community Based Intervention]
+    D --> E[Placement]
+    E --> F[Reintegration]
+    F --> G[Termination / Exclusion]
 ```
 
-Each stage has its own data collection form capturing stage-specific information.
+Each stage has its own data collection form capturing stage-specific
+information. Every transition is written to the audit log with the acting
+user and an optional note.
 
 ### 5.2 Creating a New Case
 
@@ -454,7 +572,9 @@ Field workers can submit travel claims for work-related travel:
    - Purpose (visit, court, training)
    - Mode of transport
    - Amount
-3. Attach receipt images (captured via mobile)
+3. Attach a receipt — on mobile, tap **Take photo** to capture it with the
+   camera, or **Choose file** to pick an existing image/PDF (JPEG, PNG,
+   WebP, or PDF up to 10 MiB)
 4. Save as Draft or Submit
 
 ### 9.2 Submitting a Claim
@@ -484,16 +604,24 @@ Directors and Coordinators can view monthly travel claim totals:
 
 ### 10.1 Budget Lifecycle
 
-```
-Draft → Proposed → Approved → Executed
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Proposed: Accountant submits
+    Proposed --> Approved: Director approves
+    Proposed --> Returned: Director sends back
+    Returned --> Proposed: Accountant resubmits
+    Approved --> Executed: Accountant activates
+    Executed --> [*]
 ```
 
 | Stage | Done By | Description |
 |-------|---------|-------------|
-| Draft | Accountant | Initial budget creation |
-| Proposed | Accountant | Submit for Director review |
-| Approved | Director | Budget is authorized |
-| Executed | Accountant | Budget is active and utilizable |
+| Draft | Accountant | Initial budget creation; line items can be freely edited |
+| Proposed | Accountant | Submitted for Director review; locked from further edits |
+| Returned | Director | Sent back with a decision comment; Accountant can edit and resubmit |
+| Approved | Director | Budget is authorized but not yet utilizable |
+| Executed | Accountant | Budget is active — line items can now record utilizations |
 
 ### 10.2 Creating a Budget
 
@@ -524,7 +652,57 @@ Draft → Proposed → Approved → Executed
    - Individual utilization entries with dates and descriptions
    - Running balance per budget head
 
-### 10.6 Budget Reports
+### 10.6 Recording a Utilization Entry
+
+**Who can do this:** Director, Accountant (view-only for Coordinator)
+
+1. Open an executed budget's **Utilizations** tab
+2. Click **Record Utilization**
+3. Enter the amount, description, and date
+4. (Optional) **Link to a case** — search by crime number/ST number/beneficiary name so the spend is traceable to a specific case
+5. (Optional) **Attach a receipt or bill** — uses the same secure upload flow as case-note and travel-claim attachments (see [1.4](#14-system-architecture--data-flow))
+6. Save — the line item's utilized amount updates immediately
+
+### 10.7 Editing or Removing a Utilization Entry
+
+1. Open the utilization entry and click **Edit** or **Remove**
+2. **Remove** performs a **soft delete** — the entry is hidden from reports
+   and the line item's utilized amount is reduced accordingly, but the
+   record is kept (not permanently destroyed) and can be restored by an
+   admin if needed
+3. Editing an existing entry's case link will re-check that the case still
+   belongs to your organisation before saving
+
+### 10.8 Budget Health Monitoring
+
+The **Dashboard** (see [4. Dashboard](#4-dashboard)) shows a **Budget
+Health** widget for Directors/Coordinators/Accountants:
+
+- Each budget line item's utilization percentage against its allocation
+- Line items nearing their limit (default threshold: **80%** utilized) are
+  highlighted
+- The first time a line item crosses the threshold, an in-app/push
+  notification is sent once — it will not re-notify on every subsequent
+  utilization until the percentage drops back below the threshold and
+  crosses it again
+
+```mermaid
+sequenceDiagram
+    participant Acc as Accountant
+    participant API as API
+    participant Job as BudgetThresholdMonitorJob
+    participant N as Notification Service
+
+    Acc->>API: Record utilization on a line item
+    API->>API: Recompute AmountUtilized
+    Note over Job: Runs periodically (hourly)
+    Job->>Job: Find line items >= threshold %, not yet notified
+    Job->>N: Send one-time threshold-crossed notification
+    N-->>Acc: In-app / push notification
+    Note over Job: If utilization later drops below threshold,<br/>the notified flag resets so a future re-crossing notifies again
+```
+
+### 10.9 Budget Reports
 
 1. Go to **Budgets → Reports**
 2. View consolidated budget report
@@ -729,11 +907,42 @@ For development builds:
 
 ### 15.3 App Navigation
 
-- **Bottom tabs**: Dashboard, Cases, Visits, More
-- **Dashboard tab**: Today's visits, weekly schedule, overdue items
-- **Cases tab**: Your assigned cases list
-- **Visits tab**: Visit management, grouping suggestions
-- **More tab**: Profile, settings, sync status
+The mobile app has **three** bottom tabs — there is no separate "Visits" or
+"Dashboard" tab; today's work and visits live under **Today**:
+
+```mermaid
+flowchart LR
+    Root{{Login}} --> Today
+    Root --> Cases
+    Root --> More
+
+    Today --> ActiveVisit[Active visit]
+    Today --> CourtSchedule[Court this week]
+
+    Cases --> CasesList["Cases list<br/>(search + overdue filter)"]
+    CasesList --> CaseCreate["New case<br/>(+ duplicate check)"]
+    CasesList --> CaseDetail[Case detail]
+
+    More --> Notifications
+    More --> TravelClaims["Travel claims list"]
+    TravelClaims --> TravelClaimForm["Travel claim form<br/>(take photo / choose file for receipt)"]
+    More --> SyncQueue[Sync queue]
+```
+
+- **Today tab**: today's scheduled visits, weekly schedule, active visit
+  tracking, and this week's court sittings
+- **Cases tab**: your assigned cases, with search (crime no. / ST no. /
+  beneficiary name) and an "Overdue only" filter; **New case** opens the
+  case-creation form, which runs a duplicate check and shows a merge sheet
+  if a likely match is found
+- **More tab**: notifications, travel claims (create/list, with a receipt
+  captured either by camera or picked from a file), profile, and the
+  offline sync queue
+
+This tab set is field-worker only — Director/Coordinator/Accountant accounts
+never reach it; opening the mobile app on those accounts shows a "Web only"
+screen instead, since their workflows (approvals, budgets, staff admin) are
+desk-based.
 
 ### 15.4 Offline Sync
 

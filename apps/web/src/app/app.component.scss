@@ -2,11 +2,87 @@
   min-height: calc(100vh - 64px);
 }
 
+.app-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #FFFFFF;
+  color: #101828;
+  border-bottom: 1px solid #eaecf0;
+  box-shadow: 0 1px 8px rgba(16, 24, 40, 0.04);
+}
+
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4ECDC4 0%, #0D6E6E 100%);
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.title {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
 .spacer {
   flex: 1;
 }
 
 .user-chip {
-  margin-right: 0.75rem;
-  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  background: #F5F6FA;
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4ECDC4 0%, #0D6E6E 100%);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.user-email {
+  font-size: 13px;
+  font-weight: 600;
+  color: #101828;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-role {
+  font-size: 11px;
+  color: #667085;
+  text-transform: capitalize;
+}
+
+@media (max-width: 640px) {
+  .user-info {
+    display: none;
+  }
 }

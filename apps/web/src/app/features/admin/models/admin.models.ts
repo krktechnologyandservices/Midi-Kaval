@@ -52,6 +52,7 @@ export interface InvitationSummary {
   confirmedAtUtc?: string;
   invitedByUserEmail: string;
   invitedByUserName?: string;
+  emailConfirmedAtUtc?: string;
 }
 
 export interface InvitationListResult {

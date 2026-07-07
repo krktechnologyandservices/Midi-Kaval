@@ -11,6 +11,23 @@ public sealed class DashboardResultDto
     public CourtThisWeekDto CourtThisWeek { get; init; } = null!;
     public PendingClaimsDto PendingClaims { get; init; } = null!;
     public IReadOnlyList<IntakeTrendPointDto> IntakeTrend { get; init; } = [];
+    public BudgetHealthDto BudgetHealth { get; init; } = null!;
+}
+
+public sealed class BudgetHealthDto
+{
+    public decimal TotalAllocated { get; init; }
+    public decimal TotalUtilized { get; init; }
+    public decimal TotalBalance { get; init; }
+    public decimal OverallUtilizationPercentage { get; init; }
+    public IReadOnlyList<BudgetHeadHealthDto> HeadsNearingLimit { get; init; } = [];
+}
+
+public sealed class BudgetHeadHealthDto
+{
+    public string BudgetHead { get; init; } = string.Empty;
+    public string Source { get; init; } = string.Empty;
+    public decimal UtilizationPercentage { get; init; }
 }
 
 public sealed class CasesByStageDto

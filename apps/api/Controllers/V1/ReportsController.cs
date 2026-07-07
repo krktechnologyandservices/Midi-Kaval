@@ -108,32 +108,10 @@ public sealed class ReportsController(
             return NotFound();
         }
 
-        string? downloadUrl = null;
-        if (job.Status == ReportExportJobStatus.Completed && job.BlobPath is not null)
-        {
-            try
-            {
-                var (url, expiresAt) = blobService.GenerateReadSasUri(job.BlobPath);
-                if (expiresAt < DateTime.UtcNow)
-                {
-                    return Problem(
-                        detail: "The download URL has expired.",
-                        statusCode: StatusCodes.Status410Gone,
-                        title: "Gone");
-                }
-                downloadUrl = url.ToString();
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to generate SAS URL for blob {BlobPath}", job.BlobPath);
-                downloadUrl = null;
-            }
-        }
-
         var statusDto = new ReportExportStatusDto
         {
             Status = job.Status,
-            DownloadUrl = downloadUrl,
+            DownloadUrl = TryGenerateDownloadUrl(job.Status, job.BlobPath),
             ErrorMessage = job.Status == ReportExportJobStatus.Failed ? job.ErrorMessage : null,
         };
 
@@ -178,11 +156,15 @@ public sealed class ReportsController(
                 j.CreatedAtUtc,
                 j.CompletedAtUtc,
                 j.ErrorMessage,
+                j.BlobPath,
             })
             .ToListAsync(cancellationToken);
 
         var result = new ReportExportListResultDto
         {
+            // The frontend only ever calls this endpoint to render the export list — it never
+            // calls GetExportStatus — so a completed job's download URL has to be generated
+            // here too, not just there, or every completed row shows as permanently expired.
             Items = items.Select(j => new ReportExportJobDto
             {
                 JobId = j.Id,
@@ -191,7 +173,7 @@ public sealed class ReportsController(
                 Format = j.Format,
                 CreatedAtUtc = j.CreatedAtUtc,
                 CompletedAtUtc = j.CompletedAtUtc,
-                DownloadUrl = null,
+                DownloadUrl = TryGenerateDownloadUrl(j.Status, j.BlobPath),
                 ErrorMessage = j.Status == ReportExportJobStatus.Failed ? j.ErrorMessage : null,
             }).ToList()
         };
@@ -206,6 +188,25 @@ public sealed class ReportsController(
     private string ResolveRequestId() =>
         HttpContext.Items[RequestIdMiddleware.RequestIdItemKey] as string
             ?? HttpContext.TraceIdentifier;
+
+    private string? TryGenerateDownloadUrl(string status, string? blobPath)
+    {
+        if (status != ReportExportJobStatus.Completed || blobPath is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var (url, _) = blobService.GenerateReadSasUri(blobPath);
+            return url.ToString();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to generate SAS URL for blob {BlobPath}", blobPath);
+            return null;
+        }
+    }
 
     private static ReportExportJobDto MapToDto(ReportExportJob job, string? downloadUrl) => new()
     {

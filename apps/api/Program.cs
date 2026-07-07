@@ -33,6 +33,14 @@ using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Explicitly wire up user secrets rather than relying on WebApplication.CreateBuilder's
+// implicit auto-detection (which depends on Assembly.GetEntryAssembly() resolving correctly
+// and can silently no-op depending on how the process was launched).
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddUserSecrets<Program>(optional: true);
+}
+
 QuestPDF.Settings.License = LicenseType.Community;
 
 builder.Services.Configure<CaseExportOptions>(
@@ -82,6 +90,8 @@ if (!builder.Environment.IsTesting())
         builder.Configuration.GetSection(CourtReminderJobOptions.SectionName));
     builder.Services.Configure<CourtMissEscalationJobOptions>(
         builder.Configuration.GetSection(CourtMissEscalationJobOptions.SectionName));
+    builder.Services.Configure<BudgetThresholdJobOptions>(
+        builder.Configuration.GetSection(BudgetThresholdJobOptions.SectionName));
     builder.Services.Configure<AuditDigestJobOptions>(
         builder.Configuration.GetSection(AuditDigestJobOptions.SectionName));
     builder.Services.Configure<PushNotificationsOptions>(
@@ -113,6 +123,7 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<InterventionOverdueJobRunner>();
     builder.Services.AddScoped<CourtReminderJobRunner>();
     builder.Services.AddScoped<CourtMissEscalationJobRunner>();
+    builder.Services.AddScoped<BudgetThresholdJobRunner>();
     builder.Services.AddScoped<CrisisQueueService>();
     builder.Services.AddScoped<DashboardService>();
     builder.Services.AddScoped<ReportGenerationService>();
@@ -122,12 +133,18 @@ if (!builder.Environment.IsTesting())
     builder.Services.AddScoped<MappingSpecLoader>();
     builder.Services.AddScoped<MigrationImportService>();
     builder.Services.Configure<MappingSpecOptions>(builder.Configuration.GetSection(MappingSpecOptions.SectionName));
+    // Report exports and budget-threshold checks are triggered by a specific user action
+    // (clicking "Export", crossing a utilization threshold) rather than firing repeatedly on
+    // a timer, so — unlike the reminder/escalation jobs below — there's no downside to running
+    // them in Development. Gating them out here silently left "Export" stuck on Pending forever
+    // for any developer running the API locally via `dotnet run`.
+    builder.Services.AddHostedService<ReportExportBackgroundService>();
+    builder.Services.AddHostedService<BudgetThresholdMonitorBackgroundService>();
     if (!builder.Environment.IsDevelopment())
     {
         builder.Services.AddHostedService<InterventionOverdueBackgroundService>();
         builder.Services.AddHostedService<CourtReminderBackgroundService>();
         builder.Services.AddHostedService<CourtMissEscalationBackgroundService>();
-        builder.Services.AddHostedService<ReportExportBackgroundService>();
         builder.Services.AddHostedService<CaseAnonymizationBackgroundService>();
         builder.Services.AddHostedService<AuditDigestBackgroundService>();
     }
@@ -209,6 +226,11 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+// EncryptionKeyProvider is only ever consumed via its static GetCurrent() bridge (EF Core
+// value converters can't use DI), so nothing else in the app triggers DI to resolve this
+// singleton. Force resolution here so SetCurrent() runs before the first request.
+app.Services.GetRequiredService<MidiKaval.Api.Infrastructure.Encryption.EncryptionKeyProvider>();
 
 app.UseMiddleware<RequestIdMiddleware>();
 app.UseForwardedHeaders(new ForwardedHeadersOptions

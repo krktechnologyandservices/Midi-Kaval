@@ -1,6 +1,12 @@
 @echo off
 setlocal enabledelayedexpansion
 
+REM Pin GRADLE_USER_HOME to a short, fixed path for this script's Gradle invocations.
+REM On this machine the default (~/.gradle) resolves through a very deep temp path, which
+REM pushes extracted native-dependency header paths past Windows' 260-character path limit
+REM and breaks the Android C++ (ninja/CMake) build with "Filename longer than 260 characters".
+set GRADLE_USER_HOME=C:\ghome
+
 echo ========================================
 echo  Midi-Kaval - Start Mobile App
 echo ========================================
@@ -33,7 +39,7 @@ REM --- Wait for API to be healthy ---
 call "%~dp0_check-prereqs.bat" check_api_healthy
 if errorlevel 1 (
     echo [ERROR] API is not reachable. The mobile app requires the API.
-    echo [INFO] Ensure the API is running (start-api.bat) before starting the mobile app.
+    echo [INFO] Ensure the API is running via start-api.bat before starting the mobile app.
     exit /b 1
 )
 
@@ -96,7 +102,7 @@ set MAX_RETRIES=30
 :metro_loop
 if !RETRIES! geq %MAX_RETRIES% (
     echo [ERROR] Metro bundler did not start within %MAX_RETRIES% seconds.
-    echo [INFO] Check the Metro bundler window for errors (e.g., missing dependencies).
+    echo [INFO] Check the Metro bundler window for errors, e.g. missing dependencies.
     echo [INFO] Try running 'npx react-native start' manually from apps\mobile to diagnose.
     exit /b 1
 )
@@ -117,7 +123,11 @@ echo [PASS] Metro bundler is ready at http://localhost:8081.
 
 echo.
 echo [INFO] Installing and launching the app on the connected Android device...
-npx react-native run-android --projectRoot "%MOBILE_DIR%"
+REM Unlike "start" (Metro), "run-android" has no --projectRoot flag at all in this
+REM installed CLI version (@react-native/community-cli-plugin) — passing it makes the
+REM CLI reject the command outright as an unknown option. The working directory was
+REM already changed to %MOBILE_DIR% above, which is how run-android resolves its root.
+npx react-native run-android
 if errorlevel 1 (
     echo [ERROR] Failed to install or launch the app on the Android device.
     echo [INFO] Check the device connection and try again.

@@ -4,6 +4,7 @@ import {ForgotPasswordScreen} from '../screens/auth/ForgotPasswordScreen';
 import {ResetPasswordScreen} from '../screens/auth/ResetPasswordScreen';
 import {LoginScreen} from '../screens/auth/LoginScreen';
 import {OtpScreen} from '../screens/auth/OtpScreen';
+import {TotpLoginScreen} from '../screens/auth/TotpLoginScreen';
 import {SessionExpiredScreen} from '../screens/auth/SessionExpiredScreen';
 import {AuthStackParamList} from './types';
 
@@ -24,6 +25,7 @@ export function AuthNavigator({
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen name="Otp" component={OtpScreen} />
+      <Stack.Screen name="Totp" component={TotpLoginScreen} />
       <Stack.Screen name="SessionExpired" component={SessionExpiredScreen} />
     </Stack.Navigator>
   );

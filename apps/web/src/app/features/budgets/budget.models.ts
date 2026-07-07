@@ -70,6 +70,29 @@ export interface PaginatedResult<T> {
   totalCount: number;
 }
 
+export interface CreateBudgetUtilizationRequest {
+  budgetLineItemId: string;
+  caseId?: string;
+  amountUtilized: number;
+  utilizationDate: string;
+  description: string;
+}
+
+export interface UpdateBudgetUtilizationRequest {
+  caseId?: string;
+  amountUtilized: number;
+  utilizationDate: string;
+  description: string;
+}
+
+export interface AttachmentSummaryDto {
+  id: string;
+  originalFileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  confirmedAtUtc: string;
+}
+
 export interface BudgetUtilizationListDto {
   id: string;
   budgetLineItemId: string;
@@ -80,6 +103,7 @@ export interface BudgetUtilizationListDto {
   utilizationDate: string;
   description: string;
   createdAtUtc: string;
+  attachments: AttachmentSummaryDto[];
 }
 
 export interface BudgetUtilizationSummaryDto {

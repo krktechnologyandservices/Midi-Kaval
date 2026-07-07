@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using MidiKaval.Api.Domain.Entities;
 using MidiKaval.Api.Domain.Enums;
 using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Persistence;
+using MidiKaval.Api.Jobs;
+using MidiKaval.Api.Models.Attachments;
 using MidiKaval.Api.Models.Budgets;
 
 namespace MidiKaval.Api.Infrastructure.Budgets;
@@ -15,15 +18,40 @@ public sealed class BudgetUtilizationService
     private readonly AppDbContext db;
     private readonly IAuditService audit;
     private readonly IHttpContextAccessor httpContextAccessor;
+    private readonly IOptions<BudgetThresholdJobOptions> thresholdOptions;
 
     private const int DefaultPageSize = 20;
     private const int MaxPageSize = 100;
 
-    public BudgetUtilizationService(AppDbContext db, IAuditService audit, IHttpContextAccessor httpContextAccessor)
+    public BudgetUtilizationService(
+        AppDbContext db,
+        IAuditService audit,
+        IHttpContextAccessor httpContextAccessor,
+        IOptions<BudgetThresholdJobOptions> thresholdOptions)
     {
         this.db = db;
         this.audit = audit;
         this.httpContextAccessor = httpContextAccessor;
+        this.thresholdOptions = thresholdOptions;
+    }
+
+    /// <summary>
+    /// Clears the threshold-notified flag when a correction drops utilization back under the
+    /// configured threshold, so a later legitimate crossing triggers a fresh alert instead of being
+    /// silently suppressed forever by a stale flag from a previous, since-corrected crossing.
+    /// </summary>
+    private void ResetThresholdFlagIfBelowLimit(BudgetLineItem lineItem)
+    {
+        if (lineItem.ThresholdNotifiedAtUtc is null || lineItem.AmountAllocated <= 0)
+        {
+            return;
+        }
+
+        var utilizationPercentage = lineItem.AmountUtilized / lineItem.AmountAllocated * 100;
+        if (utilizationPercentage < thresholdOptions.Value.ThresholdPercent)
+        {
+            lineItem.ThresholdNotifiedAtUtc = null;
+        }
     }
 
     public async Task<PaginatedResult<BudgetUtilizationListDto>> ListAsync(
@@ -80,6 +108,8 @@ public sealed class BudgetUtilizationService
             })
             .ToListAsync(ct);
 
+        await AttachAttachmentsAsync(items, ct);
+
         return new PaginatedResult<BudgetUtilizationListDto>
         {
             Items = items,
@@ -87,6 +117,47 @@ public sealed class BudgetUtilizationService
             PageSize = pageSize,
             TotalCount = totalCount,
         };
+    }
+
+    /// <summary>Batch-fetches confirmed attachments and merges them onto each DTO in-memory.</summary>
+    private async Task AttachAttachmentsAsync(List<BudgetUtilizationListDto> items, CancellationToken ct)
+    {
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        var utilizationIds = items.Select(i => i.Id).ToList();
+        var attachmentRows = await db.Attachments
+            .Where(a => a.ResourceType == AttachmentResourceType.BudgetUtilization
+                && utilizationIds.Contains(a.ResourceId)
+                && a.Status == AttachmentStatus.Confirmed)
+            .OrderBy(a => a.ConfirmedAtUtc)
+            .ThenBy(a => a.Id)
+            .ToListAsync(ct);
+
+        var attachmentsByUtilizationId = attachmentRows
+            .GroupBy(a => a.ResourceId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<AttachmentSummaryDto>)g
+                    .Select(a => new AttachmentSummaryDto
+                    {
+                        Id = a.Id,
+                        OriginalFileName = a.OriginalFileName,
+                        ContentType = a.ContentType,
+                        FileSizeBytes = a.FileSizeBytes,
+                        ConfirmedAtUtc = a.ConfirmedAtUtc!.Value,
+                    })
+                    .ToList());
+
+        foreach (var item in items)
+        {
+            if (attachmentsByUtilizationId.TryGetValue(item.Id, out var attachments))
+            {
+                item.Attachments = attachments;
+            }
+        }
     }
 
     public async Task<BudgetUtilizationSummaryDto> GetSummaryAsync(Guid budgetId, CancellationToken ct)
@@ -158,10 +229,10 @@ public sealed class BudgetUtilizationService
         if (budget.ApprovalStatus != BudgetApprovalStatus.Approved && budget.ApprovalStatus != BudgetApprovalStatus.Executed)
             throw new BudgetBusinessRuleException("Cannot record utilization against a budget that is not Approved or Executed.");
 
-        // Validate CaseId if provided
+        // Validate CaseId if provided — must belong to the same organisation as the budget
         if (request.CaseId.HasValue)
         {
-            var caseExists = await db.Cases.AnyAsync(c => c.Id == request.CaseId.Value, ct);
+            var caseExists = await db.Cases.AnyAsync(c => c.Id == request.CaseId.Value && c.OrganisationId == orgId, ct);
             if (!caseExists)
                 throw new BudgetBusinessRuleException("The specified case does not exist.");
         }
@@ -227,6 +298,8 @@ public sealed class BudgetUtilizationService
             })
             .FirstAsync(ct);
 
+        await AttachAttachmentsAsync([createdUtilization], ct);
+
         return createdUtilization;
     }
 
@@ -257,6 +330,14 @@ public sealed class BudgetUtilizationService
 
         var lineItem = utilization.BudgetLineItem;
 
+        // Validate CaseId if provided — must belong to the same organisation as the budget
+        if (request.CaseId.HasValue)
+        {
+            var caseExists = await db.Cases.AnyAsync(c => c.Id == request.CaseId.Value && c.OrganisationId == orgId, ct);
+            if (!caseExists)
+                throw new BudgetBusinessRuleException("The specified case does not exist.");
+        }
+
         // Calculate new total: subtract old amount, add new amount
         var newTotalUtilized = lineItem.AmountUtilized - utilization.AmountUtilized + request.AmountUtilized;
         if (newTotalUtilized > lineItem.AmountAllocated)
@@ -275,6 +356,7 @@ public sealed class BudgetUtilizationService
         // Adjust the line item's running total
         lineItem.AmountUtilized = newTotalUtilized;
         lineItem.UpdatedAtUtc = DateTime.UtcNow;
+        ResetThresholdFlagIfBelowLimit(lineItem);
 
         await audit.RecordAsync(AuditEventTypes.BudgetUtilizationUpdated, orgId, actorUserId,
             metadata: new Dictionary<string, object?>
@@ -303,6 +385,8 @@ public sealed class BudgetUtilizationService
                 CreatedAtUtc = u.CreatedAtUtc,
             })
             .FirstAsync(ct);
+
+        await AttachAttachmentsAsync([updatedUtilization], ct);
 
         return updatedUtilization;
     }
@@ -356,6 +440,7 @@ public sealed class BudgetUtilizationService
             var lineItem = utilization.BudgetLineItem;
             lineItem.AmountUtilized -= utilization.AmountUtilized;
             lineItem.UpdatedAtUtc = DateTime.UtcNow;
+            ResetThresholdFlagIfBelowLimit(lineItem);
 
             db.BudgetUtilizations.Remove(utilization);
 
@@ -377,7 +462,7 @@ public sealed class BudgetUtilizationService
         var user = httpContextAccessor.HttpContext?.User
             ?? throw new UnauthorizedAccessException("User is not authenticated.");
 
-        var orgIdClaim = user.FindFirst("OrganisationId")?.Value;
+        var orgIdClaim = user.FindFirst(AuthClaimTypes.OrganisationId)?.Value;
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrEmpty(orgIdClaim) || !Guid.TryParse(orgIdClaim, out var orgId))

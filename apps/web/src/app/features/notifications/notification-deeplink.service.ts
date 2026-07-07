@@ -16,6 +16,11 @@ export class NotificationDeeplinkService {
       return;
     }
 
+    if (resourceType === 'ProjectBudget' && resourceId) {
+      void this.router.navigate(['/budgets', resourceId]);
+      return;
+    }
+
     if (resourceType === 'CourtSitting' && caseId) {
       void this.router.navigate(['/cases', caseId]);
       return;

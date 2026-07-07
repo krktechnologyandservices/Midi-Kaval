@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace MidiKaval.Api.Models.Admin;
 
 public sealed record SuspendUserRequest(
-    [property: MaxLength(500)]
+    [MaxLength(500)]
     string? Reason
 );
 
@@ -23,7 +23,7 @@ public sealed record ReactivateUserResponse(
 );
 
 public sealed record DeleteUserRequest(
-    [property: Required] string ConfirmationEmail
+    [Required] string ConfirmationEmail
 );
 
 public sealed record DeleteUserResponse(

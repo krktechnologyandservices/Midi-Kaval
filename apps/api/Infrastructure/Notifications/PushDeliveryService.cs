@@ -154,9 +154,9 @@ public sealed class PushDeliveryService(
             ["body"] = notification.Body,
         };
 
-        if (notification.CaseId != Guid.Empty)
+        if (notification.CaseId is { } caseId && caseId != Guid.Empty)
         {
-            data["caseId"] = notification.CaseId.ToString("D");
+            data["caseId"] = caseId.ToString("D");
         }
 
         if (!string.IsNullOrWhiteSpace(notification.ResourceType))

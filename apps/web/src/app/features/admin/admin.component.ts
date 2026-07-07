@@ -69,14 +69,61 @@ import { MatToolbarModule } from '@angular/material/toolbar';
   `,
   styles: `
     .admin-sidenav-container { height: calc(100vh - 64px); }
-    .admin-sidenav { width: 240px; background: #1B2A4A; border: none; }
-    .sidenav-header { padding: 20px 16px; color: #FFFFFF; font-size: 18px; font-weight: 600; letter-spacing: 0.02em; }
+
+    .admin-sidenav {
+      width: 260px;
+      border: none;
+      background: linear-gradient(180deg, #1F2E52 0%, #131E38 100%);
+      box-shadow: 2px 0 16px rgba(0, 0, 0, 0.18);
+    }
+
+    .sidenav-header {
+      padding: 24px 20px;
+      color: #FFFFFF;
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 12px;
+    }
+
     .sidenav-title { color: #FFFFFF; }
-    ::ng-deep .admin-sidenav .mat-mdc-nav-list .mdc-list-item { color: #C8D0DD; }
-    ::ng-deep .admin-sidenav .mat-mdc-nav-list .active-link { color: #FFFFFF; border-left: 3px solid #2E7D8F; background: rgba(255,255,255,0.08); }
-    ::ng-deep .admin-sidenav .mat-mdc-nav-list .active-link .mat-mdc-list-item-icon { color: #2E7D8F; }
-    .admin-content { background: #F5F6FA; }
-    .content-wrapper { padding: 24px; max-width: 1200px; }
+
+    ::ng-deep .admin-sidenav .mat-mdc-nav-list {
+      padding: 8px 12px;
+      // Angular Material's MDC list reads text/icon color from these tokens directly on
+      // the nested primary-text/icon elements — overriding .mdc-list-item's own "color"
+      // doesn't reach them, since those children set their own color explicitly.
+      --mdc-list-list-item-label-text-color: #A9B4CC;
+      --mdc-list-list-item-leading-icon-color: #7C8BAE;
+      --mdc-list-list-item-hover-label-text-color: #FFFFFF;
+      --mdc-list-list-item-hover-leading-icon-color: #4ECDC4;
+      --mdc-list-list-item-hover-state-layer-color: #FFFFFF;
+      --mdc-list-list-item-hover-state-layer-opacity: 0.07;
+    }
+
+    ::ng-deep .admin-sidenav .mat-mdc-nav-list .mdc-list-item {
+      border-radius: 10px;
+      margin-bottom: 4px;
+      transition: background-color 0.18s ease;
+    }
+
+    ::ng-deep .admin-sidenav .mat-mdc-nav-list .mdc-list-item__primary-text,
+    ::ng-deep .admin-sidenav .mat-mdc-nav-list .mat-mdc-list-item-title,
+    ::ng-deep .admin-sidenav .mat-mdc-nav-list .mat-icon {
+      transition: color 0.18s ease;
+    }
+
+    ::ng-deep .admin-sidenav .mat-mdc-nav-list .active-link {
+      font-weight: 600;
+      background: linear-gradient(90deg, rgba(78, 205, 196, 0.20) 0%, rgba(78, 205, 196, 0.03) 100%);
+      border-left: 3px solid #4ECDC4;
+      --mdc-list-list-item-label-text-color: #FFFFFF;
+      --mdc-list-list-item-leading-icon-color: #4ECDC4;
+    }
+
+    .admin-content { background: #F4F6FB; }
+    .content-wrapper { padding: 28px 32px; max-width: 1200px; }
   `,
 })
 export class AdminShellComponent {}

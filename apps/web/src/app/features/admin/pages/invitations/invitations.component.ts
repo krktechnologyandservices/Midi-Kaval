@@ -72,7 +72,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/conf
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
             <td mat-cell *matCellDef="let i">
-              <mat-chip [class]="'status-badge status-' + i.status" [attr.aria-label]="'Status: ' + statusLabel(i)">
+              <mat-chip [class]="'status-badge status-' + statusClass(i)" [attr.aria-label]="'Status: ' + statusLabel(i)">
                 {{ statusLabel(i) }}
               </mat-chip>
             </td>
@@ -130,6 +130,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/conf
     ::ng-deep .status-badge { font-size: 12px; padding: 0 8px; border-radius: 4px; min-height: 24px; }
     ::ng-deep .status-pending { background: #FFFBEB !important; color: #B45309 !important; }
     ::ng-deep .status-confirmed { background: #ECFDF5 !important; color: #0F6E4A !important; }
+    ::ng-deep .status-awaiting-verification { background: #FFF7ED !important; color: #C2410C !important; }
     ::ng-deep .status-expired { background: #F3F4F6 !important; color: #6B7280 !important; }
   `,
 })
@@ -158,13 +159,26 @@ export class InvitationsComponent implements OnInit {
     return this.invitations().length > 0;
   }
 
+  // A "confirmed" invitation only means the invitee submitted the sign-up form — their account
+  // isn't active until they separately click the confirmation-email link. Surface that gap
+  // instead of showing a flat "Confirmed" that implies the account is already usable.
+  private isAwaitingEmailVerification(i: InvitationSummary): boolean {
+    return i.status === 'confirmed' && !i.emailConfirmedAtUtc;
+  }
+
   statusLabel(i: InvitationSummary): string {
+    if (this.isAwaitingEmailVerification(i)) return 'Awaiting email verification';
     switch (i.status) {
       case 'pending': return 'Pending';
       case 'confirmed': return 'Confirmed';
       case 'expired': return 'Expired';
       default: return i.status;
     }
+  }
+
+  statusClass(i: InvitationSummary): string {
+    if (this.isAwaitingEmailVerification(i)) return 'awaiting-verification';
+    return i.status;
   }
 
   expiryDisplay(i: InvitationSummary): string {

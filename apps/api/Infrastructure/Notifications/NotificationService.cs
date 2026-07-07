@@ -178,6 +178,42 @@ public sealed class NotificationService(
         return notifications;
     }
 
+    internal IReadOnlyList<InAppNotification> CreateBudgetThresholdNotificationsForSave(
+        Guid organisationId,
+        Guid budgetId,
+        string budgetHead,
+        string source,
+        decimal utilizationPercentage,
+        IReadOnlyList<Guid> recipientUserIds)
+    {
+        var now = DateTime.UtcNow;
+        var title = "Budget nearing limit";
+        var body = $"{budgetHead} ({source}) is at {utilizationPercentage}% utilization.";
+
+        var notifications = new List<InAppNotification>(recipientUserIds.Count);
+        foreach (var userId in recipientUserIds)
+        {
+            var notification = new InAppNotification
+            {
+                Id = Guid.NewGuid(),
+                OrganisationId = organisationId,
+                UserId = userId,
+                EventType = NotificationEventTypes.BudgetThresholdReached,
+                Title = title,
+                Body = body,
+                CaseId = null,
+                ResourceType = "ProjectBudget",
+                ResourceId = budgetId,
+                CreatedAtUtc = now,
+            };
+
+            db.InAppNotifications.Add(notification);
+            notifications.Add(notification);
+        }
+
+        return notifications;
+    }
+
     internal InAppNotification CreateTravelClaimDecisionNotificationForSave(
         TravelClaim claim,
         Guid caseId,

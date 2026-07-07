@@ -1,7 +1,5 @@
 <div class="layout">
   <aside class="sidebar" aria-label="Primary navigation">
-    <div class="logo">Kaval</div>
-    <app-notification-bell />
     <nav class="nav">
       @for (item of navItems(); track item.path) {
         <a
@@ -10,7 +8,8 @@
           routerLinkActive="active"
           [routerLinkActiveOptions]="item.path === '/cases' ? { exact: false } : { exact: true }"
         >
-          {{ item.label }}
+          <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+          <span>{{ item.label }}</span>
         </a>
       }
     </nav>

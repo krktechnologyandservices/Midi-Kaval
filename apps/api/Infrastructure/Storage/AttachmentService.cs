@@ -21,7 +21,7 @@ public sealed class AttachmentService(
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    private static readonly string[] AllowedResourceTypeNames = ["CaseNote", "TravelClaim"];
+    private static readonly string[] AllowedResourceTypeNames = ["CaseNote", "TravelClaim", "BudgetUtilization"];
 
     private static readonly string[] AllowedContentTypes =
     [
@@ -75,6 +75,25 @@ public sealed class AttachmentService(
             resourceId = note.Id;
             attachmentResourceType = AttachmentResourceType.CaseNote;
         }
+        else if (resourceType == AttachmentResourceType.BudgetUtilization)
+        {
+            var utilization = await db.BudgetUtilizations
+                .Include(u => u.BudgetLineItem)
+                .SingleOrDefaultAsync(u => u.Id == request.ResourceId, cancellationToken);
+
+            var belongsToOrg = utilization is not null && await db.ProjectBudgets.AnyAsync(
+                pb => pb.Id == utilization.BudgetLineItem.ProjectBudgetId && pb.OrganisationId == organisationId,
+                cancellationToken);
+
+            if (utilization is null || !belongsToOrg)
+            {
+                throw new CaseNotFoundException();
+            }
+
+            EnsureCanWriteBudgetUtilization(actorRole);
+            resourceId = utilization.Id;
+            attachmentResourceType = AttachmentResourceType.BudgetUtilization;
+        }
         else
         {
             var claim = await db.TravelClaims.SingleOrDefaultAsync(
@@ -103,9 +122,12 @@ public sealed class AttachmentService(
 
         var now = DateTime.UtcNow;
         var attachmentId = Guid.NewGuid();
-        var blobName = attachmentResourceType == AttachmentResourceType.CaseNote
-            ? BuildBlobName(organisationId, resourceId, attachmentId, fileName)
-            : BuildTravelClaimBlobName(organisationId, resourceId, attachmentId, fileName);
+        var blobName = attachmentResourceType switch
+        {
+            AttachmentResourceType.CaseNote => BuildBlobName(organisationId, resourceId, attachmentId, fileName),
+            AttachmentResourceType.BudgetUtilization => BuildBudgetUtilizationBlobName(organisationId, resourceId, attachmentId, fileName),
+            _ => BuildTravelClaimBlobName(organisationId, resourceId, attachmentId, fileName),
+        };
         var (uploadUrl, expiresAtUtc) = blobStorage.GenerateUploadSasUri(blobName, contentType);
 
         var attachment = new Attachment
@@ -202,7 +224,7 @@ public sealed class AttachmentService(
                 cancellationToken);
         }
 
-        await EnsureCanAccessAttachmentAsync(attachment, organisationId, actorUserId, actorRole, cancellationToken);
+        await EnsureCanAccessAttachmentAsync(attachment, organisationId, actorUserId, actorRole, isWriteOperation: true, cancellationToken);
 
         if (!await blobStorage.BlobExistsAsync(attachment.BlobName, cancellationToken))
         {
@@ -277,7 +299,7 @@ public sealed class AttachmentService(
             throw new CaseBusinessRuleException("Attachment upload not confirmed.");
         }
 
-        await EnsureCanAccessAttachmentAsync(attachment, organisationId, actorUserId, actorRole, cancellationToken);
+        await EnsureCanAccessAttachmentAsync(attachment, organisationId, actorUserId, actorRole, isWriteOperation: false, cancellationToken);
 
         var (downloadUrl, downloadExpiresAtUtc) = blobStorage.GenerateReadSasUri(attachment.BlobName);
         return new AttachmentDownloadUrlDto
@@ -292,6 +314,7 @@ public sealed class AttachmentService(
         Guid organisationId,
         Guid actorUserId,
         string actorRole,
+        bool isWriteOperation,
         CancellationToken cancellationToken)
     {
         if (attachment.ResourceType == AttachmentResourceType.CaseNote)
@@ -345,7 +368,52 @@ public sealed class AttachmentService(
             throw new CaseForbiddenException();
         }
 
+        if (attachment.ResourceType == AttachmentResourceType.BudgetUtilization)
+        {
+            var utilization = await db.BudgetUtilizations
+                .Include(u => u.BudgetLineItem)
+                .SingleOrDefaultAsync(u => u.Id == attachment.ResourceId, cancellationToken);
+
+            var belongsToOrg = utilization is not null && await db.ProjectBudgets.AnyAsync(
+                pb => pb.Id == utilization.BudgetLineItem.ProjectBudgetId && pb.OrganisationId == organisationId,
+                cancellationToken);
+
+            if (utilization is null || !belongsToOrg)
+            {
+                throw new AttachmentNotFoundException();
+            }
+
+            if (isWriteOperation)
+            {
+                EnsureCanWriteBudgetUtilization(actorRole);
+            }
+            else
+            {
+                EnsureCanReadBudgetUtilization(actorRole);
+            }
+            return;
+        }
+
         throw new CaseForbiddenException();
+    }
+
+    // Mirrors Policies.AccountantOrAbove — matches who can create/update/delete a utilization entry
+    // on BudgetsController, so uploading/finalizing a receipt requires the same rights as the entry itself.
+    private static void EnsureCanWriteBudgetUtilization(string actorRole)
+    {
+        if (actorRole is not (UserRoles.Director or UserRoles.Accountant))
+        {
+            throw new CaseForbiddenException();
+        }
+    }
+
+    // Mirrors Policies.CoordinatorOrAbove — matches who can list/view utilization entries.
+    private static void EnsureCanReadBudgetUtilization(string actorRole)
+    {
+        if (actorRole is not (UserRoles.Director or UserRoles.Accountant or UserRoles.Coordinator))
+        {
+            throw new CaseForbiddenException();
+        }
     }
 
     public static string BuildBlobName(
@@ -361,6 +429,13 @@ public sealed class AttachmentService(
         Guid attachmentId,
         string sanitizedFileName) =>
         $"{organisationId:D}/travel-claim/{travelClaimId:D}/{attachmentId:D}/{sanitizedFileName}";
+
+    public static string BuildBudgetUtilizationBlobName(
+        Guid organisationId,
+        Guid budgetUtilizationId,
+        Guid attachmentId,
+        string sanitizedFileName) =>
+        $"{organisationId:D}/budget-utilization/{budgetUtilizationId:D}/{attachmentId:D}/{sanitizedFileName}";
 
     private async Task EnsureTravelClaimStillDraftAsync(
         Guid claimId,
