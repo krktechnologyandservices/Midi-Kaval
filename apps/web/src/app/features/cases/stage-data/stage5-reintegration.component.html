@@ -1,0 +1,32 @@
+<p class="stage-form-hint">Record how the child is being prepared to return to family and community.</p>
+
+@if (loading()) {
+  <p class="loading">Loading…</p>
+} @else {
+  @if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+  }
+  @if (savedMessage()) {
+    <p class="saved-message">{{ savedMessage() }}</p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Reintegration level</mat-label>
+      <input
+        matInput
+        formControlName="reintegrationLevel"
+        placeholder="e.g. Fully reintegrated, Partially reintegrated, In progress"
+      />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Institution details (optional)</mat-label>
+      <textarea matInput formControlName="institutionDetails" rows="3"></textarea>
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="saving() || form.invalid">
+      {{ saving() ? 'Saving…' : 'Save' }}
+    </button>
+  </form>
+}

@@ -2547,6 +2547,18 @@ namespace MidiKaval.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("assignee_user_id");
 
+                    b.Property<string>("CancellationReason")
+                        .HasColumnType("text")
+                        .HasColumnName("cancellation_reason");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at_utc");
+
+                    b.Property<Guid?>("CancelledByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cancelled_by_user_id");
+
                     b.Property<Guid>("CaseId")
                         .HasColumnType("uuid")
                         .HasColumnName("case_id");
@@ -2647,6 +2659,68 @@ namespace MidiKaval.Api.Migrations
                         .HasDatabaseName("ix_visit_notes_visit_id");
 
                     b.ToTable("visit_notes", (string)null);
+                });
+
+            modelBuilder.Entity("MidiKaval.Api.Domain.Entities.VisitPlace", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("address");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("LoggedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("logged_at_utc");
+
+                    b.Property<Guid?>("LoggedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("logged_by_user_id");
+
+                    b.Property<decimal?>("LoggedLatitude")
+                        .HasColumnType("numeric")
+                        .HasColumnName("logged_latitude");
+
+                    b.Property<decimal?>("LoggedLongitude")
+                        .HasColumnType("numeric")
+                        .HasColumnName("logged_longitude");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organisation_id");
+
+                    b.Property<string>("OsmReference")
+                        .HasColumnType("text")
+                        .HasColumnName("osm_reference");
+
+                    b.Property<decimal?>("PlannedLatitude")
+                        .HasColumnType("numeric")
+                        .HasColumnName("planned_latitude");
+
+                    b.Property<decimal?>("PlannedLongitude")
+                        .HasColumnType("numeric")
+                        .HasColumnName("planned_longitude");
+
+                    b.Property<Guid>("VisitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("visit_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_visit_places");
+
+                    b.ToTable("visit_places", (string)null);
                 });
 
             modelBuilder.Entity("MidiKaval.Api.Domain.Entities.ActivationToken", b =>

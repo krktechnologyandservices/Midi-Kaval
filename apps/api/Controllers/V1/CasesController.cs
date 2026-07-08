@@ -242,6 +242,94 @@ public sealed class CasesController(
         }
     }
 
+    /// <summary>Cancels a scheduled or in-progress visit (coordinator/director correction path).</summary>
+    [HttpPost("{id:guid}/visits/{visitId:guid}/cancel")]
+    [Authorize(Policy = Policies.CoordinatorOrAbove)]
+    [ProducesResponseType(typeof(ApiResponse<VisitListItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
+    public async Task<IActionResult> CancelVisit(
+        Guid id,
+        Guid visitId,
+        [FromBody] CancelVisitRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequestProblem("Request body is required.");
+        }
+
+        try
+        {
+            var dto = await visitService.CancelAsync(id, visitId, request, cancellationToken);
+            var requestId = HttpContext.Items[RequestIdMiddleware.RequestIdItemKey] as string
+                ?? HttpContext.TraceIdentifier;
+
+            return Ok(new ApiResponse<VisitListItemDto>(dto, new ApiMeta { RequestId = requestId }));
+        }
+        catch (VisitValidationException ex)
+        {
+            return BadRequestProblem(ex.Message);
+        }
+        catch (VisitBusinessRuleException ex)
+        {
+            return UnprocessableProblem(ex.Message);
+        }
+        catch (VisitNotFoundException)
+        {
+            return NotFoundProblem("Visit not found.");
+        }
+    }
+
+    /// <summary>Adds a planned place to visit under a scheduled/in-progress visit.</summary>
+    [HttpPost("{id:guid}/visits/{visitId:guid}/places")]
+    [Authorize(Policy = Policies.CoordinatorOrAbove)]
+    [ProducesResponseType(typeof(ApiResponse<VisitPlaceDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
+    public async Task<IActionResult> AddVisitPlace(
+        Guid id,
+        Guid visitId,
+        [FromBody] AddVisitPlaceRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequestProblem("Request body is required.");
+        }
+
+        try
+        {
+            var dto = await visitService.AddPlaceAsync(id, visitId, request, cancellationToken);
+            var requestId = HttpContext.Items[RequestIdMiddleware.RequestIdItemKey] as string
+                ?? HttpContext.TraceIdentifier;
+
+            return Created(
+                $"/api/v1/cases/{id}/visits/{visitId}/places/{dto.Id:D}",
+                new ApiResponse<VisitPlaceDto>(dto, new ApiMeta { RequestId = requestId }));
+        }
+        catch (VisitValidationException ex)
+        {
+            return BadRequestProblem(ex.Message);
+        }
+        catch (VisitBusinessRuleException ex)
+        {
+            return UnprocessableProblem(ex.Message);
+        }
+        catch (VisitNotFoundException)
+        {
+            return NotFoundProblem("Visit not found.");
+        }
+    }
+
     [HttpGet("{id:guid}")]
     [Authorize]
     [ProducesResponseType(typeof(CaseDetailDto), StatusCodes.Status200OK)]

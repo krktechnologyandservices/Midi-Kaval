@@ -1,8 +1,11 @@
-import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import Geolocation from '@react-native-community/geolocation';
+import React, {useState} from 'react';
+import {ActivityIndicator, Alert, Pressable, StyleSheet, Text, View} from 'react-native';
 import {SyncChip} from './SyncChip';
 import {SyncChipPresentation} from '../services/sync/resolveVisitSyncChip';
-import {VisitListItemDto} from '../services/visits/visit.models';
+import {VisitListItemDto, VisitPlaceDto} from '../services/visits/visit.models';
+import {openPlaceInMaps} from '../services/visits/placeNavigation';
+import {visitApiService} from '../services/visits/VisitApiService';
 import {beneficiaryInitials, isPocsoCase} from '../utils/beneficiaryInitials';
 
 type Props = {
@@ -15,7 +18,22 @@ type Props = {
   onStartVisit: () => void;
   onOpenCase: () => void;
   onSyncChipPress?: () => void;
+  onPlaceLogged?: (visitId: string, place: VisitPlaceDto) => void;
 };
+
+function readDevicePosition(): Promise<{latitude: number; longitude: number}> {
+  return new Promise((resolve, reject) => {
+    Geolocation.getCurrentPosition(
+      position =>
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        }),
+      error => reject(error),
+      {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
+    );
+  });
+}
 
 function buildWhisperLine(
   whisper: NonNullable<VisitListItemDto['handoffWhisper']>,
@@ -29,6 +47,84 @@ function buildWhisperLine(
   return parts.length > 0 ? parts.join(' · ') : 'Handoff summary available';
 }
 
+function PlaceRow({
+  visitId,
+  place,
+  onLogged,
+}: {
+  visitId: string;
+  place: VisitPlaceDto;
+  onLogged?: (visitId: string, place: VisitPlaceDto) => void;
+}): React.JSX.Element {
+  const [logging, setLogging] = useState(false);
+  const isLogged = !!place.loggedAtUtc;
+
+  const navigate = (): void => {
+    void openPlaceInMaps({
+      latitude: place.plannedLatitude,
+      longitude: place.plannedLongitude,
+      address: place.address,
+    });
+  };
+
+  const logLocation = async (): Promise<void> => {
+    if (logging || isLogged) {
+      return;
+    }
+
+    setLogging(true);
+    try {
+      const position = await readDevicePosition();
+      const updated = await visitApiService.logPlace(
+        visitId,
+        place.id,
+        position.latitude,
+        position.longitude,
+      );
+      onLogged?.(visitId, updated);
+    } catch (error) {
+      Alert.alert(
+        'Could not log location',
+        error instanceof Error ? error.message : 'Check location permission and try again.',
+      );
+    } finally {
+      setLogging(false);
+    }
+  };
+
+  return (
+    <View style={styles.placeRow}>
+      <Text style={styles.placeAddress}>{place.address}</Text>
+      <Text style={styles.placeStatus}>
+        {isLogged ? `Logged ${new Date(place.loggedAtUtc!).toLocaleString()}` : 'Not yet visited'}
+      </Text>
+      <View style={styles.placeActions}>
+        <Pressable
+          style={styles.placeButton}
+          onPress={navigate}
+          accessibilityRole="button"
+          accessibilityLabel={`Navigate to ${place.address}`}>
+          <Text style={styles.placeButtonText}>Navigate</Text>
+        </Pressable>
+        {!isLogged ? (
+          <Pressable
+            style={[styles.placeButton, logging ? styles.primaryDisabled : null]}
+            onPress={() => void logLocation()}
+            disabled={logging}
+            accessibilityRole="button"
+            accessibilityLabel={`Log location for ${place.address}`}>
+            {logging ? (
+              <ActivityIndicator size="small" color="#0D6E6E" />
+            ) : (
+              <Text style={styles.placeButtonText}>Log this location</Text>
+            )}
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 export function CommandStripCard({
   visit,
   visitIndex,
@@ -39,6 +135,7 @@ export function CommandStripCard({
   onStartVisit,
   onOpenCase,
   onSyncChipPress,
+  onPlaceLogged,
 }: Props): React.JSX.Element {
   const caseSummary = visit.case;
   const pocso = isPocsoCase(caseSummary?.sensitivityLevel);
@@ -80,6 +177,19 @@ export function CommandStripCard({
           <Text style={styles.whisperText} numberOfLines={3}>
             Handoff: {buildWhisperLine(visit.handoffWhisper)}
           </Text>
+        </View>
+      ) : null}
+
+      {visit.id && visit.places && visit.places.length > 0 ? (
+        <View style={styles.placesSection} accessibilityLabel="Places to visit">
+          {visit.places.map(place => (
+            <PlaceRow
+              key={place.id}
+              visitId={visit.id!}
+              place={place}
+              onLogged={onPlaceLogged}
+            />
+          ))}
         </View>
       ) : null}
 
@@ -182,5 +292,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+  },
+  placesSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EAECF0',
+    gap: 10,
+  },
+  placeRow: {
+    gap: 4,
+  },
+  placeAddress: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#101828',
+  },
+  placeStatus: {
+    fontSize: 12,
+    color: '#667085',
+  },
+  placeActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  placeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#0D6E6E',
+    alignItems: 'center',
+  },
+  placeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0D6E6E',
   },
 });

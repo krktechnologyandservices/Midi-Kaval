@@ -5,6 +5,8 @@ namespace MidiKaval.Api.Models.Visits;
 public sealed class VisitListItemDto
 {
     public Guid Id { get; set; }
+    public Guid AssigneeUserId { get; set; }
+    public string? AssigneeEmail { get; set; }
     public DateTime ScheduledAtUtc { get; set; }
     public string Status { get; set; } = string.Empty;
     public bool IsOverdue { get; set; }
@@ -12,8 +14,39 @@ public sealed class VisitListItemDto
     public DateTime? CompletedAtUtc { get; set; }
     public string? CompletionNote { get; set; }
     public string? LastRescheduleReason { get; set; }
+    public string? CancellationReason { get; set; }
     public HandoffWhisperDto? HandoffWhisper { get; set; }
+    public IReadOnlyList<VisitPlaceDto> Places { get; set; } = Array.Empty<VisitPlaceDto>();
     public CaseSummaryDto Case { get; set; } = null!;
+}
+
+public sealed class VisitPlaceDto
+{
+    public Guid Id { get; set; }
+    public Guid VisitId { get; set; }
+    public string Address { get; set; } = string.Empty;
+    public string? OsmReference { get; set; }
+    public decimal? PlannedLatitude { get; set; }
+    public decimal? PlannedLongitude { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public decimal? LoggedLatitude { get; set; }
+    public decimal? LoggedLongitude { get; set; }
+    public DateTime? LoggedAtUtc { get; set; }
+    public string? LoggedByEmail { get; set; }
+}
+
+public sealed class AddVisitPlaceRequest
+{
+    public string? Address { get; set; }
+    public string? OsmReference { get; set; }
+    public decimal? PlannedLatitude { get; set; }
+    public decimal? PlannedLongitude { get; set; }
+}
+
+public sealed class LogVisitPlaceRequest
+{
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
 }
 
 public sealed class VisitListResultDto
@@ -38,4 +71,9 @@ public sealed class RescheduleVisitRequest
 public sealed class CompleteVisitRequest
 {
     public string? Note { get; set; }
+}
+
+public sealed class CancelVisitRequest
+{
+    public string? Reason { get; set; }
 }

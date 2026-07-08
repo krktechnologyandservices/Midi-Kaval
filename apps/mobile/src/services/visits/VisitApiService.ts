@@ -10,7 +10,12 @@ import {
 import {enqueueOfflineMutation} from '../sync/offlineQueue';
 import {isDeviceOffline} from '../sync/networkStatus';
 import {flushOfflineQueue} from '../sync/mobileSyncPushService';
-import {VisitGroupingSuggestionDto, VisitListItemDto, VisitListResultDto} from './visit.models';
+import {
+  VisitGroupingSuggestionDto,
+  VisitListItemDto,
+  VisitListResultDto,
+  VisitPlaceDto,
+} from './visit.models';
 
 export class VisitApiService {
   constructor(private readonly auth: AuthSessionService = authSessionService) {}
@@ -128,6 +133,23 @@ export class VisitApiService {
       const envelope = await this.auth.postApi<VisitListItemDto>(
         `/api/v1/visits/${visitId}/reschedule`,
         {scheduledAtUtc, reason},
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async logPlace(
+    visitId: string,
+    placeId: string,
+    latitude: number,
+    longitude: number,
+  ): Promise<VisitPlaceDto> {
+    try {
+      const envelope = await this.auth.postApi<VisitPlaceDto>(
+        `/api/v1/visits/${visitId}/places/${placeId}/log`,
+        {latitude, longitude},
       );
       return envelope.data;
     } catch (error) {

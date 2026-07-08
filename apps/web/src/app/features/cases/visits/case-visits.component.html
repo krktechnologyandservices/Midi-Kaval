@@ -1,0 +1,184 @@
+<section class="case-visits" aria-label="Case visits">
+  <h3>Visits</h3>
+
+  @if (loading()) {
+    <p>Loading visits…</p>
+  } @else if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+    <button mat-stroked-button type="button" (click)="loadVisits()">Retry</button>
+  } @else {
+    @if (items().length === 0) {
+      <p class="empty-state">No visits scheduled yet.</p>
+    } @else {
+      <ul class="visit-list">
+        @for (item of items(); track item.id) {
+          <li class="visit-item" [class.overdue]="item.isOverdue">
+            <div class="row-header">
+              <span class="chip" [class]="statusChipClass(item.status)">{{ item.status }}</span>
+              @if (item.isOverdue) {
+                <span class="chip overdue-chip">Overdue</span>
+              }
+            </div>
+            <p class="assignee">Assigned to {{ item.assigneeEmail ?? item.assigneeUserId }}</p>
+            <p class="meta">Scheduled {{ formatTimestamp(item.scheduledAtUtc) }}</p>
+            @if (item.completedAtUtc) {
+              <p class="meta">Completed {{ formatTimestamp(item.completedAtUtc) }}</p>
+            }
+            @if (item.completionNote) {
+              <p class="note">Note: {{ item.completionNote }}</p>
+            }
+            @if (item.lastRescheduleReason) {
+              <p class="note">Last reschedule reason: {{ item.lastRescheduleReason }}</p>
+            }
+            @if (item.cancellationReason) {
+              <p class="note">Cancelled: {{ item.cancellationReason }}</p>
+            }
+
+            <div class="places-section">
+              <p class="places-heading">Places to visit</p>
+              @if (item.places.length === 0) {
+                <p class="empty-state">No places added yet.</p>
+              } @else {
+                <ul class="place-list">
+                  @for (place of item.places; track place.id) {
+                    <li class="place-item">
+                      <p class="place-address">{{ place.address }}</p>
+                      @if (place.loggedAtUtc) {
+                        <p class="place-logged">
+                          Logged {{ formatTimestamp(place.loggedAtUtc) }}
+                          @if (place.loggedByEmail) {
+                            by {{ place.loggedByEmail }}
+                          }
+                        </p>
+                      } @else {
+                        <p class="place-pending">Not yet visited</p>
+                      }
+                      @if (viewOnMapUrl(place); as mapUrl) {
+                        <a class="place-map-link" [href]="mapUrl" target="_blank" rel="noopener">
+                          View on map
+                        </a>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+
+              @if (isActive(item)) {
+                @if (addingPlaceForVisitId() === item.id) {
+                  <div class="add-place-form">
+                    @if (placeFormErrorMessage()) {
+                      <p class="error">{{ placeFormErrorMessage() }}</p>
+                    }
+                    <mat-form-field appearance="outline" class="full-width">
+                      <mat-label>Search for an address</mat-label>
+                      <input
+                        matInput
+                        [value]="placeSearchQuery()"
+                        (input)="onPlaceSearchInput($any($event.target).value)"
+                        placeholder="Start typing an address…"
+                      />
+                    </mat-form-field>
+                    @if (placeSearchLoading()) {
+                      <p class="searching">Searching…</p>
+                    } @else if (placeSearchResults().length > 0) {
+                      <ul class="place-search-results">
+                        @for (result of placeSearchResults(); track result.osmReference ?? result.displayName) {
+                          <li>
+                            <button
+                              type="button"
+                              class="place-result-button"
+                              (click)="selectPlaceResult(result)">
+                              {{ result.displayName }}
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                    } @else if (showNoMatchHint()) {
+                      <p class="no-match-hint">
+                        No matches found in OpenStreetMap — its address coverage is weaker than
+                        Google's, especially for home addresses. You can still add
+                        "{{ placeSearchQuery() }}" as typed text below; it'll be saved without
+                        exact map coordinates.
+                      </p>
+                    }
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      type="button"
+                      [disabled]="addingPlaceSubmitting()"
+                      (click)="submitAddPlace(item)">
+                      {{ addingPlaceSubmitting() ? 'Adding…' : 'Add place' }}
+                    </button>
+                    <button mat-button type="button" (click)="cancelAddPlace()">Cancel</button>
+                  </div>
+                } @else {
+                  <button mat-stroked-button type="button" (click)="startAddPlace(item.id)">
+                    Add a place to visit
+                  </button>
+                }
+              }
+            </div>
+
+            @if (isActive(item)) {
+              @if (cancellingId() === item.id) {
+                <form class="cancel-form" [formGroup]="cancelForm" (ngSubmit)="submitCancel(item)">
+                  @if (cancelFormErrorMessage()) {
+                    <p class="error">{{ cancelFormErrorMessage() }}</p>
+                  }
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Reason for cancelling</mat-label>
+                    <textarea matInput rows="2" formControlName="reason" maxlength="500"></textarea>
+                  </mat-form-field>
+                  <button mat-flat-button color="warn" type="submit" [disabled]="submitting()">
+                    Confirm cancel
+                  </button>
+                  <button mat-button type="button" (click)="cancelCancelling()">Back</button>
+                </form>
+              } @else {
+                <button mat-stroked-button type="button" (click)="startCancel(item)">
+                  Cancel visit
+                </button>
+              }
+            }
+          </li>
+        }
+      </ul>
+    }
+  }
+
+  @if (activeVisit(); as active) {
+    <p class="active-visit-note">
+      This case already has an active visit — {{ formatTimestamp(active.scheduledAtUtc) }} with
+      {{ active.assigneeEmail ?? active.assigneeUserId }}. Cancel or complete it before scheduling
+      another.
+    </p>
+  } @else if (stageIsTerminal()) {
+    <p class="active-visit-note">No further visits can be scheduled — case is closed.</p>
+  } @else {
+    <form class="add-form" [formGroup]="addForm" (ngSubmit)="submitAdd()">
+      <h4>Schedule visit</h4>
+      @if (formErrorMessage()) {
+        <p class="error">{{ formErrorMessage() }}</p>
+      }
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Scheduled date &amp; time</mat-label>
+        <input matInput type="datetime-local" formControlName="scheduledAtLocal" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Assign to (optional — defaults to case's assigned worker)</mat-label>
+        <mat-select formControlName="assigneeUserId">
+          <mat-option value="">Use case's assigned worker</mat-option>
+          @for (worker of fieldWorkers(); track worker.id) {
+            <mat-option [value]="worker.id">{{ worker.email }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <button mat-flat-button color="primary" type="submit" [disabled]="submitting() || addForm.invalid">
+        {{ submitting() ? 'Scheduling…' : 'Schedule visit' }}
+      </button>
+    </form>
+  }
+</section>

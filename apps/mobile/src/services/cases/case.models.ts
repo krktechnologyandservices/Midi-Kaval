@@ -16,6 +16,26 @@ export type CaseDetailDto = components['schemas']['CaseDetailDto'] & {
   sensitivityLevel?: string;
   domicile?: string;
 };
+// currentStage is transmitted as the raw backend enum key (e.g. "MaintainAndDevelopment") and
+// was being shown to field workers verbatim with zero translation. Mirrors the same lookup
+// added to the web app's case.models.ts (apps/web/.../features/cases/models/case.models.ts) so
+// stage terminology is consistent between web and mobile.
+const CASE_STAGE_LABELS: Record<string, string> = {
+  ProcessInitiation: 'Process Initiation',
+  MaintainAndDevelopment: 'Maintenance & Development',
+  InterSectoralApproach: 'Inter-Sectoral Approach',
+  Rehabilitation: 'Rehabilitation',
+  Reintegration: 'Reintegration',
+  TerminationExclusion: 'Termination / Exclusion',
+};
+
+export function caseStageLabel(stage: string | null | undefined): string {
+  if (!stage) {
+    return '—';
+  }
+  return CASE_STAGE_LABELS[stage] ?? stage;
+}
+
 export type HandoffWhisperDto = components['schemas']['HandoffWhisperDto'];
 export type VerifyCaseGpsRequest = components['schemas']['VerifyCaseGpsRequest'];
 export type CaseGpsDto = components['schemas']['CaseGpsDto'];

@@ -25,6 +25,13 @@ const fullDashboardData: DashboardResultDto = {
   interventionsGauge: { inProgress: 5, overdue: 1, completedThisMonth: 8 },
   courtThisWeek: { totalUpcoming: 4, attendedSoFar: 1, totalCasesWithSittings: 3 },
   pendingClaims: { pendingCount: 6, totalAmountPending: 12500, oldestPendingDays: 14 },
+  budgetHealth: {
+    totalAllocated: 500000,
+    totalUtilized: 320000,
+    totalBalance: 180000,
+    overallUtilizationPercentage: 64,
+    headsNearingLimit: [],
+  },
   intakeTrend: [
     { month: '2025-07', count: 10 },
     { month: '2025-08', count: 0 },
@@ -50,6 +57,13 @@ const emptyDashboardData: DashboardResultDto = {
   interventionsGauge: { inProgress: 0, overdue: 0, completedThisMonth: 0 },
   courtThisWeek: { totalUpcoming: 0, attendedSoFar: 0, totalCasesWithSittings: 0 },
   pendingClaims: { pendingCount: 0, totalAmountPending: 0, oldestPendingDays: 0 },
+  budgetHealth: {
+    totalAllocated: 0,
+    totalUtilized: 0,
+    totalBalance: 0,
+    overallUtilizationPercentage: 0,
+    headsNearingLimit: [],
+  },
   intakeTrend: [],
 };
 

@@ -2,19 +2,32 @@ import { Component, inject, OnInit, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HandoffWhisperComponent } from '../handoff-whisper/handoff-whisper.component';
 import { CaseNotesTimelineComponent } from '../notes-timeline/case-notes-timeline.component';
 import { CaseInterventionsComponent } from '../interventions/case-interventions.component';
+import { CaseVisitsComponent } from '../visits/case-visits.component';
 import { CaseCourtSittingsComponent } from '../court-sittings/case-court-sittings.component';
+import { Stage2DataComponent } from '../stage-data/stage2-data.component';
+import { Stage3SupportsComponent } from '../stage-data/stage3-supports.component';
+import { Stage4PlacementComponent } from '../stage-data/stage4-placement.component';
+import { Stage5ReintegrationComponent } from '../stage-data/stage5-reintegration.component';
+import { Stage6TerminationComponent } from '../stage-data/stage6-termination.component';
 import {
+  CASE_STAGE_INFO,
+  CASE_STAGES,
   CaseDetailDto,
   CaseDuplicateMatchDto,
   CaseDto,
+  CaseStageInfo,
   CaseSummaryDto,
+  caseStageIndex,
+  caseStageLabel,
   FieldWorkerUserDto,
   nextCaseStage,
   TransferCaseRequest,
@@ -33,14 +46,22 @@ interface CaseDetailState {
   imports: [
     MatCardModule,
     MatButtonModule,
+    MatExpansionModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatSelectModule,
     ReactiveFormsModule,
     HandoffWhisperComponent,
     CaseNotesTimelineComponent,
     CaseInterventionsComponent,
+    CaseVisitsComponent,
     CaseCourtSittingsComponent,
+    Stage2DataComponent,
+    Stage3SupportsComponent,
+    Stage4PlacementComponent,
+    Stage5ReintegrationComponent,
+    Stage6TerminationComponent,
   ],
   templateUrl: './case-detail-placeholder.component.html',
   styleUrl: './case-detail-placeholder.component.scss',
@@ -77,8 +98,32 @@ export class CaseDetailPlaceholderComponent implements OnInit {
     notes: [''],
   });
 
+  readonly stages = CASE_STAGES;
+  readonly stageInfo = CASE_STAGE_INFO;
+  readonly caseStageLabel = caseStageLabel;
+
   get summary(): CaseDuplicateMatchDto | CaseDto | CaseSummaryDto | CaseDetailDto | undefined {
     return this.detail() ?? this.state?.summary;
+  }
+
+  currentStageIndex(): number {
+    return caseStageIndex(this.detail()?.currentStage);
+  }
+
+  currentStageInfo(): CaseStageInfo | null {
+    const stage = this.detail()?.currentStage;
+    return stage ? this.stageInfo[stage as keyof typeof this.stageInfo] ?? null : null;
+  }
+
+  stageStatus(index: number): 'completed' | 'current' | 'pending' {
+    const current = this.currentStageIndex();
+    if (current < 0) {
+      return 'pending';
+    }
+    if (index < current) {
+      return 'completed';
+    }
+    return index === current ? 'current' : 'pending';
   }
 
   assignedWorkerLabel(): string | null {

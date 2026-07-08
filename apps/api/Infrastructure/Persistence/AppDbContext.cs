@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<CaseSearchPreset> CaseSearchPresets => Set<CaseSearchPreset>();
     public DbSet<CaseAssignment> CaseAssignments => Set<CaseAssignment>();
     public DbSet<Visit> Visits => Set<Visit>();
+    public DbSet<VisitPlace> VisitPlaces => Set<VisitPlace>();
     public DbSet<VisitNote> VisitNotes => Set<VisitNote>();
     public DbSet<CaseNote> CaseNotes => Set<CaseNote>();
     public DbSet<Intervention> Interventions => Set<Intervention>();

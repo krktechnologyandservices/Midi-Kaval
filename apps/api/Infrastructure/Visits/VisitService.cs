@@ -21,10 +21,15 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
     private static readonly VisitStatus[] WeeklyStatuses =
         [VisitStatus.Scheduled, VisitStatus.InProgress, VisitStatus.Completed];
 
+    // Field workers experience "today" and "this week" in IST, not UTC. Using
+    // DateTime.UtcNow.Date directly means every day between midnight and 5:30 AM IST,
+    // the UTC calendar day is still "yesterday" — silently hiding visits that are
+    // genuinely scheduled for today (IST) from the field worker's Today list.
+    private static readonly TimeSpan IstOffset = TimeSpan.FromMinutes(330);
+
     public Task<(VisitListResultDto Result, int TotalCount)> ListTodayAsync(CancellationToken cancellationToken = default)
     {
-        var today = DateTime.UtcNow.Date;
-        var tomorrow = today.AddDays(1);
+        var (today, tomorrow) = GetIstDayBoundsUtc(DateTime.UtcNow);
         return ListForFieldWorkerAsync(
             (visit, _) => visit.ScheduledAtUtc >= today
                 && visit.ScheduledAtUtc < tomorrow
@@ -43,6 +48,13 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
             includeHandoff: true,
             includeCompletionNotesForCompleted: true,
             cancellationToken);
+    }
+
+    private static (DateTime StartUtc, DateTime EndUtc) GetIstDayBoundsUtc(DateTime utcNow)
+    {
+        var istNow = utcNow + IstOffset;
+        var istTodayStart = istNow.Date;
+        return (istTodayStart - IstOffset, istTodayStart.AddDays(1) - IstOffset);
     }
 
     public Task<(VisitListResultDto Result, int TotalCount)> ListOverdueAsync(CancellationToken cancellationToken = default)
@@ -220,6 +232,280 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
             completionNote: null,
             redactPocsoForFieldWorker: false,
             cancellationToken);
+    }
+
+    public async Task<VisitListItemDto> CancelAsync(
+        Guid caseId,
+        Guid visitId,
+        CancelVisitRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            throw new VisitValidationException("Request body is required.");
+        }
+
+        var reason = request.Reason?.Trim() ?? string.Empty;
+        if (reason.Length == 0)
+        {
+            throw new VisitValidationException("reason is required.");
+        }
+
+        if (reason.Length > 500)
+        {
+            throw new VisitValidationException("reason must be at most 500 characters.");
+        }
+
+        var (organisationId, actorUserId) = ResolveActorContext();
+        var row = await LoadVisitCaseRowAsync(visitId, organisationId, cancellationToken);
+
+        if (row is null || row.Case.Id != caseId)
+        {
+            throw new VisitNotFoundException();
+        }
+
+        if (row.Visit.Status == VisitStatus.Completed)
+        {
+            throw new VisitBusinessRuleException("Completed visits cannot be cancelled.");
+        }
+
+        if (row.Visit.Status == VisitStatus.Cancelled)
+        {
+            throw new VisitBusinessRuleException("Visit is already cancelled.");
+        }
+
+        var now = DateTime.UtcNow;
+        row.Visit.Status = VisitStatus.Cancelled;
+        row.Visit.CancellationReason = reason;
+        row.Visit.CancelledAtUtc = now;
+        row.Visit.CancelledByUserId = actorUserId;
+        row.Visit.UpdatedAtUtc = now;
+
+        if (row.Case.NextVisitDueAtUtc == row.Visit.ScheduledAtUtc)
+        {
+            row.Case.NextVisitDueAtUtc = null;
+        }
+
+        row.Case.UpdatedAtUtc = now;
+
+        db.AuditEvents.Add(new AuditEvent
+        {
+            Id = Guid.NewGuid(),
+            OrganisationId = organisationId,
+            ActorUserId = actorUserId,
+            SubjectUserId = row.Visit.AssigneeUserId,
+            EventType = AuditEventTypes.VisitCancelled,
+            MetadataJson = JsonSerializer.Serialize(
+                new Dictionary<string, object?>
+                {
+                    ["visitId"] = visitId.ToString("D"),
+                    ["caseId"] = caseId.ToString("D"),
+                },
+                JsonOptions),
+            CreatedAtUtc = now,
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return await ToListItemAsync(
+            row.Visit,
+            row.Case,
+            includeHandoff: false,
+            completionNote: null,
+            redactPocsoForFieldWorker: false,
+            cancellationToken);
+    }
+
+    public async Task<VisitPlaceDto> AddPlaceAsync(
+        Guid caseId,
+        Guid visitId,
+        AddVisitPlaceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            throw new VisitValidationException("Request body is required.");
+        }
+
+        var address = request.Address?.Trim() ?? string.Empty;
+        if (address.Length == 0)
+        {
+            throw new VisitValidationException("address is required.");
+        }
+
+        if (address.Length > 500)
+        {
+            throw new VisitValidationException("address must be at most 500 characters.");
+        }
+
+        if (request.PlannedLatitude is < -90 or > 90)
+        {
+            throw new VisitValidationException("plannedLatitude must be between -90 and 90.");
+        }
+
+        if (request.PlannedLongitude is < -180 or > 180)
+        {
+            throw new VisitValidationException("plannedLongitude must be between -180 and 180.");
+        }
+
+        var (organisationId, actorUserId) = ResolveActorContext();
+        var row = await LoadVisitCaseRowAsync(visitId, organisationId, cancellationToken);
+
+        if (row is null || row.Case.Id != caseId)
+        {
+            throw new VisitNotFoundException();
+        }
+
+        if (row.Visit.Status is VisitStatus.Completed or VisitStatus.Cancelled)
+        {
+            throw new VisitBusinessRuleException("Cannot add places to a completed or cancelled visit.");
+        }
+
+        var now = DateTime.UtcNow;
+        var place = new VisitPlace
+        {
+            Id = Guid.NewGuid(),
+            OrganisationId = organisationId,
+            VisitId = visitId,
+            Address = address,
+            OsmReference = request.OsmReference,
+            PlannedLatitude = request.PlannedLatitude,
+            PlannedLongitude = request.PlannedLongitude,
+            CreatedByUserId = actorUserId,
+            CreatedAtUtc = now,
+        };
+
+        db.VisitPlaces.Add(place);
+        db.AuditEvents.Add(new AuditEvent
+        {
+            Id = Guid.NewGuid(),
+            OrganisationId = organisationId,
+            ActorUserId = actorUserId,
+            SubjectUserId = row.Visit.AssigneeUserId,
+            EventType = AuditEventTypes.VisitPlaceAdded,
+            MetadataJson = JsonSerializer.Serialize(
+                new Dictionary<string, object?>
+                {
+                    ["visitId"] = visitId.ToString("D"),
+                    ["placeId"] = place.Id.ToString("D"),
+                },
+                JsonOptions),
+            CreatedAtUtc = now,
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new VisitPlaceDto
+        {
+            Id = place.Id,
+            VisitId = place.VisitId,
+            Address = place.Address,
+            OsmReference = place.OsmReference,
+            PlannedLatitude = place.PlannedLatitude,
+            PlannedLongitude = place.PlannedLongitude,
+            CreatedAtUtc = place.CreatedAtUtc,
+        };
+    }
+
+    public async Task<VisitPlaceDto> LogPlaceAsync(
+        Guid visitId,
+        Guid placeId,
+        LogVisitPlaceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            throw new VisitValidationException("Request body is required.");
+        }
+
+        if (request.Latitude is null || request.Longitude is null)
+        {
+            throw new VisitValidationException("latitude and longitude are required.");
+        }
+
+        if (request.Latitude is < -90 or > 90)
+        {
+            throw new VisitValidationException("latitude must be between -90 and 90.");
+        }
+
+        if (request.Longitude is < -180 or > 180)
+        {
+            throw new VisitValidationException("longitude must be between -180 and 180.");
+        }
+
+        var (organisationId, actorUserId) = ResolveActorContext();
+        var row = await LoadVisitCaseRowAsync(visitId, organisationId, cancellationToken);
+
+        if (row is null)
+        {
+            throw new VisitNotFoundException();
+        }
+
+        if (row.Visit.AssigneeUserId != actorUserId)
+        {
+            throw new VisitForbiddenException();
+        }
+
+        var place = await db.VisitPlaces.SingleOrDefaultAsync(
+            p => p.Id == placeId && p.VisitId == visitId && p.OrganisationId == organisationId,
+            cancellationToken);
+
+        if (place is null)
+        {
+            throw new VisitNotFoundException();
+        }
+
+        if (place.LoggedAtUtc is not null)
+        {
+            throw new VisitBusinessRuleException("This place has already been logged.");
+        }
+
+        // Server-assigned timestamp — deliberately not trusting any client-supplied value,
+        // since the device clock can't be relied on for an audit-quality arrival record.
+        var now = DateTime.UtcNow;
+        place.LoggedLatitude = request.Latitude;
+        place.LoggedLongitude = request.Longitude;
+        place.LoggedAtUtc = now;
+        place.LoggedByUserId = actorUserId;
+
+        db.AuditEvents.Add(new AuditEvent
+        {
+            Id = Guid.NewGuid(),
+            OrganisationId = organisationId,
+            ActorUserId = actorUserId,
+            SubjectUserId = actorUserId,
+            EventType = AuditEventTypes.VisitPlaceLogged,
+            MetadataJson = JsonSerializer.Serialize(
+                new Dictionary<string, object?>
+                {
+                    ["visitId"] = visitId.ToString("D"),
+                    ["placeId"] = placeId.ToString("D"),
+                },
+                JsonOptions),
+            CreatedAtUtc = now,
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        var loggedByEmail = await db.Users
+            .Where(u => u.Id == actorUserId)
+            .Select(u => u.Email)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return new VisitPlaceDto
+        {
+            Id = place.Id,
+            VisitId = place.VisitId,
+            Address = place.Address,
+            OsmReference = place.OsmReference,
+            PlannedLatitude = place.PlannedLatitude,
+            PlannedLongitude = place.PlannedLongitude,
+            CreatedAtUtc = place.CreatedAtUtc,
+            LoggedLatitude = place.LoggedLatitude,
+            LoggedLongitude = place.LoggedLongitude,
+            LoggedAtUtc = place.LoggedAtUtc,
+            LoggedByEmail = loggedByEmail,
+        };
     }
 
     public async Task<VisitListItemDto> StartAsync(Guid visitId, CancellationToken cancellationToken = default)
@@ -837,10 +1123,16 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
     {
         var now = DateTime.UtcNow;
         var isOverdue = visit.ScheduledAtUtc < now && ActiveStatuses.Contains(visit.Status);
+        var assigneeEmail = await db.Users
+            .Where(u => u.Id == visit.AssigneeUserId)
+            .Select(u => u.Email)
+            .SingleOrDefaultAsync(cancellationToken);
 
         return new VisitListItemDto
         {
             Id = visit.Id,
+            AssigneeUserId = visit.AssigneeUserId,
+            AssigneeEmail = assigneeEmail,
             ScheduledAtUtc = visit.ScheduledAtUtc,
             Status = visit.Status.ToString(),
             IsOverdue = isOverdue,
@@ -848,11 +1140,44 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
             CompletedAtUtc = visit.CompletedAtUtc,
             CompletionNote = completionNote,
             LastRescheduleReason = visit.LastRescheduleReason,
+            CancellationReason = visit.CancellationReason,
             HandoffWhisper = includeHandoff
                 ? await BuildHandoffWhisperAsync(caseEntity, visit.AssigneeUserId, cancellationToken)
                 : null,
+            Places = await LoadPlacesAsync(visit.Id, cancellationToken),
             Case = CaseDtoMapper.ToCaseSummary(caseEntity, redactPocsoForFieldWorker),
         };
+    }
+
+    private async Task<IReadOnlyList<VisitPlaceDto>> LoadPlacesAsync(
+        Guid visitId,
+        CancellationToken cancellationToken)
+    {
+        var rows = await (
+            from place in db.VisitPlaces
+            where place.VisitId == visitId
+            join loggedBy in db.Users on place.LoggedByUserId equals loggedBy.Id into loggedByJoin
+            from loggedBy in loggedByJoin.DefaultIfEmpty()
+            orderby place.CreatedAtUtc
+            select new { place, LoggedByEmail = (string?)loggedBy.Email })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(row => new VisitPlaceDto
+            {
+                Id = row.place.Id,
+                VisitId = row.place.VisitId,
+                Address = row.place.Address,
+                OsmReference = row.place.OsmReference,
+                PlannedLatitude = row.place.PlannedLatitude,
+                PlannedLongitude = row.place.PlannedLongitude,
+                CreatedAtUtc = row.place.CreatedAtUtc,
+                LoggedLatitude = row.place.LoggedLatitude,
+                LoggedLongitude = row.place.LoggedLongitude,
+                LoggedAtUtc = row.place.LoggedAtUtc,
+                LoggedByEmail = row.LoggedByEmail,
+            })
+            .ToList();
     }
 
     private async Task<HandoffWhisperDto?> BuildHandoffWhisperAsync(
@@ -997,12 +1322,15 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
         };
     }
 
+    // Returns UTC instants bounding the current IST calendar week (Mon–Sun), not the UTC week.
     private static (DateTime Start, DateTime End) GetUtcWeekBounds(DateTime utcNow)
     {
-        var day = (int)utcNow.DayOfWeek;
+        var istNow = utcNow + IstOffset;
+        var day = (int)istNow.DayOfWeek;
         var mondayOffset = day == 0 ? -6 : 1 - day;
-        var weekStart = utcNow.Date.AddDays(mondayOffset);
-        var weekEnd = weekStart.AddDays(7).AddTicks(-1);
+        var istWeekStart = istNow.Date.AddDays(mondayOffset);
+        var weekStart = istWeekStart - IstOffset;
+        var weekEnd = istWeekStart.AddDays(7).AddTicks(-1) - IstOffset;
         return (weekStart, weekEnd);
     }
 

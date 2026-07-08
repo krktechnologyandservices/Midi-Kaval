@@ -1,0 +1,61 @@
+<p class="stage-form-hint">
+  Track the child's ongoing development and support while the case remains in this stage.
+  All fields are optional — fill in whatever applies so far.
+</p>
+
+@if (loading()) {
+  <p class="loading">Loading…</p>
+} @else {
+  @if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+  }
+  @if (savedMessage()) {
+    <p class="saved-message">{{ savedMessage() }}</p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Bio-psycho-social assessment</mat-label>
+      <textarea matInput formControlName="bioPsychoSocialAssessment" rows="3"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Individual Care Plan (ICP) records</mat-label>
+      <textarea matInput formControlName="icpRecords" rows="3"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Life skill training</mat-label>
+      <textarea matInput formControlName="lifeSkillTraining" rows="2"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Parent management</mat-label>
+      <textarea matInput formControlName="parentManagement" rows="2"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Group work</mat-label>
+      <textarea matInput formControlName="groupWork" rows="2"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Community program attendance</mat-label>
+      <textarea matInput formControlName="communityProgramAttendance" rows="2"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Post-mediation assessment (PMA) status</mat-label>
+      <input matInput formControlName="pmaStatus" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Overall progress</mat-label>
+      <textarea matInput formControlName="overallProgress" rows="3"></textarea>
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+      {{ saving() ? 'Saving…' : 'Save' }}
+    </button>
+  </form>
+}

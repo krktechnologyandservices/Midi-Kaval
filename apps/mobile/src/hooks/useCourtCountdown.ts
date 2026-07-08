@@ -21,8 +21,13 @@ export function useCourtCountdown({enabled, refreshToken}: Options): {
 
     try {
       const items = await courtApiService.listUpcomingCourtSittings();
-      const first = items[0];
-      setLabel(first ? buildCourtCountdownLabel(first) : null);
+      // Items are ordered by scheduled date ascending. A stale sitting that already
+      // happened but is still stuck in "Upcoming" status (nobody logged its outcome)
+      // would otherwise always be items[0] and permanently hide today's/next sitting
+      // from the banner. Prefer the earliest one that isn't overdue, falling back to
+      // the overdue one only if that's genuinely all there is.
+      const featured = items.find(item => !item.isPastDue) ?? items[0];
+      setLabel(featured ? buildCourtCountdownLabel(featured) : null);
     } catch {
       setLabel(null);
     }

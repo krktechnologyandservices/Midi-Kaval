@@ -21,6 +21,7 @@ export interface ProblemDetails {
   title?: string;
   status?: number;
   detail?: string;
+  errors?: Record<string, string[]>;
 }
 
 export const CHALLENGE_KEY = 'midi_kaval_otp_challenge';

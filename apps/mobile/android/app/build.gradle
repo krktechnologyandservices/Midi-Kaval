@@ -10,6 +10,18 @@ react {
     autolinkLibrariesWithApp()
 }
 
+// Copies react-native-vector-icons' .ttf font files into this app's assets so icon
+// glyphs actually render on-device instead of showing as empty boxes/missing-glyph tofu.
+// fonts.gradle's default iconFontsDir ("../../node_modules/...") assumes a single-package
+// RN project two levels above android/app — in this monorepo, node_modules is hoisted to
+// the workspace root, four levels up, so the default resolves to a path that doesn't
+// exist and the copy task silently copies zero files. Point it at the real location.
+project.ext.vectoricons = [
+    iconFontsDir: "../../../../node_modules/react-native-vector-icons/Fonts",
+    iconFontNames: ["MaterialCommunityIcons.ttf"]
+]
+apply from: file("../../../../node_modules/react-native-vector-icons/fonts.gradle")
+
 def enableProguardInReleaseBuilds = false
 def jscFlavor = 'org.webkit:android-jsc:+'
 

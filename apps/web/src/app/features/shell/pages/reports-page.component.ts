@@ -23,6 +23,14 @@ import {
 } from '../reports.models';
 
 const POLL_INTERVAL_MS = 10000;
+
+function toIsoDateOnly(date: Date | null): string | null {
+  if (!date) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 const SKELETON_ROW_COUNT = 5;
 
 @Component({
@@ -200,6 +208,14 @@ export class ReportsPageComponent implements OnInit, OnDestroy {
 
   formatReportFormat(format: string): string {
     return displayFormat(format);
+  }
+
+  onFromDateChange(date: Date | null): void {
+    this.fromDate.set(toIsoDateOnly(date));
+  }
+
+  onToDateChange(date: Date | null): void {
+    this.toDate.set(toIsoDateOnly(date));
   }
 
   formatTimestamp(utc: string | null): string {

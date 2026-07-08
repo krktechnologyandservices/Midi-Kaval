@@ -29,8 +29,24 @@ import {
   CreateCaseRequest,
   CreateCaseSearchPresetRequest,
   FieldWorkerUserDto,
+  Stage2DataDto,
+  Stage3SupportDto,
+  Stage4PlacementDto,
+  Stage5ReintegrationDto,
+  Stage6TerminationExclusionDto,
   TransferCaseRequest,
   TransitionCaseStageRequest,
+  UpsertStage2DataRequest,
+  UpsertStage3SupportsRequest,
+  UpsertStage4PlacementRequest,
+  UpsertStage5ReintegrationRequest,
+  UpsertStage6TerminationExclusionRequest,
+  VisitListItemDto,
+  VisitPlaceDto,
+  AddVisitPlaceRequest,
+  GeocodingResultDto,
+  ScheduleVisitRequest,
+  CancelVisitRequest,
 } from '../models/case.models';
 
 @Injectable({ providedIn: 'root' })
@@ -178,6 +194,158 @@ export class CaseApiService {
     }
   }
 
+  async getStage2Data(caseId: string): Promise<Stage2DataDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.get<ApiEnvelope<Stage2DataDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/stage2-data`,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async upsertStage2Data(caseId: string, request: UpsertStage2DataRequest): Promise<Stage2DataDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.put<ApiEnvelope<Stage2DataDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/stage2-data`,
+          request,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async getStage3Supports(caseId: string): Promise<Stage3SupportDto[]> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.get<ApiEnvelope<Stage3SupportDto[]>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/stage3-data`,
+        ),
+      );
+      return envelope.data ?? [];
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async upsertStage3Supports(
+    caseId: string,
+    request: UpsertStage3SupportsRequest,
+  ): Promise<Stage3SupportDto[]> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.put<ApiEnvelope<Stage3SupportDto[]>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/stage3-data`,
+          request,
+        ),
+      );
+      return envelope.data ?? [];
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async getStage4Placement(caseId: string): Promise<Stage4PlacementDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.get<ApiEnvelope<Stage4PlacementDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/stage4-data`,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async upsertStage4Placement(
+    caseId: string,
+    request: UpsertStage4PlacementRequest,
+  ): Promise<Stage4PlacementDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.put<ApiEnvelope<Stage4PlacementDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/stage4-data`,
+          request,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async getStage5Reintegration(caseId: string): Promise<Stage5ReintegrationDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.get<ApiEnvelope<Stage5ReintegrationDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/stage5-data`,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async upsertStage5Reintegration(
+    caseId: string,
+    request: UpsertStage5ReintegrationRequest,
+  ): Promise<Stage5ReintegrationDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.put<ApiEnvelope<Stage5ReintegrationDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/stage5-data`,
+          request,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async getStage6TerminationExclusion(caseId: string): Promise<Stage6TerminationExclusionDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.get<ApiEnvelope<Stage6TerminationExclusionDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/stage6-data`,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async upsertStage6TerminationExclusion(
+    caseId: string,
+    request: UpsertStage6TerminationExclusionRequest,
+  ): Promise<Stage6TerminationExclusionDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.put<ApiEnvelope<Stage6TerminationExclusionDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/stage6-data`,
+          request,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  /** True when the case isn't currently at the stage this data belongs to (backend 404s this way). */
+  isStageDataNotFound(error: unknown): boolean {
+    return error instanceof CaseApiError && error.status === 404;
+  }
+
   async listFieldWorkers(): Promise<FieldWorkerUserDto[]> {
     try {
       const envelope = await firstValueFrom(
@@ -309,6 +477,86 @@ export class CaseApiService {
         ),
       );
       return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async listVisits(caseId: string): Promise<VisitListItemDto[]> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.get<ApiEnvelope<{ items: VisitListItemDto[] }>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/visits`,
+        ),
+      );
+      return envelope.data.items ?? [];
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async scheduleVisit(
+    caseId: string,
+    request: ScheduleVisitRequest,
+  ): Promise<VisitListItemDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.post<ApiEnvelope<VisitListItemDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/visits`,
+          request,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async cancelVisit(
+    caseId: string,
+    visitId: string,
+    request: CancelVisitRequest,
+  ): Promise<VisitListItemDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.post<ApiEnvelope<VisitListItemDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/visits/${visitId}/cancel`,
+          request,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async addVisitPlace(
+    caseId: string,
+    visitId: string,
+    request: AddVisitPlaceRequest,
+  ): Promise<VisitPlaceDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.post<ApiEnvelope<VisitPlaceDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/visits/${visitId}/places`,
+          request,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async searchGeocodingAddresses(query: string): Promise<GeocodingResultDto[]> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.get<ApiEnvelope<{ items: GeocodingResultDto[] }>>(
+          `${environment.apiBaseUrl}/api/v1/geocoding/search`,
+          { params: { q: query } },
+        ),
+      );
+      return envelope.data.items ?? [];
     } catch (error) {
       throw this.wrapError(error);
     }

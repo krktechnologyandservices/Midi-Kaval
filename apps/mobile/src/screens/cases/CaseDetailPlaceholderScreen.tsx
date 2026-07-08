@@ -25,6 +25,7 @@ import {
   attachmentBasename,
   ALLOWED_ATTACHMENT_CONTENT_TYPES,
   CASE_NOTE_TYPES,
+  caseStageLabel,
   CaseDetailDto,
   CaseNoteDto,
   CaseNoteType,
@@ -42,6 +43,7 @@ import {
   MAX_ATTACHMENT_BYTES,
 } from '../../services/cases/case.models';
 import {isCourtSittingPastDue} from '../../utils/courtSittingUtils';
+import {openAndroidDatePicker} from '../../utils/androidDatePicker';
 
 type Props = NativeStackScreenProps<CasesStackParamList, 'CaseDetailPlaceholder'>;
 
@@ -616,7 +618,7 @@ export function CaseDetailPlaceholderScreen({
               onExpandPress={() => void discreet.onExpandPress()}
             />
           </View>
-          <Text>Stage: {detail.currentStage}</Text>
+          <Text style={styles.stageLabel}>Stage: {caseStageLabel(detail.currentStage)}</Text>
 
           {whisper ? (
             <View style={styles.whisper} accessibilityLabel="Handoff summary">
@@ -722,27 +724,35 @@ export function CaseDetailPlaceholderScreen({
         {actionRequired ? (
           <>
             {Platform.OS === 'android' ? (
-              <Pressable style={styles.dateButton} onPress={() => setShowDuePicker(true)}>
+              <Pressable
+                style={styles.dateButton}
+                onPress={() =>
+                  openAndroidDatePicker({
+                    value: actionDueDate,
+                    mode: 'datetime',
+                    minimumDate: new Date(),
+                    onChange: setActionDueDate,
+                  })
+                }>
                 <Text style={styles.dateButtonText}>{formatDateTime(actionDueDate)}</Text>
               </Pressable>
             ) : (
-              <Text style={styles.datePreview}>{formatDateTime(actionDueDate)}</Text>
+              <>
+                <Text style={styles.datePreview}>{formatDateTime(actionDueDate)}</Text>
+                {showDuePicker ? (
+                  <DateTimePicker
+                    value={actionDueDate}
+                    mode="datetime"
+                    minimumDate={new Date()}
+                    onChange={(_event, date) => {
+                      if (date) {
+                        setActionDueDate(date);
+                      }
+                    }}
+                  />
+                ) : null}
+              </>
             )}
-            {showDuePicker ? (
-              <DateTimePicker
-                value={actionDueDate}
-                mode="datetime"
-                minimumDate={new Date()}
-                onChange={(_event, date) => {
-                  if (Platform.OS === 'android') {
-                    setShowDuePicker(false);
-                  }
-                  if (date) {
-                    setActionDueDate(date);
-                  }
-                }}
-              />
-            ) : null}
           </>
         ) : null}
 
@@ -952,55 +962,66 @@ export function CaseDetailPlaceholderScreen({
             {Platform.OS === 'android' ? (
               <Pressable
                 style={styles.dateButton}
-                onPress={() => setShowInterventionDuePicker(true)}>
+                onPress={() =>
+                  openAndroidDatePicker({
+                    value: interventionDueDate,
+                    mode: 'datetime',
+                    minimumDate: new Date(),
+                    onChange: setInterventionDueDate,
+                  })
+                }>
                 <Text style={styles.dateButtonText}>{formatDateTime(interventionDueDate)}</Text>
               </Pressable>
             ) : (
-              <Text style={styles.datePreview}>{formatDateTime(interventionDueDate)}</Text>
+              <>
+                <Text style={styles.datePreview}>{formatDateTime(interventionDueDate)}</Text>
+                {showInterventionDuePicker ? (
+                  <DateTimePicker
+                    value={interventionDueDate}
+                    mode="datetime"
+                    minimumDate={new Date()}
+                    onChange={(_event, date) => {
+                      if (date) {
+                        setInterventionDueDate(date);
+                      }
+                    }}
+                  />
+                ) : null}
+              </>
             )}
-            {showInterventionDuePicker ? (
-              <DateTimePicker
-                value={interventionDueDate}
-                mode="datetime"
-                minimumDate={new Date()}
-                onChange={(_event, date) => {
-                  if (Platform.OS === 'android') {
-                    setShowInterventionDuePicker(false);
-                  }
-                  if (date) {
-                    setInterventionDueDate(date);
-                  }
-                }}
-              />
-            ) : null}
           </>
         ) : (
           <>
             {Platform.OS === 'android' ? (
               <Pressable
                 style={styles.dateButton}
-                onPress={() => setShowInterventionProvidedPicker(true)}>
+                onPress={() =>
+                  openAndroidDatePicker({
+                    value: interventionProvidedDate,
+                    mode: 'datetime',
+                    onChange: setInterventionProvidedDate,
+                  })
+                }>
                 <Text style={styles.dateButtonText}>
                   {formatDateTime(interventionProvidedDate)}
                 </Text>
               </Pressable>
             ) : (
-              <Text style={styles.datePreview}>{formatDateTime(interventionProvidedDate)}</Text>
+              <>
+                <Text style={styles.datePreview}>{formatDateTime(interventionProvidedDate)}</Text>
+                {showInterventionProvidedPicker ? (
+                  <DateTimePicker
+                    value={interventionProvidedDate}
+                    mode="datetime"
+                    onChange={(_event, date) => {
+                      if (date) {
+                        setInterventionProvidedDate(date);
+                      }
+                    }}
+                  />
+                ) : null}
+              </>
             )}
-            {showInterventionProvidedPicker ? (
-              <DateTimePicker
-                value={interventionProvidedDate}
-                mode="datetime"
-                onChange={(_event, date) => {
-                  if (Platform.OS === 'android') {
-                    setShowInterventionProvidedPicker(false);
-                  }
-                  if (date) {
-                    setInterventionProvidedDate(date);
-                  }
-                }}
-              />
-            ) : null}
           </>
         )}
 
@@ -1102,30 +1123,35 @@ export function CaseDetailPlaceholderScreen({
                 {Platform.OS === 'android' ? (
                   <Pressable
                     style={styles.dateButton}
-                    onPress={() => setShowUpdateCourtSittingScheduledPicker(true)}>
+                    onPress={() =>
+                      openAndroidDatePicker({
+                        value: updateCourtSittingScheduledDate,
+                        mode: 'datetime',
+                        onChange: setUpdateCourtSittingScheduledDate,
+                      })
+                    }>
                     <Text style={styles.dateButtonText}>
                       {formatDateTime(updateCourtSittingScheduledDate)}
                     </Text>
                   </Pressable>
                 ) : (
-                  <Text style={styles.datePreview}>
-                    {formatDateTime(updateCourtSittingScheduledDate)}
-                  </Text>
+                  <>
+                    <Text style={styles.datePreview}>
+                      {formatDateTime(updateCourtSittingScheduledDate)}
+                    </Text>
+                    {showUpdateCourtSittingScheduledPicker ? (
+                      <DateTimePicker
+                        value={updateCourtSittingScheduledDate}
+                        mode="datetime"
+                        onChange={(_event, date) => {
+                          if (date) {
+                            setUpdateCourtSittingScheduledDate(date);
+                          }
+                        }}
+                      />
+                    ) : null}
+                  </>
                 )}
-                {showUpdateCourtSittingScheduledPicker ? (
-                  <DateTimePicker
-                    value={updateCourtSittingScheduledDate}
-                    mode="datetime"
-                    onChange={(_event, date) => {
-                      if (Platform.OS === 'android') {
-                        setShowUpdateCourtSittingScheduledPicker(false);
-                      }
-                      if (date) {
-                        setUpdateCourtSittingScheduledDate(date);
-                      }
-                    }}
-                  />
-                ) : null}
                 <TextInput
                   style={styles.textInput}
                   multiline
@@ -1164,30 +1190,35 @@ export function CaseDetailPlaceholderScreen({
                         {Platform.OS === 'android' ? (
                           <Pressable
                             style={styles.dateButton}
-                            onPress={() => setShowUpdateCourtSittingNextPicker(true)}>
+                            onPress={() =>
+                              openAndroidDatePicker({
+                                value: updateCourtSittingNextDate,
+                                mode: 'datetime',
+                                onChange: setUpdateCourtSittingNextDate,
+                              })
+                            }>
                             <Text style={styles.dateButtonText}>
                               Next court: {formatDateTime(updateCourtSittingNextDate)}
                             </Text>
                           </Pressable>
                         ) : (
-                          <Text style={styles.datePreview}>
-                            Next court: {formatDateTime(updateCourtSittingNextDate)}
-                          </Text>
+                          <>
+                            <Text style={styles.datePreview}>
+                              Next court: {formatDateTime(updateCourtSittingNextDate)}
+                            </Text>
+                            {showUpdateCourtSittingNextPicker ? (
+                              <DateTimePicker
+                                value={updateCourtSittingNextDate}
+                                mode="datetime"
+                                onChange={(_event, date) => {
+                                  if (date) {
+                                    setUpdateCourtSittingNextDate(date);
+                                  }
+                                }}
+                              />
+                            ) : null}
+                          </>
                         )}
-                        {showUpdateCourtSittingNextPicker ? (
-                          <DateTimePicker
-                            value={updateCourtSittingNextDate}
-                            mode="datetime"
-                            onChange={(_event, date) => {
-                              if (Platform.OS === 'android') {
-                                setShowUpdateCourtSittingNextPicker(false);
-                              }
-                              if (date) {
-                                setUpdateCourtSittingNextDate(date);
-                              }
-                            }}
-                          />
-                        ) : null}
                       </>
                     ) : null}
                   </>
@@ -1262,27 +1293,33 @@ export function CaseDetailPlaceholderScreen({
         {Platform.OS === 'android' ? (
           <Pressable
             style={styles.dateButton}
-            onPress={() => setShowCourtSittingScheduledPicker(true)}>
+            onPress={() =>
+              openAndroidDatePicker({
+                value: courtSittingScheduledDate,
+                mode: 'datetime',
+                minimumDate: courtSittingStatus === 'Upcoming' ? new Date() : undefined,
+                onChange: setCourtSittingScheduledDate,
+              })
+            }>
             <Text style={styles.dateButtonText}>{formatDateTime(courtSittingScheduledDate)}</Text>
           </Pressable>
         ) : (
-          <Text style={styles.datePreview}>{formatDateTime(courtSittingScheduledDate)}</Text>
+          <>
+            <Text style={styles.datePreview}>{formatDateTime(courtSittingScheduledDate)}</Text>
+            {showCourtSittingScheduledPicker ? (
+              <DateTimePicker
+                value={courtSittingScheduledDate}
+                mode="datetime"
+                minimumDate={courtSittingStatus === 'Upcoming' ? new Date() : undefined}
+                onChange={(_event, date) => {
+                  if (date) {
+                    setCourtSittingScheduledDate(date);
+                  }
+                }}
+              />
+            ) : null}
+          </>
         )}
-        {showCourtSittingScheduledPicker ? (
-          <DateTimePicker
-            value={courtSittingScheduledDate}
-            mode="datetime"
-            minimumDate={courtSittingStatus === 'Upcoming' ? new Date() : undefined}
-            onChange={(_event, date) => {
-              if (Platform.OS === 'android') {
-                setShowCourtSittingScheduledPicker(false);
-              }
-              if (date) {
-                setCourtSittingScheduledDate(date);
-              }
-            }}
-          />
-        ) : null}
 
         <TextInput
           style={styles.textInput}
@@ -1369,6 +1406,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+  },
+  stageLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0D6E6E',
+    marginBottom: 8,
   },
   error: {
     color: '#b42318',

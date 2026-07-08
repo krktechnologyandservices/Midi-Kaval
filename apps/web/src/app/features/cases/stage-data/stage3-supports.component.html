@@ -1,0 +1,66 @@
+<p class="stage-form-hint">
+  Record each support service coordinated across departments/agencies (health, education,
+  police, etc.) for this case. Add as many as apply.
+</p>
+
+@if (loading()) {
+  <p class="loading">Loading…</p>
+} @else {
+  @if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+  }
+  @if (savedMessage()) {
+    <p class="saved-message">{{ savedMessage() }}</p>
+  }
+
+  @if (items().length === 0) {
+    <p class="stage-form-hint">No support items added yet.</p>
+  }
+
+  @for (item of items(); track $index) {
+    <div class="support-item">
+      <div class="support-item-main">
+        <strong>{{ item.supportType }}</strong>
+        @if (item.providerName) {
+          <span> — {{ item.providerName }}</span>
+        }
+        <mat-checkbox
+          [checked]="item.providedStatus"
+          (change)="toggleProvided($index)">
+          Provided
+        </mat-checkbox>
+      </div>
+      @if (item.notes) {
+        <p class="support-item-notes">{{ item.notes }}</p>
+      }
+      <button mat-button color="warn" type="button" (click)="removeItem($index)">Remove</button>
+    </div>
+  }
+
+  <form [formGroup]="addForm" (ngSubmit)="addItem()" class="add-support-form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Support type</mat-label>
+      <input matInput formControlName="supportType" placeholder="e.g. Medical, Educational, Legal" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Provider name (optional)</mat-label>
+      <input matInput formControlName="providerName" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Notes (optional)</mat-label>
+      <textarea matInput formControlName="notes" rows="2"></textarea>
+    </mat-form-field>
+
+    <mat-checkbox formControlName="providedStatus">Already provided</mat-checkbox>
+
+    <div>
+      <button mat-stroked-button type="submit">Add support item</button>
+    </div>
+  </form>
+
+  <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">
+    {{ saving() ? 'Saving…' : 'Save all' }}
+  </button>
+}

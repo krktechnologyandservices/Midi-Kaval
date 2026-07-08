@@ -11,6 +11,7 @@ using MidiKaval.Api.Infrastructure.Budgets;
 using MidiKaval.Api.Infrastructure.Middleware;
 using MidiKaval.Api.Infrastructure.Cases;
 using MidiKaval.Api.Infrastructure.Visits;
+using MidiKaval.Api.Infrastructure.Geocoding;
 using MidiKaval.Api.Infrastructure.Sync;
 using MidiKaval.Api.Infrastructure.Reports;
 using MidiKaval.Api.Infrastructure.Storage;
@@ -150,6 +151,14 @@ if (!builder.Environment.IsTesting())
     }
     builder.Services.AddScoped<AttachmentService>();
     builder.Services.AddScoped<VisitService>();
+    // Nominatim's usage policy requires a genuine identifying User-Agent on every
+    // request — set it here since browsers refuse to let client-side JS set this header,
+    // which is why address search is proxied through this API instead of called directly.
+    builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>(client =>
+    {
+        client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("MidiKaval-CaseManagement/1.0");
+    });
     builder.Services.AddScoped<SyncPushService>();
     builder.Services.AddScoped<CaseSearchPresetService>();
     builder.Services.AddScoped<UserQueryService>();

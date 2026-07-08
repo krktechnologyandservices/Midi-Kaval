@@ -10,17 +10,21 @@ export async function openGoogleMaps(
 ): Promise<boolean> {
   const url = buildGoogleMapsUrl(latitude, longitude);
 
+  // Deliberately not gating on Linking.canOpenURL() first: on Android it's known to
+  // return a false negative for https:// links even when a capable app is installed
+  // and the manifest <queries> declaration is correct (an OS/OEM package-visibility
+  // quirk, not something this app controls) — a standard https URL is always
+  // handleable by *something* on a real device, so treat an actual thrown error from
+  // openURL as the only real failure signal instead of pre-emptively blocking on a
+  // check that's proven unreliable.
   try {
-    const canOpen = await Linking.canOpenURL(url);
-    if (!canOpen) {
-      Alert.alert('Could not open Google Maps — install the app or try again');
-      return false;
-    }
-
     await Linking.openURL(url);
     return true;
-  } catch {
-    Alert.alert('Could not open Google Maps — install the app or try again');
+  } catch (error) {
+    Alert.alert(
+      'Could not open Google Maps',
+      error instanceof Error ? error.message : 'Install the app or try again.',
+    );
     return false;
   }
 }

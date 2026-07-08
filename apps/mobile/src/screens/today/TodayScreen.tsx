@@ -103,6 +103,8 @@ import {
 
   VisitListItemDto,
 
+  VisitPlaceDto,
+
 } from '../../services/visits/visit.models';
 
 
@@ -649,6 +651,36 @@ export function TodayScreen(): React.JSX.Element {
 
 
 
+  const onPlaceLogged = (visitId: string, place: VisitPlaceDto): void => {
+
+    setItems(prev => {
+
+      const next = prev.map(item =>
+
+        item.id === visitId
+
+          ? {...item, places: (item.places ?? []).map(p => (p.id === place.id ? place : p))}
+
+          : item,
+
+      );
+
+      void writeCache(mergeQueueWithVisits(next, offlineQueue), {
+
+        customVisitOrder,
+
+        routeGroupingActive,
+
+      });
+
+      return next;
+
+    });
+
+  };
+
+
+
   const showSkeleton = loading && items.length === 0;
 
   const showEmpty =
@@ -820,6 +852,8 @@ export function TodayScreen(): React.JSX.Element {
               onStartVisit={() => void onStartVisit(visit)}
 
               onSyncChipPress={navigateToSyncQueue}
+
+              onPlaceLogged={onPlaceLogged}
 
               onOpenCase={() => {
 

@@ -323,11 +323,25 @@ export class AuthSessionService {
       if (error.problem?.detail) {
         return error.problem.detail;
       }
+      // ASP.NET Core's automatic [ApiController] model validation returns a
+      // ValidationProblemDetails with per-field messages under `errors` and no
+      // top-level `detail` — without this, those responses fell through to the
+      // fully generic message below and the user never saw what was actually wrong.
+      const fieldErrors = error.problem?.errors;
+      if (fieldErrors) {
+        const firstMessages = Object.values(fieldErrors).flat();
+        if (firstMessages.length > 0) {
+          return firstMessages[0];
+        }
+      }
       if (error.status === 401) {
         return 'Invalid email or password.';
       }
       if (error.status === 429) {
         return 'Too many attempts. Please try again later.';
+      }
+      if (error.problem?.title) {
+        return error.problem.title;
       }
     }
 
@@ -424,17 +438,34 @@ export class AuthSessionService {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${environment.apiBaseUrl}${path}`, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${environment.apiBaseUrl}${path}`, {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      // fetch() itself rejected (no connectivity, DNS/TLS failure, timeout) — a raw
+      // TypeError here previously escaped uncategorized, so callers never recognized
+      // it as a network failure (that classification only applied to HTTP responses)
+      // and the offline-draft recovery path never triggered.
+      throw new ApiClientError(0, null);
+    }
 
     if (response.status === 204) {
       return {data: {} as T, meta: {requestId: ''}};
     }
 
-    const payload = (await response.json()) as ApiEnvelope<T> | ProblemDetails;
+    let payload: ApiEnvelope<T> | ProblemDetails;
+    try {
+      payload = (await response.json()) as ApiEnvelope<T> | ProblemDetails;
+    } catch {
+      // Non-JSON or empty body (e.g. a raw 5xx error page). Fall back to an empty
+      // problem so the existing status-code handling below (401 refresh-retry, 403
+      // deactivated check) still runs instead of the parse error escaping uncategorized.
+      payload = {} as ProblemDetails;
+    }
 
     if (!response.ok) {
       const problem = payload as ProblemDetails;

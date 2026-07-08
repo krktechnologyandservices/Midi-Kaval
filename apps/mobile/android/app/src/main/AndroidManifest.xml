@@ -1,5 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Android 11+ (this app targets API 34) hides other apps' visibility from
+         PackageManager unless declared here — without this, Linking.canOpenURL() for
+         the Google Maps https:// URL always returns false and "Navigate" on a visit
+         card fails with "Could not open Google Maps", even when a browser/Maps is installed. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />

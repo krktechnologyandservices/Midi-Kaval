@@ -1,0 +1,45 @@
+<p class="stage-form-hint">
+  This is the terminal stage — record why and how the case is closing. No further stage
+  transitions are possible after this.
+</p>
+
+@if (loading()) {
+  <p class="loading">Loading…</p>
+} @else {
+  @if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+  }
+  @if (savedMessage()) {
+    <p class="saved-message">{{ savedMessage() }}</p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Termination / exclusion type</mat-label>
+      <input
+        matInput
+        formControlName="terminationExclusionType"
+        placeholder="e.g. Termination, Exclusion, JJB referral"
+      />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Juvenile Justice Board (JJB) details (optional)</mat-label>
+      <textarea matInput formControlName="jjbDetails" rows="2"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Exclusion reason (optional)</mat-label>
+      <textarea matInput formControlName="exclusionReason" rows="2"></textarea>
+    </mat-form-field>
+
+    <p class="stage-form-hint">
+      A final report can be attached via a case note on this case in the meantime — direct
+      report attachment on this form isn't available yet.
+    </p>
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="saving() || form.invalid">
+      {{ saving() ? 'Saving…' : 'Save' }}
+    </button>
+  </form>
+}

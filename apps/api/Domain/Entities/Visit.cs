@@ -15,6 +15,9 @@ public sealed class Visit
     public string? LastRescheduleReason { get; set; }
     public DateTime? RescheduledAtUtc { get; set; }
     public Guid? RescheduledByUserId { get; set; }
+    public string? CancellationReason { get; set; }
+    public DateTime? CancelledAtUtc { get; set; }
+    public Guid? CancelledByUserId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }

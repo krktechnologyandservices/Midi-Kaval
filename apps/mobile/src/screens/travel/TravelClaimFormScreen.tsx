@@ -1,6 +1,8 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +16,7 @@ import {launchCamera} from 'react-native-image-picker';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {AccessibleErrorRegion} from '../../components/AccessibleErrorRegion';
+import {Icon} from '../../components/Icon';
 import {SyncChip} from '../../components/SyncChip';
 import {MoreStackParamList} from '../../navigation/types';
 import {attachmentApiService} from '../../services/attachments/AttachmentApiService';
@@ -28,6 +31,7 @@ import {resolveTravelSyncChip} from '../../services/sync/resolveTravelSyncChip';
 import {useSyncOnForeground} from '../../services/sync/useSyncOnForeground';
 import {QueuedMutation} from '../../services/sync/syncMutationTypes';
 import {isDeviceOffline} from '../../services/sync/networkStatus';
+import {openAndroidDatePicker} from '../../utils/androidDatePicker';
 import {
   travelClaimApiService,
   TravelClaimApiError,
@@ -151,6 +155,7 @@ export function TravelClaimFormScreen(): React.JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [claimDate, setClaimDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [startLocation, setStartLocation] = useState('');
   const [destination, setDestination] = useState('');
   const [transportMode, setTransportMode] = useState<TransportMode>('Bus');
@@ -337,11 +342,20 @@ export function TravelClaimFormScreen(): React.JSX.Element {
       return;
     }
 
-    const response = await launchCamera({
-      mediaType: 'photo',
-      saveToPhotos: false,
-      quality: 0.8,
-    });
+    let response;
+    try {
+      response = await launchCamera({
+        mediaType: 'photo',
+        saveToPhotos: false,
+        quality: 0.8,
+      });
+    } catch {
+      // launchCamera() can reject outright (not just resolve with errorCode) on some
+      // devices/OS versions — without this catch, the promise rejection was unhandled
+      // and the button appeared to silently do nothing.
+      setErrorMessage('Could not open camera. Try again.');
+      return;
+    }
 
     if (response.didCancel) {
       return;
@@ -466,7 +480,21 @@ export function TravelClaimFormScreen(): React.JSX.Element {
 
         const created = await travelClaimApiService.create(payload);
         if (pickedReceipt && created.id) {
-          await uploadReceipt(created.id);
+          try {
+            await uploadReceipt(created.id);
+          } catch (uploadError) {
+            // The claim record was already created on the server at this point — if the
+            // receipt upload fails and this falls through to the outer catch below, the
+            // screen stays in "create" mode with no claimId, so tapping Save again would
+            // create a second, duplicate claim. Navigate to the real claim's edit mode
+            // regardless, and surface the upload failure separately.
+            navigation.replace('TravelClaimForm', {
+              claimId: created.id,
+              mode: 'edit',
+            });
+            setErrorMessage(travelClaimApiService.extractErrorMessage(uploadError));
+            return;
+          }
         }
         navigation.replace('TravelClaimForm', {
           claimId: created.id,
@@ -562,7 +590,24 @@ export function TravelClaimFormScreen(): React.JSX.Element {
   }
 
   return (
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.headerRow}>
+        <Icon name="bus-clock" size={26} color="#0D6E6E" />
+        <View style={styles.headerTextGroup}>
+          <Text style={styles.title}>
+            {readOnly ? 'Travel claim' : claimId ? 'Edit travel claim' : 'New travel claim'}
+          </Text>
+          <Text style={styles.subtitle}>
+            {readOnly
+              ? 'Read-only — submitted claims cannot be edited.'
+              : 'Fields marked * are required.'}
+          </Text>
+        </View>
+      </View>
+
       {syncChip ? (
         <View style={styles.syncRow}>
           <SyncChip chip={syncChip} />
@@ -587,40 +632,59 @@ export function TravelClaimFormScreen(): React.JSX.Element {
         </View>
       ) : null}
 
-      <Text style={styles.label}>Claim date</Text>
+      <Text style={styles.label}>Claim date *</Text>
       {readOnly || isLocalDraft ? (
         <Text style={styles.readOnlyValue}>{claimDate.toLocaleDateString()}</Text>
       ) : (
+        <Pressable
+          style={styles.dateInput}
+          onPress={() =>
+            Platform.OS === 'android'
+              ? openAndroidDatePicker({value: claimDate, mode: 'date', onChange: setClaimDate})
+              : setShowDatePicker(true)
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Claim date">
+          <Text style={styles.dateInputText}>{claimDate.toLocaleDateString()}</Text>
+          <Icon name="calendar-blank-outline" size={20} color="#475467" />
+        </Pressable>
+      )}
+      {Platform.OS !== 'android' && showDatePicker ? (
         <DateTimePicker
           value={claimDate}
           mode="date"
           onChange={(_, date) => {
+            setShowDatePicker(false);
             if (date) {
               setClaimDate(date);
             }
           }}
         />
-      )}
+      ) : null}
 
-      <Text style={styles.label}>Start location</Text>
+      <Text style={styles.label}>Start location *</Text>
       <TextInput
         style={styles.input}
         value={startLocation}
         editable={!readOnly && !isLocalDraft}
         onChangeText={setStartLocation}
+        placeholder="e.g., District office"
+        placeholderTextColor="#98A2B3"
         accessibilityLabel="Start location"
       />
 
-      <Text style={styles.label}>Destination</Text>
+      <Text style={styles.label}>Destination *</Text>
       <TextInput
         style={styles.input}
         value={destination}
         editable={!readOnly && !isLocalDraft}
         onChangeText={setDestination}
+        placeholder="e.g., Beneficiary's residence"
+        placeholderTextColor="#98A2B3"
         accessibilityLabel="Destination"
       />
 
-      <Text style={styles.label}>Transport mode</Text>
+      <Text style={styles.label}>Transport mode *</Text>
       <View style={styles.modeRow}>
         {TRANSPORT_MODES.map(modeOption => (
           <Pressable
@@ -645,30 +709,48 @@ export function TravelClaimFormScreen(): React.JSX.Element {
         ))}
       </View>
 
-      <Text style={styles.label}>Amount</Text>
-      <TextInput
-        style={styles.input}
-        value={amountText}
-        editable={!readOnly && !isLocalDraft}
-        keyboardType="decimal-pad"
-        onChangeText={setAmountText}
-        accessibilityLabel="Amount"
-      />
+      <Text style={styles.label}>Amount *</Text>
+      <View style={styles.amountRow}>
+        <Text style={styles.currencyPrefix}>₹</Text>
+        <TextInput
+          style={[styles.input, styles.amountInput]}
+          value={amountText}
+          editable={!readOnly && !isLocalDraft}
+          keyboardType="decimal-pad"
+          onChangeText={setAmountText}
+          placeholder="0.00"
+          placeholderTextColor="#98A2B3"
+          accessibilityLabel="Amount"
+        />
+      </View>
 
       {transportMode === 'Auto' ? (
         <>
-          <Text style={styles.label}>Auto number</Text>
+          <Text style={styles.label}>Auto number *</Text>
           <TextInput
             style={styles.input}
             value={autoNumber}
             editable={!readOnly && !isLocalDraft}
             onChangeText={setAutoNumber}
+            placeholder="e.g., KA01AB1234"
+            placeholderTextColor="#98A2B3"
             accessibilityLabel="Auto number"
           />
         </>
       ) : null}
 
-      <Text style={styles.label}>Linked cases</Text>
+      <Text style={styles.label}>Linked cases *</Text>
+      <Text style={styles.helperText}>
+        Select the case(s) this trip relates to — at least one is required.
+      </Text>
+      {assignedCases.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Icon name="folder-alert-outline" size={22} color="#98A2B3" />
+          <Text style={styles.emptyStateText}>
+            No assigned cases found. You need at least one assigned case to submit a travel claim.
+          </Text>
+        </View>
+      ) : null}
       {assignedCases.map(caseItem => {
         const selected = selectedCaseIds.includes(caseItem.id ?? '');
         return (
@@ -698,14 +780,18 @@ export function TravelClaimFormScreen(): React.JSX.Element {
 
       {!readOnly ? (
         <>
-          <Text style={styles.label}>Receipt</Text>
+          <Text style={styles.label}>Receipt{receiptRequired ? ' *' : ' (optional)'}</Text>
           {claim?.attachments?.map(attachment => (
-            <Text key={attachment.id} style={styles.receiptName}>
-              {attachment.originalFileName}
-            </Text>
+            <View key={attachment.id} style={styles.receiptRow}>
+              <Icon name="file-check-outline" size={18} color="#027a48" />
+              <Text style={styles.receiptName}>{attachment.originalFileName}</Text>
+            </View>
           ))}
           {pickedReceipt ? (
-            <Text style={styles.receiptName}>{pickedReceipt.name}</Text>
+            <View style={styles.receiptRow}>
+              <Icon name="file-check-outline" size={18} color="#027a48" />
+              <Text style={styles.receiptName}>{pickedReceipt.name}</Text>
+            </View>
           ) : null}
           {!isLocalDraft ? (
             <View style={styles.receiptButtonRow}>
@@ -714,6 +800,7 @@ export function TravelClaimFormScreen(): React.JSX.Element {
                 onPress={() => void captureReceiptPhoto()}
                 accessibilityRole="button"
                 accessibilityLabel="Take photo of receipt">
+                <Icon name="camera-outline" size={18} color="#0D6E6E" />
                 <Text style={styles.secondaryButtonText}>Take photo</Text>
               </Pressable>
               <Pressable
@@ -721,6 +808,7 @@ export function TravelClaimFormScreen(): React.JSX.Element {
                 onPress={() => void pickReceipt()}
                 accessibilityRole="button"
                 accessibilityLabel="Pick receipt">
+                <Icon name="file-document-outline" size={18} color="#0D6E6E" />
                 <Text style={styles.secondaryButtonText}>
                   {pickedReceipt || claim?.attachments?.length
                     ? 'Replace file'
@@ -731,27 +819,32 @@ export function TravelClaimFormScreen(): React.JSX.Element {
           ) : null}
         </>
       ) : null}
+    </ScrollView>
 
-      <AccessibleErrorRegion message={errorMessage} />
+    {!readOnly ? (
+      <View style={styles.footer}>
+        <AccessibleErrorRegion message={errorMessage} />
 
-      {!readOnly ? (
+        {receiptRequired && !hasConfirmedReceipt && claimId && claim?.status === 'Draft' ? (
+          <View style={styles.hintRow}>
+            <Icon name="alert-circle-outline" size={16} color="#b54708" />
+            <Text style={styles.hint}>{RECEIPT_REQUIRED_MESSAGE}</Text>
+          </View>
+        ) : null}
+
         <Pressable
           style={[styles.primaryButton, saving ? styles.buttonDisabled : null]}
           disabled={saving}
           onPress={() => void saveDraft()}
           accessibilityRole="button"
           accessibilityLabel="Save draft">
+          {saving ? <ActivityIndicator color="#fff" /> : <Icon name="content-save-outline" size={18} color="#fff" />}
           <Text style={styles.primaryButtonText}>
             {saving ? 'Saving…' : isLocalDraft ? 'Saved on this device' : 'Save draft'}
           </Text>
         </Pressable>
-      ) : null}
 
-      {!readOnly && claimId && !isLocalDraft && claim?.status === 'Draft' ? (
-        <>
-          {receiptRequired && !hasConfirmedReceipt ? (
-            <Text style={styles.hint}>{RECEIPT_REQUIRED_MESSAGE}</Text>
-          ) : null}
+        {claimId && !isLocalDraft && claim?.status === 'Draft' ? (
           <Pressable
             style={[
               styles.primaryButton,
@@ -763,17 +856,23 @@ export function TravelClaimFormScreen(): React.JSX.Element {
             onPress={() => void submitClaim()}
             accessibilityRole="button"
             accessibilityLabel="Submit claim">
+            {submitting ? <ActivityIndicator color="#fff" /> : <Icon name="send-outline" size={18} color="#fff" />}
             <Text style={styles.primaryButtonText}>
               {submitting ? 'Submitting…' : 'Submit'}
             </Text>
           </Pressable>
-        </>
-      ) : null}
-    </ScrollView>
+        ) : null}
+      </View>
+    ) : null}
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
@@ -788,6 +887,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  headerTextGroup: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#101828',
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#667085',
+    marginTop: 2,
   },
   syncRow: {
     marginBottom: 8,
@@ -866,6 +984,66 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
+  helperText: {
+    fontSize: 12,
+    color: '#667085',
+    marginTop: -4,
+    marginBottom: 4,
+  },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 44,
+  },
+  dateInputText: {
+    fontSize: 15,
+    color: '#101828',
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  currencyPrefix: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#475467',
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRightWidth: 0,
+    borderColor: '#d0d5dd',
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
+    minHeight: 44,
+    textAlignVertical: 'center',
+    backgroundColor: '#f9fafb',
+  },
+  amountInput: {
+    flex: 1,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+  },
+  emptyState: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#eaecf0',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 4,
+  },
+  emptyStateText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#667085',
+  },
   modeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -906,31 +1084,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#101828',
   },
+  receiptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
   receiptName: {
     fontSize: 14,
     color: '#475467',
   },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: '#eaecf0',
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  hintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
   hint: {
     fontSize: 13,
     color: '#b54708',
-    marginTop: 4,
   },
   primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     marginTop: 12,
     backgroundColor: '#0d6e6e',
     borderRadius: 8,
     minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     marginTop: 8,
     borderWidth: 1,
     borderColor: '#0d6e6e',
     borderRadius: 8,
     minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   receiptButtonRow: {
     flexDirection: 'row',

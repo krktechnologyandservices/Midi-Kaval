@@ -1,5 +1,6 @@
 import React from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {Icon} from '../components/Icon';
 import {TodayStackNavigator} from './TodayStackNavigator';
 import {MoreStackNavigator} from './MoreStackNavigator';
 import {CasesStackNavigator} from './CasesStackNavigator';
@@ -16,19 +17,31 @@ function TabNavigatorInner(): React.JSX.Element {
       screenOptions={{
         headerShown: true,
         tabBarActiveTintColor: '#0D6E6E',
+        tabBarInactiveTintColor: '#98A2B3',
       }}>
       <Tab.Screen
         name="Today"
         component={TodayStackNavigator}
-        options={{headerShown: false}}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({color, size}) => <Icon name="calendar-today" size={size} color={color} />,
+        }}
       />
-      <Tab.Screen name="Cases" component={CasesStackNavigator} options={{headerShown: false}} />
+      <Tab.Screen
+        name="Cases"
+        component={CasesStackNavigator}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({color, size}) => <Icon name="folder-account" size={size} color={color} />,
+        }}
+      />
       <Tab.Screen
         name="More"
         component={MoreStackNavigator}
         options={{
           headerShown: false,
           tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarIcon: ({color, size}) => <Icon name="dots-horizontal-circle" size={size} color={color} />,
         }}
       />
     </Tab.Navigator>

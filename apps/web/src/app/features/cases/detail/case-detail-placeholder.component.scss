@@ -1,5 +1,5 @@
 .detail-card {
-  max-width: 40rem;
+  max-width: 56rem;
   margin: 2rem auto;
 }
 
@@ -20,13 +20,146 @@ button {
   display: block;
 }
 
-.transfer-section {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e2e8f0;
+.identity-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
-.transfer-section h3 {
+// Read-only progress indicator — deliberately not an interactive mat-stepper, since the
+// case's sub-features (notes/interventions/court/transfer) are always-available utilities,
+// not sequential steps the user pages through. This just answers "what stage is this case
+// at, and how far along is it" at a glance.
+.stage-stepper {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin: 1.25rem 0 1rem;
+  overflow-x: auto;
+}
+
+.stage-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 6rem;
+  position: relative;
+  text-align: center;
+
+  &:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 0.9rem;
+    left: 55%;
+    width: 90%;
+    height: 2px;
+    background: #e2e8f0;
+    z-index: 0;
+  }
+
+  &.stage-step--completed:not(:last-child)::after {
+    background: #0d6e6e;
+  }
+}
+
+.stage-step-marker {
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #f2f4f7;
+  color: #667085;
+  border: 2px solid #e2e8f0;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.stage-step--completed .stage-step-marker {
+  background: #0d6e6e;
+  border-color: #0d6e6e;
+  color: #fff;
+}
+
+.stage-step--current .stage-step-marker {
+  background: #fff;
+  border-color: #0d6e6e;
+  color: #0d6e6e;
+}
+
+.stage-step-label {
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  color: #667085;
+  line-height: 1.15;
+}
+
+.stage-step--current .stage-step-label {
+  color: #101828;
+  font-weight: 600;
+}
+
+.stage-info-card {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  background: #f9fafb;
+  border: 1px solid #eaecf0;
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1rem;
+
+  mat-icon {
+    color: #0d6e6e;
+    margin-top: 0.1rem;
+  }
+}
+
+.stage-info-title {
+  font-weight: 600;
+  color: #101828;
+  margin: 0 0 0.2rem;
+}
+
+.stage-info-description {
+  color: #475467;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.section-hint {
+  color: #667085;
+  font-size: 0.85rem;
   margin: 0 0 0.75rem;
+}
+
+.stage-transition-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.stage-transition-section h3 {
+  margin: 0 0 0.25rem;
   font-size: 1rem;
+}
+
+.detail-accordion {
+  margin-top: 1.5rem;
+}
+
+.transfer-section {
+  padding-top: 0.25rem;
 }

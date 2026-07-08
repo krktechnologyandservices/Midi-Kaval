@@ -54,7 +54,7 @@
             <input
               matInput
               [matDatepicker]="fromPicker"
-              (dateChange)="fromDate.set($event.value?.toISOString?.() ?? null)"
+              (dateChange)="onFromDateChange($event.value)"
               placeholder="Select start date"
             />
             <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
@@ -66,7 +66,7 @@
             <input
               matInput
               [matDatepicker]="toPicker"
-              (dateChange)="toDate.set($event.value?.toISOString?.() ?? null)"
+              (dateChange)="onToDateChange($event.value)"
               placeholder="Select end date"
             />
             <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>

@@ -1,0 +1,40 @@
+<p class="stage-form-hint">Record where the child is being placed for rehabilitation.</p>
+
+@if (loading()) {
+  <p class="loading">Loading…</p>
+} @else {
+  @if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+  }
+  @if (savedMessage()) {
+    <p class="saved-message">{{ savedMessage() }}</p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Placement type</mat-label>
+      <input matInput formControlName="placementType" placeholder="e.g. Shelter, Foster, Institutional" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Institution name (optional)</mat-label>
+      <input matInput formControlName="institutionName" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Address (optional)</mat-label>
+      <textarea matInput formControlName="address" rows="2"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Start date</mat-label>
+      <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
+      <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+      <mat-datepicker #startPicker></mat-datepicker>
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="saving() || form.invalid">
+      {{ saving() ? 'Saving…' : 'Save' }}
+    </button>
+  </form>
+}

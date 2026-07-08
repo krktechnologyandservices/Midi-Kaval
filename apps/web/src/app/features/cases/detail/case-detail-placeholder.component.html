@@ -11,21 +11,52 @@
       <p class="error">{{ errorMessage() }}</p>
       <button mat-stroked-button type="button" (click)="loadDetail()">Retry</button>
     } @else if (summary) {
-      @if (summary.crimeNumber) {
-        <p><strong>Crime:</strong> {{ summary.crimeNumber }}</p>
-      }
-      @if (summary.stNumber) {
-        <p><strong>ST:</strong> {{ summary.stNumber }}</p>
-      }
-      @if (summary.beneficiaryName) {
-        <p><strong>Beneficiary:</strong> {{ summary.beneficiaryName }}</p>
-      }
+      <div class="identity-row">
+        @if (summary.crimeNumber) {
+          <p><strong>Crime:</strong> {{ summary.crimeNumber }}</p>
+        }
+        @if (summary.stNumber) {
+          <p><strong>ST:</strong> {{ summary.stNumber }}</p>
+        }
+        @if (summary.beneficiaryName) {
+          <p><strong>Beneficiary:</strong> {{ summary.beneficiaryName }}</p>
+        }
+      </div>
+
       @if (summary.currentStage) {
-        <p><strong>Stage:</strong> {{ summary.currentStage }}</p>
+        <div class="stage-stepper" role="list" aria-label="Case lifecycle progress">
+          @for (stage of stages; track stage; let i = $index) {
+            <div class="stage-step" [class]="'stage-step--' + stageStatus(i)" role="listitem">
+              <span class="stage-step-marker">
+                @if (stageStatus(i) === 'completed') {
+                  <mat-icon>check</mat-icon>
+                } @else {
+                  {{ i + 1 }}
+                }
+              </span>
+              <span class="stage-step-label">{{ stageInfo[stage].label }}</span>
+            </div>
+          }
+        </div>
+
+        @if (currentStageInfo(); as info) {
+          <div class="stage-info-card">
+            <mat-icon>info</mat-icon>
+            <div>
+              <p class="stage-info-title">{{ info.label }}</p>
+              <p class="stage-info-description">{{ info.description }}</p>
+            </div>
+          </div>
+        }
       }
+
       @if (!stageIsTerminal() && nextForwardStage(); as nextStage) {
         <section class="stage-transition-section">
           <h3>Change stage</h3>
+          <p class="section-hint">
+            Move this case forward to {{ caseStageLabel(nextStage) }} once the current stage's
+            work is complete.
+          </p>
           @if (stageErrorMessage(); as stageError) {
             <p class="error">{{ stageError }}</p>
           }
@@ -33,7 +64,7 @@
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Next stage</mat-label>
               <mat-select formControlName="targetStage">
-                <mat-option [value]="nextStage">{{ nextStage }}</mat-option>
+                <mat-option [value]="nextStage">{{ caseStageLabel(nextStage) }}</mat-option>
               </mat-select>
             </mat-form-field>
 
@@ -65,52 +96,122 @@
         <app-handoff-whisper [whisper]="whisper" (viewFullTimeline)="onViewFullTimeline()" />
       }
 
-      <app-case-notes-timeline [caseId]="caseId" />
-
-      <app-case-interventions [caseId]="caseId" [fieldWorkers]="fieldWorkers()" />
-
-      <app-case-court-sittings [caseId]="caseId" />
-
-      <section class="transfer-section">
-        <h3>Transfer case</h3>
-        @if (fieldWorkersError(); as workersError) {
-          <p class="error">{{ workersError }}</p>
-          <button mat-stroked-button type="button" (click)="loadFieldWorkers()">Retry</button>
+      <mat-accordion multi class="detail-accordion">
+        @if (detail()?.currentStage === 'MaintainAndDevelopment') {
+          <mat-expansion-panel [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>Stage details</mat-panel-title>
+            </mat-expansion-panel-header>
+            <app-stage2-data [caseId]="caseId" />
+          </mat-expansion-panel>
+        } @else if (detail()?.currentStage === 'InterSectoralApproach') {
+          <mat-expansion-panel [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>Stage details</mat-panel-title>
+            </mat-expansion-panel-header>
+            <app-stage3-supports [caseId]="caseId" />
+          </mat-expansion-panel>
+        } @else if (detail()?.currentStage === 'Rehabilitation') {
+          <mat-expansion-panel [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>Stage details</mat-panel-title>
+            </mat-expansion-panel-header>
+            <app-stage4-placement [caseId]="caseId" />
+          </mat-expansion-panel>
+        } @else if (detail()?.currentStage === 'Reintegration') {
+          <mat-expansion-panel [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>Stage details</mat-panel-title>
+            </mat-expansion-panel-header>
+            <app-stage5-reintegration [caseId]="caseId" />
+          </mat-expansion-panel>
+        } @else if (detail()?.currentStage === 'TerminationExclusion') {
+          <mat-expansion-panel [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>Stage details</mat-panel-title>
+            </mat-expansion-panel-header>
+            <app-stage6-termination [caseId]="caseId" />
+          </mat-expansion-panel>
         }
-        <form [formGroup]="transferForm" (ngSubmit)="submitTransfer()">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Assignee</mat-label>
-            <mat-select formControlName="assigneeUserId">
-              @for (worker of fieldWorkers(); track worker.id) {
-                <mat-option [value]="worker.id">{{ worker.email }} ({{ worker.role }})</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Prior actions</mat-label>
-            <input matInput formControlName="priorActions" maxlength="500" />
-          </mat-form-field>
+        <mat-expansion-panel [expanded]="true">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Notes</mat-panel-title>
+          </mat-expansion-panel-header>
+          <app-case-notes-timeline [caseId]="caseId" />
+        </mat-expansion-panel>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Open items</mat-label>
-            <input matInput formControlName="openItems" maxlength="500" />
-          </mat-form-field>
+        <mat-expansion-panel [expanded]="false">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Interventions</mat-panel-title>
+          </mat-expansion-panel-header>
+          <app-case-interventions [caseId]="caseId" [fieldWorkers]="fieldWorkers()" />
+        </mat-expansion-panel>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Next visit purpose</mat-label>
-            <input matInput formControlName="nextVisitPurpose" maxlength="500" />
-          </mat-form-field>
+        <mat-expansion-panel [expanded]="false">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Visits</mat-panel-title>
+          </mat-expansion-panel-header>
+          <app-case-visits
+            [caseId]="caseId"
+            [fieldWorkers]="fieldWorkers()"
+            [assignedWorkerId]="detail()?.assignedWorkerUserId"
+            [stageIsTerminal]="stageIsTerminal()"
+          />
+        </mat-expansion-panel>
 
-          <button
-            mat-flat-button
-            color="primary"
-            type="submit"
-            [disabled]="submitting() || transferForm.invalid">
-            {{ submitting() ? 'Transferring…' : 'Transfer case' }}
-          </button>
-        </form>
-      </section>
+        <mat-expansion-panel [expanded]="false">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Court sittings</mat-panel-title>
+          </mat-expansion-panel-header>
+          <app-case-court-sittings [caseId]="caseId" />
+        </mat-expansion-panel>
+
+        <mat-expansion-panel [expanded]="false">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Transfer case</mat-panel-title>
+          </mat-expansion-panel-header>
+          <section class="transfer-section">
+            @if (fieldWorkersError(); as workersError) {
+              <p class="error">{{ workersError }}</p>
+              <button mat-stroked-button type="button" (click)="loadFieldWorkers()">Retry</button>
+            }
+            <form [formGroup]="transferForm" (ngSubmit)="submitTransfer()">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Assignee</mat-label>
+                <mat-select formControlName="assigneeUserId">
+                  @for (worker of fieldWorkers(); track worker.id) {
+                    <mat-option [value]="worker.id">{{ worker.email }} ({{ worker.role }})</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Prior actions</mat-label>
+                <input matInput formControlName="priorActions" maxlength="500" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Open items</mat-label>
+                <input matInput formControlName="openItems" maxlength="500" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Next visit purpose</mat-label>
+                <input matInput formControlName="nextVisitPurpose" maxlength="500" />
+              </mat-form-field>
+
+              <button
+                mat-flat-button
+                color="primary"
+                type="submit"
+                [disabled]="submitting() || transferForm.invalid">
+                {{ submitting() ? 'Transferring…' : 'Transfer case' }}
+              </button>
+            </form>
+          </section>
+        </mat-expansion-panel>
+      </mat-accordion>
     } @else {
       <p>Full case details available in registry (coming soon).</p>
     }
