@@ -1,0 +1,81 @@
+databases:
+  - name: midi-kaval-db
+    plan: free
+    databaseName: kaval
+    user: kaval
+
+services:
+  - type: redis
+    name: midi-kaval-redis
+    plan: free
+    ipAllowList: []
+
+  - type: web
+    name: midi-kaval-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:$PORT
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: midi-kaval-db
+          property: connectionString
+      - key: ConnectionStrings__Hangfire
+        fromDatabase:
+          name: midi-kaval-db
+          property: connectionString
+      - key: ConnectionStrings__Redis
+        fromService:
+          type: redis
+          name: midi-kaval-redis
+          property: connectionString
+      - key: Jwt__SigningKey
+        generateValue: true
+      - key: ACTIVATION_LINK_SIGNING_KEY
+        generateValue: true
+      # Must be a base64-encoded 32-byte (256-bit) key, e.g. from `openssl rand -base64 32`
+      # — the app hard-validates this exact length on startup, so it can't be an
+      # arbitrary auto-generated string.
+      - key: EncryptionKey__MasterKey
+        sync: false
+      # Real Azure Blob Storage account required — Render has no built-in blob storage.
+      - key: BlobStorage__ConnectionString
+        sync: false
+      - key: BlobStorage__ContainerName
+        value: attachments
+      # SMTP creds for outbound email (password reset, activation links, reminders).
+      # Use a freshly-rotated credential, not the one committed in appsettings.Development.json.
+      - key: Email__Smtp__Host
+        sync: false
+      - key: Email__Smtp__Port
+        sync: false
+      - key: Email__Smtp__User
+        sync: false
+      - key: Email__Smtp__Password
+        sync: false
+      - key: Email__Smtp__From
+        sync: false
+      - key: Cors__AllowedOrigins__0
+        value: https://midi-kaval-web.onrender.com
+      - key: ConfirmationLink__BaseUrl
+        value: https://midi-kaval-web.onrender.com
+      - key: ActivationLink__BaseUrl
+        value: https://midi-kaval-web.onrender.com
+
+  - type: web
+    name: midi-kaval-web
+    runtime: static
+    buildCommand: npm ci && npm run build --workspace=apps/web -- --configuration=production
+    staticPublishPath: apps/web/dist/web/browser
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

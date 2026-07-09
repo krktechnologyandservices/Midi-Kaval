@@ -1,0 +1,9 @@
+node_modules
+apps/mobile
+apps/web
+packages/*/node_modules
+.git
+**/bin
+**/obj
+**/dist
+**/*.log

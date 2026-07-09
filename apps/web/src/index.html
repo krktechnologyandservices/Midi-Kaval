@@ -5,8 +5,11 @@
   <title>Kaval Online — Web</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- index.html isn't swapped per environment.ts like the compiled JS is, so both the
+       local dev API and the deployed Render API must be listed here — otherwise the
+       browser's CSP silently blocks every fetch to whichever one isn't listed. -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' http://localhost:5049; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' http://localhost:5049 https://midi-kaval-api.onrender.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
