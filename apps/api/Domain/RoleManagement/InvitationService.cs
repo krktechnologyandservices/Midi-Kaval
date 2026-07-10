@@ -27,10 +27,10 @@ public class InvitationService(
         string? actorIpAddress = null,
         CancellationToken ct = default)
     {
-        var invitableRoles = new[] { UserRoles.Coordinator, UserRoles.SocialWorker, UserRoles.CaseWorker, UserRoles.Accountant };
+        var invitableRoles = new[] { UserRoles.Director, UserRoles.Coordinator, UserRoles.SocialWorker, UserRoles.CaseWorker, UserRoles.Accountant };
         if (!invitableRoles.Contains(request.Role))
         {
-            throw new InvalidOperationException("Invalid role. Allowed: Coordinator, SocialWorker, CaseWorker, Accountant.");
+            throw new InvalidOperationException("Invalid role. Allowed: Director, Coordinator, SocialWorker, CaseWorker, Accountant.");
         }
 
         var emailAlreadyRegistered = await db.Users

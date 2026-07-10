@@ -13,6 +13,7 @@ public static class Policies
     public const string AccountantOrAbove = nameof(AccountantOrAbove);
     public const string BudgetViewer = nameof(BudgetViewer);
     public const string VendorOnly = nameof(VendorOnly);
+    public const string DirectorOrVendor = nameof(DirectorOrVendor);
 
     public const string ForbiddenByRoleMessage =
         "You do not have permission to perform this action.";

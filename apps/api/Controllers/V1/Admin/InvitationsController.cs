@@ -11,13 +11,16 @@ using MidiKaval.Api.Models.Admin;
 namespace MidiKaval.Api.Controllers.V1.Admin;
 
 [ApiController]
-[Authorize(Policy = Policies.DirectorOnly)]
 [Require2FA]
 [Route("api/v1/admin/invitations")]
 public class InvitationsController(
     InvitationService invitationService) : ControllerBase
 {
+    // Vendor is included here specifically so a Vendor account can bootstrap the first
+    // Director account in a fresh deployment. Listing/resending invitations stays
+    // Director-only below.
     [HttpPost]
+    [Authorize(Policy = Policies.DirectorOrVendor)]
     [EnableRateLimiting("data-write")]
     [ProducesResponseType(typeof(ApiResponse<SendInvitationResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -86,6 +89,7 @@ public class InvitationsController(
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.DirectorOnly)]
     [EnableRateLimiting("vendor-read")]
     [ProducesResponseType(typeof(ApiResponse<InvitationListResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -124,6 +128,7 @@ public class InvitationsController(
     }
 
     [HttpPost("{id:guid}/resend")]
+    [Authorize(Policy = Policies.DirectorOnly)]
     [EnableRateLimiting("data-write")]
     [ProducesResponseType(typeof(ApiResponse<ResendInvitationResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]

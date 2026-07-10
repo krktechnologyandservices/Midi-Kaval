@@ -47,6 +47,19 @@ services:
       # arbitrary auto-generated string.
       - key: EncryptionKey__MasterKey
         sync: false
+      # Bootstraps the first Director account on startup (DatabaseInitializer /
+      # AdminUserSeeder). No-op and safe to leave unset on redeploys once this account exists.
+      - key: Seed__Admin__Email
+        sync: false
+      - key: Seed__Admin__Password
+        sync: false
+      - key: Seed__OrganisationId
+        value: 467e2ed6-46dc-446f-99cb-a52dd738c29d
+      # Bootstraps the first Vendor account (VendorUserSeeder) — same no-op/idempotent behavior.
+      - key: Seed__Vendor__Email
+        sync: false
+      - key: Seed__Vendor__Password
+        sync: false
       # Backblaze B2 (S3-compatible, free-tier object storage) — Render has no built-in
       # blob storage. Create a bucket + application key in the Backblaze dashboard first.
       - key: B2Storage__Region

@@ -214,7 +214,6 @@ public class InvitationServiceTests
         }
 
         [Theory]
-        [InlineData(UserRoles.Director)]
         [InlineData(UserRoles.Vendor)]
         public async Task InvalidRole_ReturnsValidationError(string invalidRole)
         {
