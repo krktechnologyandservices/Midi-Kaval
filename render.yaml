@@ -36,6 +36,10 @@ services:
           property: connectionString
       - key: Jwt__SigningKey
         generateValue: true
+      - key: Jwt__Issuer
+        value: MidiKaval
+      - key: Jwt__Audience
+        value: MidiKaval
       - key: ACTIVATION_LINK_SIGNING_KEY
         generateValue: true
       # Must be a base64-encoded 32-byte (256-bit) key, e.g. from `openssl rand -base64 32`
