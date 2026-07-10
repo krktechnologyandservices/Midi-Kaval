@@ -69,7 +69,7 @@ services:
       - key: B2Storage__SecretAccessKey
         sync: false
       - key: B2Storage__BucketName
-        value: attachments
+        value: attachments-midi-kaval
       # SMTP creds for outbound email (password reset, activation links, reminders).
       # Use a freshly-rotated credential, not the one committed in appsettings.Development.json.
       - key: Email__Smtp__Host
