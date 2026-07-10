@@ -418,6 +418,72 @@ export class AuthSessionService {
     return this.request<T>('PUT', path, body ?? {});
   }
 
+  /**
+   * Authenticated multipart POST (file uploads) — deliberately not routed through
+   * request<T>(), since that always sets Content-Type: application/json and
+   * JSON.stringifies the body, which would break a FormData upload. fetch() sets its
+   * own multipart Content-Type (with boundary) automatically when given a FormData body.
+   */
+  async postMultipartApi<T>(path: string, formData: FormData): Promise<ApiEnvelope<T>> {
+    const token = await secureStorage.getAccessToken();
+    const headers: Record<string, string> = {Accept: 'application/json'};
+    if (token && shouldAttachBearer(path)) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`${environment.apiBaseUrl}${path}`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+    } catch {
+      throw new ApiClientError(0, null);
+    }
+
+    let payload: ApiEnvelope<T> | ProblemDetails;
+    try {
+      payload = (await response.json()) as ApiEnvelope<T> | ProblemDetails;
+    } catch {
+      payload = {} as ProblemDetails;
+    }
+
+    if (!response.ok) {
+      throw new ApiClientError(response.status, payload as ProblemDetails);
+    }
+
+    return payload as ApiEnvelope<T>;
+  }
+
+  /** Authenticated GET expecting a raw binary body (file download), not a JSON envelope. */
+  async getBinaryApi(path: string): Promise<Blob> {
+    const token = await secureStorage.getAccessToken();
+    const headers: Record<string, string> = {};
+    if (token && shouldAttachBearer(path)) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`${environment.apiBaseUrl}${path}`, {method: 'GET', headers});
+    } catch {
+      throw new ApiClientError(0, null);
+    }
+
+    if (!response.ok) {
+      let problem: ProblemDetails | null = null;
+      try {
+        problem = (await response.json()) as ProblemDetails;
+      } catch {
+        // Non-JSON error body — leave problem null, status code alone still identifies the failure.
+      }
+      throw new ApiClientError(response.status, problem);
+    }
+
+    return response.blob();
+  }
+
   private async request<T>(
     method: string,
     path: string,

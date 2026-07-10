@@ -78,28 +78,13 @@ async function uploadDeferredReceipt(
     return;
   }
 
-  const blob = await (await fetch(mutation.localReceiptUri)).blob();
-  const presign = await attachmentApiService.presign({
+  await attachmentApiService.upload({
     resourceType: 'TravelClaim',
     resourceId: claimId,
+    fileUri: mutation.localReceiptUri,
     fileName: mutation.receiptFileName,
     contentType: mutation.receiptContentType,
-    fileSizeBytes: blob.size,
   });
-
-  if (!presign.uploadUrl || !presign.attachmentId) {
-    throw new Error('Presign failed');
-  }
-
-  await attachmentApiService.uploadToPresignedUrl(
-    presign.uploadUrl,
-    blob,
-    presign.requiredHeaders ?? {
-      'x-ms-blob-type': 'BlockBlob',
-      'Content-Type': mutation.receiptContentType,
-    },
-  );
-  await attachmentApiService.confirm({attachmentId: presign.attachmentId});
 }
 
 export type FlushOfflineQueueResult = {

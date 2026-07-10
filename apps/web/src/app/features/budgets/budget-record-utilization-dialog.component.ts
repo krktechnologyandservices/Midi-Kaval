@@ -307,25 +307,11 @@ export class BudgetRecordUtilizationDialogComponent {
     if (!this.selectedFile) return;
     this.uploading = true;
     try {
-      const presign = await this.attachmentApi.presign({
+      await this.attachmentApi.upload({
         resourceType: 'BudgetUtilization',
         resourceId: utilizationId,
-        fileName: this.selectedFile.name,
-        contentType: this.selectedFile.type,
-        fileSizeBytes: this.selectedFile.size,
+        file: this.selectedFile,
       });
-
-      if (!presign.uploadUrl || !presign.attachmentId) {
-        throw new Error('Presign failed');
-      }
-
-      await this.attachmentApi.uploadToPresignedUrl(
-        presign.uploadUrl,
-        this.selectedFile,
-        presign.requiredHeaders ?? { 'x-ms-blob-type': 'BlockBlob', 'Content-Type': this.selectedFile.type },
-      );
-
-      await this.attachmentApi.confirm({ attachmentId: presign.attachmentId });
     } catch (error) {
       this.uploadErrorMessage = this.attachmentApi.extractErrorMessage(error);
     } finally {

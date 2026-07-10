@@ -181,43 +181,33 @@ export class CaseNotesTimelineComponent implements OnInit {
 
   private async uploadAttachment(noteId: string, file: File): Promise<void> {
     try {
-      const presign = await this.attachmentApi.presign({
+      await this.attachmentApi.upload({
         resourceType: 'CaseNote',
         resourceId: noteId,
-        fileName: attachmentBasename(file.name),
-        contentType: file.type,
-        fileSizeBytes: file.size,
-      });
-
-      if (!presign.uploadUrl || !presign.attachmentId) {
-        throw new Error('Presign failed');
-      }
-
-      await this.attachmentApi.uploadToPresignedUrl(
-        presign.uploadUrl,
         file,
-        presign.requiredHeaders ?? {
-          'x-ms-blob-type': 'BlockBlob',
-          'Content-Type': file.type,
-        },
-      );
-
-      await this.attachmentApi.confirm({ attachmentId: presign.attachmentId });
+      });
     } catch (error) {
       this.uploadErrorMessage.set(this.attachmentApi.extractErrorMessage(error));
     }
   }
 
-  async openAttachment(attachmentId: string | undefined): Promise<void> {
+  async openAttachment(
+    attachmentId: string | undefined,
+    fileName: string | null | undefined,
+  ): Promise<void> {
     if (!attachmentId) {
       return;
     }
 
     try {
-      const result = await this.attachmentApi.getDownloadUrl(attachmentId);
-      if (result.downloadUrl) {
-        window.open(result.downloadUrl, '_blank', 'noopener');
-      }
+      const blob = await this.attachmentApi.download(attachmentId);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = attachmentBasename(fileName ?? 'attachment');
+      anchor.rel = 'noopener';
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch (error) {
       this.uploadErrorMessage.set(this.attachmentApi.extractDownloadErrorMessage(error));
     }

@@ -43,10 +43,15 @@ services:
       # arbitrary auto-generated string.
       - key: EncryptionKey__MasterKey
         sync: false
-      # Real Azure Blob Storage account required — Render has no built-in blob storage.
-      - key: BlobStorage__ConnectionString
+      # Backblaze B2 (S3-compatible, free-tier object storage) — Render has no built-in
+      # blob storage. Create a bucket + application key in the Backblaze dashboard first.
+      - key: B2Storage__Region
         sync: false
-      - key: BlobStorage__ContainerName
+      - key: B2Storage__AccessKeyId
+        sync: false
+      - key: B2Storage__SecretAccessKey
+        sync: false
+      - key: B2Storage__BucketName
         value: attachments
       # SMTP creds for outbound email (password reset, activation links, reminders).
       # Use a freshly-rotated credential, not the one committed in appsettings.Development.json.

@@ -49,11 +49,10 @@ jest.mock('../src/services/cases/CaseApiService', () => ({
 
 jest.mock('../src/services/attachments/AttachmentApiService', () => ({
   attachmentApiService: {
-    presign: jest.fn(),
-    confirm: jest.fn(),
-    getDownloadUrl: jest.fn(),
-    uploadToPresignedUrl: jest.fn(),
+    upload: jest.fn(),
+    download: jest.fn(),
     extractErrorMessage: jest.fn(() => 'attachment error'),
+    extractDownloadErrorMessage: jest.fn(() => 'attachment error'),
   },
 }));
 
@@ -377,5 +376,5 @@ test('POCSO case detail shows discreet header and reveal flow', async () => {
   });
 
   expect(caseApiService.revealCasePii).toHaveBeenCalled();
-  expect(attachmentApiService.getDownloadUrl).not.toHaveBeenCalled();
+  expect(attachmentApiService.download).not.toHaveBeenCalled();
 });

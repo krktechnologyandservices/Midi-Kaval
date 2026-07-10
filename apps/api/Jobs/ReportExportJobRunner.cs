@@ -15,7 +15,6 @@ public sealed class ReportExportJobRunner(
     IOptions<ReportExportOptions> options,
     ILogger<ReportExportJobRunner> logger)
 {
-    private static readonly HttpClient UploadHttpClient = new();
     public async Task RunAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
@@ -62,18 +61,7 @@ public sealed class ReportExportJobRunner(
                 var contentType = job.Format == "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
                 var blobName = $"{options.Value.BlobContainerPrefix}/{job.OrganisationId}/{job.Id:D}{extension}";
 
-                // Upload blob via SAS URI. Azure Blob/Azurite reject a PUT Blob request that's
-                // missing x-ms-blob-type, so it must be set explicitly here — every other
-                // uploader in this codebase (web/mobile attachment uploads) already sends it.
-                var (uploadUrl, _) = blobService.GenerateUploadSasUri(blobName, contentType);
-                using var request = new HttpRequestMessage(HttpMethod.Put, uploadUrl)
-                {
-                    Content = new ByteArrayContent(fileBytes),
-                };
-                request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
-                request.Headers.TryAddWithoutValidation("x-ms-blob-type", "BlockBlob");
-                var uploadResponse = await UploadHttpClient.SendAsync(request, ct);
-                uploadResponse.EnsureSuccessStatusCode();
+                await blobService.UploadAsync(blobName, fileBytes, contentType, ct);
 
                 job.Status = ReportExportJobStatus.Completed;
                 job.BlobPath = blobName;

@@ -3,23 +3,40 @@ import {
   authSessionService,
   AuthSessionService,
 } from '../auth/AuthSessionService';
-import {
-  AttachmentConfirmRequest,
-  AttachmentDownloadUrlDto,
-  AttachmentDto,
-  AttachmentPresignRequest,
-  AttachmentPresignResultDto,
-} from '../cases/case.models';
+import {AttachmentDto} from '../cases/case.models';
 import {CaseApiError} from '../cases/CaseApiService';
 
 export class AttachmentApiService {
   constructor(private readonly auth: AuthSessionService = authSessionService) {}
 
-  async presign(request: AttachmentPresignRequest): Promise<AttachmentPresignResultDto> {
+  /**
+   * Uploads and encrypts a file in a single request. Replaces the old
+   * presign → PUT-to-blob → confirm three-step dance — the API now sees the bytes
+   * directly (necessary to encrypt them before they're stored) instead of handing out
+   * a presigned URL for the client to PUT to.
+   */
+  async upload(request: {
+    resourceType: 'CaseNote' | 'TravelClaim' | 'BudgetUtilization';
+    resourceId: string;
+    fileUri: string;
+    fileName: string;
+    contentType: string;
+  }): Promise<AttachmentDto> {
     try {
-      const envelope = await this.auth.postApi<AttachmentPresignResultDto>(
-        '/api/v1/attachments/presign',
-        request,
+      const formData = new FormData();
+      formData.append('resourceType', request.resourceType);
+      formData.append('resourceId', request.resourceId);
+      // React Native's FormData accepts this {uri, name, type} shape directly and
+      // streams from disk rather than buffering the whole file in JS memory.
+      formData.append('file', {
+        uri: request.fileUri,
+        name: request.fileName,
+        type: request.contentType,
+      } as unknown as Blob);
+
+      const envelope = await this.auth.postMultipartApi<AttachmentDto>(
+        '/api/v1/attachments/upload',
+        formData,
       );
       return envelope.data;
     } catch (error) {
@@ -27,55 +44,18 @@ export class AttachmentApiService {
     }
   }
 
-  async confirm(request: AttachmentConfirmRequest): Promise<AttachmentDto> {
+  /** Downloads and decrypts an attachment, returning its bytes as a Blob. */
+  async download(attachmentId: string): Promise<Blob> {
     try {
-      const envelope = await this.auth.postApi<AttachmentDto>(
-        '/api/v1/attachments/confirm',
-        request,
-      );
-      return envelope.data;
+      return await this.auth.getBinaryApi(`/api/v1/attachments/${attachmentId}/download`);
     } catch (error) {
       throw this.wrapError(error);
-    }
-  }
-
-  async getDownloadUrl(attachmentId: string): Promise<AttachmentDownloadUrlDto> {
-    try {
-      const envelope = await this.auth.getApi<AttachmentDownloadUrlDto>(
-        `/api/v1/attachments/${attachmentId}/download-url`,
-      );
-      return envelope.data;
-    } catch (error) {
-      throw this.wrapError(error);
-    }
-  }
-
-  async uploadToPresignedUrl(
-    uploadUrl: string,
-    body: Blob,
-    requiredHeaders: Record<string, string>,
-  ): Promise<void> {
-    const response = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: requiredHeaders,
-      body,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Upload failed (${response.status})`);
     }
   }
 
   extractErrorMessage(error: unknown): string {
     if (error instanceof CaseApiError) {
       return this.auth.extractErrorMessage(error.sourceError);
-    }
-
-    if (
-      error instanceof Error &&
-      (error.message.startsWith('Upload failed') || error.message === 'Presign failed')
-    ) {
-      return 'Attachment upload failed. The note was saved without the file.';
     }
 
     return this.auth.extractErrorMessage(error);

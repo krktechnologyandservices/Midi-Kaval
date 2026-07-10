@@ -411,28 +411,13 @@ export function TravelClaimFormScreen(): React.JSX.Element {
       return;
     }
 
-    const presign = await attachmentApiService.presign({
+    await attachmentApiService.upload({
       resourceType: 'TravelClaim',
       resourceId: targetClaimId,
+      fileUri: pickedReceipt.uri,
       fileName: pickedReceipt.name,
       contentType: pickedReceipt.type,
-      fileSizeBytes: pickedReceipt.size,
     });
-
-    if (!presign.uploadUrl || !presign.attachmentId) {
-      throw new Error('Presign failed');
-    }
-
-    const blob = await (await fetch(pickedReceipt.uri)).blob();
-    await attachmentApiService.uploadToPresignedUrl(
-      presign.uploadUrl,
-      blob,
-      presign.requiredHeaders ?? {
-        'x-ms-blob-type': 'BlockBlob',
-        'Content-Type': pickedReceipt.type,
-      },
-    );
-    await attachmentApiService.confirm({attachmentId: presign.attachmentId});
   };
 
   const saveDraft = async (): Promise<void> => {

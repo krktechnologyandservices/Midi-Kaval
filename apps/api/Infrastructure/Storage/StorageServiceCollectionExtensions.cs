@@ -6,8 +6,8 @@ public static class StorageServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<BlobStorageOptions>(configuration.GetSection(BlobStorageOptions.SectionName));
-        services.AddScoped<IBlobStorageService, AzureBlobStorageService>();
+        services.Configure<B2StorageOptions>(configuration.GetSection(B2StorageOptions.SectionName));
+        services.AddSingleton<IBlobStorageService, B2BlobStorageService>();
         return services;
     }
 }

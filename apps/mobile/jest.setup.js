@@ -61,6 +61,11 @@ jest.mock('react-native/Libraries/Utilities/BackHandler', () => ({
   exitApp: jest.fn(),
 }));
 
+jest.mock('react-native-fs', () => ({
+  CachesDirectoryPath: '/cache',
+  writeFile: jest.fn(() => Promise.resolve()),
+}));
+
 jest.mock('react-native-screens', () => {
   const React = require('react');
   const {View} = require('react-native');

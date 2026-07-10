@@ -8,6 +8,7 @@ using MidiKaval.Api.Domain.Enums;
 using MidiKaval.Api.Infrastructure.Audit;
 using MidiKaval.Api.Infrastructure.Auth;
 using MidiKaval.Api.Infrastructure.Cases;
+using MidiKaval.Api.Infrastructure.Encryption;
 using MidiKaval.Api.Infrastructure.Persistence;
 using MidiKaval.Api.Models.Attachments;
 
@@ -17,7 +18,8 @@ public sealed class AttachmentService(
     AppDbContext db,
     IHttpContextAccessor httpContextAccessor,
     IBlobStorageService blobStorage,
-    IOptions<BlobStorageOptions> blobOptions)
+    FileEncryptionService fileEncryption,
+    IOptions<B2StorageOptions> storageOptions)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -31,30 +33,29 @@ public sealed class AttachmentService(
         "application/pdf",
     ];
 
-    public async Task<AttachmentPresignResultDto> PresignAsync(
-        AttachmentPresignRequest request,
+    public async Task<AttachmentDto> UploadAsync(
+        string? resourceTypeRaw,
+        Guid resourceId,
+        string? fileName,
+        string? contentType,
+        byte[] fileContent,
         CancellationToken cancellationToken = default)
     {
-        if (request is null)
-        {
-            throw new CaseValidationException("Request body is required.");
-        }
-
-        var resourceType = ParseResourceType(request.ResourceType);
+        var resourceType = ParseResourceType(resourceTypeRaw);
         var (organisationId, actorUserId) = ResolveActorContext();
         var actorRole = ResolveActorRole();
 
-        var fileName = ValidateFileName(request.FileName);
-        var contentType = ValidateContentType(request.ContentType);
-        ValidateFileSizeBytes(request.FileSizeBytes);
+        var validatedFileName = ValidateFileName(fileName);
+        var validatedContentType = ValidateContentType(contentType);
+        ValidateFileSizeBytes(fileContent.Length);
 
-        Guid resourceId;
+        Guid resolvedResourceId;
         AttachmentResourceType attachmentResourceType;
 
         if (resourceType == AttachmentResourceType.CaseNote)
         {
             var note = await db.CaseNotes.SingleOrDefaultAsync(
-                n => n.Id == request.ResourceId && n.OrganisationId == organisationId,
+                n => n.Id == resourceId && n.OrganisationId == organisationId,
                 cancellationToken);
 
             if (note is null)
@@ -72,14 +73,14 @@ public sealed class AttachmentService(
             }
 
             EnsureCanReadCase(caseEntity, actorUserId, actorRole);
-            resourceId = note.Id;
+            resolvedResourceId = note.Id;
             attachmentResourceType = AttachmentResourceType.CaseNote;
         }
         else if (resourceType == AttachmentResourceType.BudgetUtilization)
         {
             var utilization = await db.BudgetUtilizations
                 .Include(u => u.BudgetLineItem)
-                .SingleOrDefaultAsync(u => u.Id == request.ResourceId, cancellationToken);
+                .SingleOrDefaultAsync(u => u.Id == resourceId, cancellationToken);
 
             var belongsToOrg = utilization is not null && await db.ProjectBudgets.AnyAsync(
                 pb => pb.Id == utilization.BudgetLineItem.ProjectBudgetId && pb.OrganisationId == organisationId,
@@ -91,13 +92,13 @@ public sealed class AttachmentService(
             }
 
             EnsureCanWriteBudgetUtilization(actorRole);
-            resourceId = utilization.Id;
+            resolvedResourceId = utilization.Id;
             attachmentResourceType = AttachmentResourceType.BudgetUtilization;
         }
         else
         {
             var claim = await db.TravelClaims.SingleOrDefaultAsync(
-                c => c.Id == request.ResourceId && c.OrganisationId == organisationId,
+                c => c.Id == resourceId && c.OrganisationId == organisationId,
                 cancellationToken);
 
             if (claim is null)
@@ -116,144 +117,44 @@ public sealed class AttachmentService(
                     "Receipts can only be added while the claim is in Draft status.");
             }
 
-            resourceId = claim.Id;
+            resolvedResourceId = claim.Id;
             attachmentResourceType = AttachmentResourceType.TravelClaim;
+        }
+
+        if (attachmentResourceType == AttachmentResourceType.TravelClaim)
+        {
+            await EnsureTravelClaimStillDraftAsync(resolvedResourceId, organisationId, cancellationToken);
         }
 
         var now = DateTime.UtcNow;
         var attachmentId = Guid.NewGuid();
         var blobName = attachmentResourceType switch
         {
-            AttachmentResourceType.CaseNote => BuildBlobName(organisationId, resourceId, attachmentId, fileName),
-            AttachmentResourceType.BudgetUtilization => BuildBudgetUtilizationBlobName(organisationId, resourceId, attachmentId, fileName),
-            _ => BuildTravelClaimBlobName(organisationId, resourceId, attachmentId, fileName),
+            AttachmentResourceType.CaseNote => BuildBlobName(organisationId, resolvedResourceId, attachmentId, validatedFileName),
+            AttachmentResourceType.BudgetUtilization => BuildBudgetUtilizationBlobName(organisationId, resolvedResourceId, attachmentId, validatedFileName),
+            _ => BuildTravelClaimBlobName(organisationId, resolvedResourceId, attachmentId, validatedFileName),
         };
-        var (uploadUrl, expiresAtUtc) = blobStorage.GenerateUploadSasUri(blobName, contentType);
+
+        var encrypted = fileEncryption.Encrypt(fileContent);
+        await blobStorage.UploadAsync(blobName, encrypted, validatedContentType, cancellationToken);
 
         var attachment = new Attachment
         {
             Id = attachmentId,
             OrganisationId = organisationId,
             ResourceType = attachmentResourceType,
-            ResourceId = resourceId,
+            ResourceId = resolvedResourceId,
             BlobName = blobName,
-            OriginalFileName = fileName,
-            ContentType = contentType,
-            FileSizeBytes = request.FileSizeBytes,
-            Status = AttachmentStatus.Pending,
+            OriginalFileName = validatedFileName,
+            ContentType = validatedContentType,
+            FileSizeBytes = fileContent.Length,
+            Status = AttachmentStatus.Confirmed,
             UploadedByUserId = actorUserId,
             CreatedAtUtc = now,
+            ConfirmedAtUtc = now,
         };
-
-        if (attachmentResourceType == AttachmentResourceType.TravelClaim)
-        {
-            await EnsureTravelClaimStillDraftAsync(resourceId, organisationId, cancellationToken);
-        }
 
         db.Attachments.Add(attachment);
-        db.AuditEvents.Add(new AuditEvent
-        {
-            Id = Guid.NewGuid(),
-            OrganisationId = organisationId,
-            ActorUserId = actorUserId,
-            SubjectUserId = actorUserId,
-            EventType = AuditEventTypes.AttachmentPresignIssued,
-            MetadataJson = JsonSerializer.Serialize(
-                new Dictionary<string, object?>
-                {
-                    ["attachmentId"] = attachmentId.ToString("D"),
-                    ["resourceType"] = resourceType.ToString(),
-                    ["resourceId"] = resourceId.ToString("D"),
-                    ["contentType"] = contentType,
-                },
-                JsonOptions),
-            CreatedAtUtc = now,
-        });
-
-        await db.SaveChangesAsync(cancellationToken);
-
-        return new AttachmentPresignResultDto
-        {
-            AttachmentId = attachmentId,
-            UploadUrl = uploadUrl.ToString(),
-            RequiredHeaders = new Dictionary<string, string>
-            {
-                ["x-ms-blob-type"] = "BlockBlob",
-                ["Content-Type"] = contentType,
-            },
-            ExpiresAtUtc = expiresAtUtc,
-        };
-    }
-
-    public async Task<AttachmentDto> ConfirmAsync(
-        AttachmentConfirmRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        if (request is null)
-        {
-            throw new CaseValidationException("Request body is required.");
-        }
-
-        if (request.AttachmentId == Guid.Empty)
-        {
-            throw new CaseValidationException("attachmentId is required.");
-        }
-
-        var (organisationId, actorUserId) = ResolveActorContext();
-        var actorRole = ResolveActorRole();
-
-        var attachment = await db.Attachments.SingleOrDefaultAsync(
-            a => a.Id == request.AttachmentId && a.OrganisationId == organisationId,
-            cancellationToken);
-
-        if (attachment is null)
-        {
-            throw new AttachmentNotFoundException();
-        }
-
-        if (attachment.Status == AttachmentStatus.Confirmed)
-        {
-            throw new CaseConflictException("Attachment already confirmed.");
-        }
-
-        if (attachment.ResourceType == AttachmentResourceType.TravelClaim)
-        {
-            await EnsureTravelClaimStillDraftAsync(
-                attachment.ResourceId,
-                organisationId,
-                cancellationToken);
-        }
-
-        await EnsureCanAccessAttachmentAsync(attachment, organisationId, actorUserId, actorRole, isWriteOperation: true, cancellationToken);
-
-        if (!await blobStorage.BlobExistsAsync(attachment.BlobName, cancellationToken))
-        {
-            throw new CaseBusinessRuleException("Upload not found. Complete the blob PUT before confirming.");
-        }
-
-        var blobSize = await blobStorage.GetBlobSizeAsync(attachment.BlobName, cancellationToken);
-        if (blobSize is null)
-        {
-            throw new CaseBusinessRuleException("Upload not found. Complete the blob PUT before confirming.");
-        }
-
-        if (blobSize > attachment.FileSizeBytes || blobSize > blobOptions.Value.MaxUploadBytes)
-        {
-            throw new CaseBusinessRuleException("Uploaded file exceeds the allowed size.");
-        }
-
-        if (attachment.ResourceType == AttachmentResourceType.TravelClaim)
-        {
-            await EnsureTravelClaimStillDraftAsync(
-                attachment.ResourceId,
-                organisationId,
-                cancellationToken);
-        }
-
-        var now = DateTime.UtcNow;
-        attachment.Status = AttachmentStatus.Confirmed;
-        attachment.ConfirmedAtUtc = now;
-
         db.AuditEvents.Add(new AuditEvent
         {
             Id = Guid.NewGuid(),
@@ -264,9 +165,10 @@ public sealed class AttachmentService(
             MetadataJson = JsonSerializer.Serialize(
                 new Dictionary<string, object?>
                 {
-                    ["attachmentId"] = attachment.Id.ToString("D"),
-                    ["resourceType"] = attachment.ResourceType.ToString(),
-                    ["resourceId"] = attachment.ResourceId.ToString("D"),
+                    ["attachmentId"] = attachmentId.ToString("D"),
+                    ["resourceType"] = attachmentResourceType.ToString(),
+                    ["resourceId"] = resolvedResourceId.ToString("D"),
+                    ["contentType"] = validatedContentType,
                 },
                 JsonOptions),
             CreatedAtUtc = now,
@@ -274,11 +176,10 @@ public sealed class AttachmentService(
 
         await db.SaveChangesAsync(cancellationToken);
 
-        var (downloadUrl, downloadExpiresAtUtc) = blobStorage.GenerateReadSasUri(attachment.BlobName);
-        return MapToDto(attachment, downloadUrl.ToString(), downloadExpiresAtUtc);
+        return MapToDto(attachment);
     }
 
-    public async Task<AttachmentDownloadUrlDto> GetDownloadUrlAsync(
+    public async Task<AttachmentContentDto> DownloadAsync(
         Guid attachmentId,
         CancellationToken cancellationToken = default)
     {
@@ -301,11 +202,16 @@ public sealed class AttachmentService(
 
         await EnsureCanAccessAttachmentAsync(attachment, organisationId, actorUserId, actorRole, isWriteOperation: false, cancellationToken);
 
-        var (downloadUrl, downloadExpiresAtUtc) = blobStorage.GenerateReadSasUri(attachment.BlobName);
-        return new AttachmentDownloadUrlDto
+        var encrypted = await blobStorage.DownloadAsync(attachment.BlobName, cancellationToken)
+            ?? throw new AttachmentNotFoundException();
+
+        var content = fileEncryption.Decrypt(encrypted);
+
+        return new AttachmentContentDto
         {
-            DownloadUrl = downloadUrl.ToString(),
-            DownloadExpiresAtUtc = downloadExpiresAtUtc,
+            Content = content,
+            ContentType = attachment.ContentType,
+            OriginalFileName = attachment.OriginalFileName,
         };
     }
 
@@ -460,25 +366,19 @@ public sealed class AttachmentService(
         }
     }
 
-    private static AttachmentDto MapToDto(
-        Attachment attachment,
-        string downloadUrl,
-        DateTime downloadExpiresAtUtc) =>
-        new()
-        {
-            Id = attachment.Id,
-            ResourceType = attachment.ResourceType.ToString(),
-            ResourceId = attachment.ResourceId,
-            OriginalFileName = attachment.OriginalFileName,
-            ContentType = attachment.ContentType,
-            FileSizeBytes = attachment.FileSizeBytes,
-            Status = attachment.Status.ToString(),
-            UploadedByUserId = attachment.UploadedByUserId,
-            CreatedAtUtc = attachment.CreatedAtUtc,
-            ConfirmedAtUtc = attachment.ConfirmedAtUtc,
-            DownloadUrl = downloadUrl,
-            DownloadExpiresAtUtc = downloadExpiresAtUtc,
-        };
+    private static AttachmentDto MapToDto(Attachment attachment) => new()
+    {
+        Id = attachment.Id,
+        ResourceType = attachment.ResourceType.ToString(),
+        ResourceId = attachment.ResourceId,
+        OriginalFileName = attachment.OriginalFileName,
+        ContentType = attachment.ContentType,
+        FileSizeBytes = attachment.FileSizeBytes,
+        Status = attachment.Status.ToString(),
+        UploadedByUserId = attachment.UploadedByUserId,
+        CreatedAtUtc = attachment.CreatedAtUtc,
+        ConfirmedAtUtc = attachment.ConfirmedAtUtc,
+    };
 
     private static AttachmentResourceType ParseResourceType(string? value)
     {
@@ -544,13 +444,13 @@ public sealed class AttachmentService(
     {
         if (fileSizeBytes <= 0)
         {
-            throw new CaseValidationException("fileSizeBytes must be greater than zero.");
+            throw new CaseValidationException("The uploaded file is empty.");
         }
 
-        if (fileSizeBytes > blobOptions.Value.MaxUploadBytes)
+        if (fileSizeBytes > storageOptions.Value.MaxUploadBytes)
         {
             throw new CaseValidationException(
-                $"fileSizeBytes must not exceed {blobOptions.Value.MaxUploadBytes} bytes.");
+                $"File exceeds the {storageOptions.Value.MaxUploadBytes} byte upload limit.");
         }
     }
 

@@ -2,7 +2,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
-  Linking,
   Platform,
   Pressable,
   RefreshControl,
@@ -19,6 +18,7 @@ import {DiscreetHeader} from '../../components/DiscreetHeader';
 import {useDiscreetCaseReveal} from '../../hooks/useDiscreetCaseReveal';
 import {CasesStackParamList} from '../../navigation/types';
 import {attachmentApiService} from '../../services/attachments/AttachmentApiService';
+import {openAttachment as openAttachmentFile} from '../../services/attachments/openAttachmentFile';
 import {caseApiService} from '../../services/cases/CaseApiService';
 import {authSessionService} from '../../services/auth/AuthSessionService';
 import {
@@ -300,28 +300,13 @@ export function CaseDetailPlaceholderScreen({
 
       if (pickedAttachment && created.id) {
         try {
-          const presign = await attachmentApiService.presign({
+          await attachmentApiService.upload({
             resourceType: 'CaseNote',
             resourceId: created.id,
+            fileUri: pickedAttachment.uri,
             fileName: attachmentBasename(pickedAttachment.name),
             contentType: pickedAttachment.type,
-            fileSizeBytes: pickedAttachment.size,
           });
-
-          if (!presign.uploadUrl || !presign.attachmentId) {
-            throw new Error('Presign failed');
-          }
-
-          const blob = await (await fetch(pickedAttachment.uri)).blob();
-          await attachmentApiService.uploadToPresignedUrl(
-            presign.uploadUrl,
-            blob,
-            presign.requiredHeaders ?? {
-              'x-ms-blob-type': 'BlockBlob',
-              'Content-Type': pickedAttachment.type,
-            },
-          );
-          await attachmentApiService.confirm({attachmentId: presign.attachmentId});
         } catch (uploadError) {
           setFormErrorMessage(attachmentApiService.extractErrorMessage(uploadError));
         }
@@ -571,16 +556,16 @@ export function CaseDetailPlaceholderScreen({
     }
   };
 
-  const openAttachment = async (attachmentId: string | undefined): Promise<void> => {
+  const openAttachment = async (
+    attachmentId: string | undefined,
+    fileName: string | null | undefined,
+  ): Promise<void> => {
     if (!attachmentId) {
       return;
     }
 
     try {
-      const result = await attachmentApiService.getDownloadUrl(attachmentId);
-      if (result.downloadUrl) {
-        await Linking.openURL(result.downloadUrl);
-      }
+      await openAttachmentFile(attachmentId, fileName ?? 'attachment');
     } catch (error) {
       setFormErrorMessage(attachmentApiService.extractDownloadErrorMessage(error));
     }
@@ -682,7 +667,7 @@ export function CaseDetailPlaceholderScreen({
               <Pressable
                 key={attachment.id}
                 style={styles.attachmentChip}
-                onPress={() => void openAttachment(attachment.id)}>
+                onPress={() => void openAttachment(attachment.id, attachment.originalFileName)}>
                 <Text style={styles.attachmentText}>{attachment.originalFileName}</Text>
               </Pressable>
             ))}

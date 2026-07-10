@@ -12,67 +12,46 @@ namespace MidiKaval.Api.Controllers.V1;
 [Route("api/v1/attachments")]
 public sealed class AttachmentsController(AttachmentService attachmentService) : ControllerBase
 {
-    /// <summary>Issues a time-limited SAS URL for uploading an attachment blob.</summary>
-    [HttpPost("presign")]
+    /// <summary>Uploads and encrypts an attachment in a single request.</summary>
+    [HttpPost("upload")]
     [Authorize]
-    [ProducesResponseType(typeof(AttachmentPresignResultDto), StatusCodes.Status200OK)]
+    [RequestSizeLimit(10_485_760)]
+    [ProducesResponseType(typeof(AttachmentDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [EnableRateLimiting("data-write")]
-    public async Task<IActionResult> Presign(
-        [FromBody] AttachmentPresignRequest? request,
-        CancellationToken cancellationToken)
-    {
-        if (request is null)
-        {
-            return BadRequestProblem("Request body is required.");
-        }
-
-        try
-        {
-            var dto = await attachmentService.PresignAsync(request, cancellationToken);
-            return Ok(dto);
-        }
-        catch (CaseValidationException ex)
-        {
-            return BadRequestProblem(ex.Message);
-        }
-        catch (CaseForbiddenException)
-        {
-            return ForbiddenProblem(Policies.ForbiddenByRoleMessage);
-        }
-        catch (CaseNotFoundException)
-        {
-            return NotFoundProblem("Resource not found.");
-        }
-    }
-
-    /// <summary>Confirms a blob upload and returns a time-limited read URL.</summary>
-    [HttpPost("confirm")]
-    [Authorize]
-    [ProducesResponseType(typeof(AttachmentDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [EnableRateLimiting("data-write")]
-    public async Task<IActionResult> Confirm(
-        [FromBody] AttachmentConfirmRequest? request,
+    public async Task<IActionResult> Upload(
+        [FromForm] string? resourceType,
+        [FromForm] Guid resourceId,
+        [FromForm] IFormFile? file,
         CancellationToken cancellationToken)
     {
-        if (request is null)
+        if (file is null || file.Length == 0)
         {
-            return BadRequestProblem("Request body is required.");
+            return BadRequestProblem("file is required.");
+        }
+
+        byte[] content;
+        using (var memoryStream = new MemoryStream())
+        {
+            await file.CopyToAsync(memoryStream, cancellationToken);
+            content = memoryStream.ToArray();
         }
 
         try
         {
-            var dto = await attachmentService.ConfirmAsync(request, cancellationToken);
-            return Ok(dto);
+            var dto = await attachmentService.UploadAsync(
+                resourceType,
+                resourceId,
+                file.FileName,
+                file.ContentType,
+                content,
+                cancellationToken);
+
+            return Created($"/api/v1/attachments/{dto.Id:D}/download", dto);
         }
         catch (CaseValidationException ex)
         {
@@ -81,14 +60,6 @@ public sealed class AttachmentsController(AttachmentService attachmentService) :
         catch (CaseForbiddenException)
         {
             return ForbiddenProblem(Policies.ForbiddenByRoleMessage);
-        }
-        catch (AttachmentNotFoundException)
-        {
-            return NotFoundProblem("Attachment not found.");
-        }
-        catch (CaseConflictException ex)
-        {
-            return ConflictProblem(ex.Message);
         }
         catch (CaseBusinessRuleException ex)
         {
@@ -96,25 +67,25 @@ public sealed class AttachmentsController(AttachmentService attachmentService) :
         }
         catch (CaseNotFoundException)
         {
-            return NotFoundProblem("Case not found.");
+            return NotFoundProblem("Resource not found.");
         }
     }
 
-    /// <summary>Issues a fresh time-limited read URL for a confirmed attachment.</summary>
-    [HttpGet("{id:guid}/download-url")]
+    /// <summary>Decrypts and streams back a confirmed attachment.</summary>
+    [HttpGet("{id:guid}/download")]
     [Authorize]
-    [ProducesResponseType(typeof(AttachmentDownloadUrlDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [EnableRateLimiting("data-read")]
-    public async Task<IActionResult> GetDownloadUrl(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Download(Guid id, CancellationToken cancellationToken)
     {
         try
         {
-            var dto = await attachmentService.GetDownloadUrlAsync(id, cancellationToken);
-            return Ok(dto);
+            var content = await attachmentService.DownloadAsync(id, cancellationToken);
+            return File(content.Content, content.ContentType, content.OriginalFileName);
         }
         catch (CaseForbiddenException)
         {
@@ -139,12 +110,6 @@ public sealed class AttachmentsController(AttachmentService attachmentService) :
             detail: detail,
             statusCode: StatusCodes.Status400BadRequest,
             title: "Bad Request");
-
-    private IActionResult ConflictProblem(string detail) =>
-        Problem(
-            detail: detail,
-            statusCode: StatusCodes.Status409Conflict,
-            title: "Conflict");
 
     private IActionResult NotFoundProblem(string detail) =>
         Problem(

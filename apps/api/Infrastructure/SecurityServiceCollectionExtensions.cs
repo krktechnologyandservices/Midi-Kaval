@@ -21,6 +21,8 @@ public static class SecurityServiceCollectionExtensions
             return provider;
         });
 
+        services.AddSingleton<FileEncryptionService>();
+
         return services;
     }
 }

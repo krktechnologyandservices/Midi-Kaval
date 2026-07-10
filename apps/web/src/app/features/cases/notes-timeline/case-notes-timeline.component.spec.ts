@@ -41,10 +41,8 @@ describe('CaseNotesTimelineComponent', () => {
       'extractErrorMessage',
     ]);
     attachmentApi = jasmine.createSpyObj('AttachmentApiService', [
-      'getDownloadUrl',
-      'presign',
-      'confirm',
-      'uploadToPresignedUrl',
+      'upload',
+      'download',
       'extractErrorMessage',
       'extractDownloadErrorMessage',
     ]);
@@ -61,8 +59,8 @@ describe('CaseNotesTimelineComponent', () => {
       }),
     );
     caseApi.extractErrorMessage.and.returnValue('Save failed');
-    attachmentApi.getDownloadUrl.and.returnValue(
-      Promise.resolve({ downloadUrl: 'https://example.test/file.pdf' }),
+    attachmentApi.download.and.returnValue(
+      Promise.resolve(new Blob(['pdf'], { type: 'application/pdf' })),
     );
 
     await TestBed.configureTestingModule({
@@ -119,30 +117,32 @@ describe('CaseNotesTimelineComponent', () => {
     });
   });
 
-  it('requests download URL when attachment chip clicked', async () => {
+  it('downloads attachment when attachment chip clicked', async () => {
     await settle();
 
     const buttons = fixture.nativeElement.querySelectorAll('.attachment-chip');
     (buttons[0] as HTMLButtonElement).click();
     await settle();
 
-    expect(attachmentApi.getDownloadUrl).toHaveBeenCalledWith('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+    expect(attachmentApi.download).toHaveBeenCalledWith('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
   });
 
-  it('presigns, uploads, and confirms attachment after note create', async () => {
+  it('uploads attachment after note create', async () => {
     await settle();
 
     const attachmentId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-    attachmentApi.presign.and.returnValue(
+    attachmentApi.upload.and.returnValue(
       Promise.resolve({
-        uploadUrl: 'https://blob.test/upload',
-        attachmentId,
-        requiredHeaders: { 'Content-Type': 'application/pdf' },
+        id: attachmentId,
+        resourceType: 'CaseNote',
+        resourceId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        originalFileName: 'brief.pdf',
+        contentType: 'application/pdf',
+        fileSizeBytes: 3,
+        status: 'Confirmed',
+        uploadedByUserId: 'worker-1',
+        createdAtUtc: '2026-06-12T10:00:00Z',
       }),
-    );
-    attachmentApi.uploadToPresignedUrl.and.returnValue(Promise.resolve());
-    attachmentApi.confirm.and.returnValue(
-      Promise.resolve({ id: attachmentId, originalFileName: 'brief.pdf' }),
     );
 
     fixture.componentInstance.noteForm.setValue({
@@ -158,15 +158,11 @@ describe('CaseNotesTimelineComponent', () => {
     await fixture.componentInstance.submitNote();
     await settle();
 
-    expect(attachmentApi.presign).toHaveBeenCalledWith({
+    expect(attachmentApi.upload).toHaveBeenCalledWith({
       resourceType: 'CaseNote',
       resourceId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-      fileName: 'brief.pdf',
-      contentType: 'application/pdf',
-      fileSizeBytes: 3,
+      file: jasmine.any(File),
     });
-    expect(attachmentApi.uploadToPresignedUrl).toHaveBeenCalled();
-    expect(attachmentApi.confirm).toHaveBeenCalledWith({ attachmentId });
     expect(caseApi.listCaseNotes).toHaveBeenCalledTimes(2);
   });
 });

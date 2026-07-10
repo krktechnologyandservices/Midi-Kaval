@@ -29,12 +29,29 @@ export type UpdateCourtSittingRequest = components['schemas']['UpdateCourtSittin
 export type NotificationDto = components['schemas']['NotificationDto'];
 export type NotificationListResultDto = components['schemas']['NotificationListResultDto'];
 export type UnreadCountDto = { count: number };
-export type AttachmentSummaryDto = components['schemas']['AttachmentSummaryDto'];
-export type AttachmentPresignRequest = components['schemas']['AttachmentPresignRequest'];
-export type AttachmentPresignResultDto = components['schemas']['AttachmentPresignResultDto'];
-export type AttachmentConfirmRequest = components['schemas']['AttachmentConfirmRequest'];
-export type AttachmentDto = components['schemas']['AttachmentDto'];
-export type AttachmentDownloadUrlDto = components['schemas']['AttachmentDownloadUrlDto'];
+// Hand-written rather than pulled from the generated client: the client's schema
+// still has the old presign/confirm/download-url shape from before attachments were
+// switched to an API-proxied upload/download flow with server-side encryption.
+export interface AttachmentSummaryDto {
+  id: string;
+  originalFileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  confirmedAtUtc: string;
+}
+
+export interface AttachmentDto {
+  id: string;
+  resourceType: string;
+  resourceId: string;
+  originalFileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  status: string;
+  uploadedByUserId: string;
+  createdAtUtc: string;
+  confirmedAtUtc?: string | null;
+}
 
 // Hand-written rather than pulled from the generated client: the client's VisitListItemDto
 // predates the assigneeUserId/assigneeEmail/cancellationReason fields and has no

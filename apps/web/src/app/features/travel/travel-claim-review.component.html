@@ -56,7 +56,7 @@
             <ul class="receipt-list">
               @for (attachment of item.attachments; track attachment.id) {
                 <li>
-                  <button mat-button type="button" (click)="openReceipt(attachment.id)">
+                  <button mat-button type="button" (click)="openReceipt(attachment.id, attachment.originalFileName)">
                     {{ basename(attachment.originalFileName) }}
                   </button>
                 </li>

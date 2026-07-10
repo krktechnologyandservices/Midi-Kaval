@@ -16,6 +16,6 @@ module.exports = {
     // already ship pre-compiled CJS, and transforming them anyway roughly doubles the
     // per-suite warm-up cost for no benefit (verified: it pushed unrelated, previously-fine
     // tests past even a generous timeout).
-    'node_modules/(?!(react-native|react-native-image-picker|react-native-vector-icons|@react-native|@react-navigation|@midi-kaval)/)',
+    'node_modules/(?!(react-native|react-native-image-picker|react-native-vector-icons|react-native-fs|@react-native|@react-navigation|@midi-kaval)/)',
   ],
 };

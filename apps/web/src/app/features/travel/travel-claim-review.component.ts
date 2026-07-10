@@ -95,16 +95,18 @@ export class TravelClaimReviewComponent implements OnInit {
     }
   }
 
-  async openReceipt(attachmentId: string): Promise<void> {
+  async openReceipt(attachmentId: string, fileName: string | null | undefined): Promise<void> {
     try {
-      const result = await this.attachmentApi.getDownloadUrl(attachmentId);
-      if (result.downloadUrl) {
-        window.open(result.downloadUrl, '_blank', 'noopener,noreferrer');
-      } else {
-        this.actionError.set('Receipt download is unavailable.');
-      }
+      const blob = await this.attachmentApi.download(attachmentId);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = attachmentBasename(fileName ?? 'receipt');
+      anchor.rel = 'noopener';
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch (error) {
-      this.actionError.set(this.attachmentApi.extractErrorMessage(error));
+      this.actionError.set(this.attachmentApi.extractDownloadErrorMessage(error));
     }
   }
 

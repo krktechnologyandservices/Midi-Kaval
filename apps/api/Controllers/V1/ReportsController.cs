@@ -111,7 +111,7 @@ public sealed class ReportsController(
         var statusDto = new ReportExportStatusDto
         {
             Status = job.Status,
-            DownloadUrl = TryGenerateDownloadUrl(job.Status, job.BlobPath),
+            DownloadUrl = TryGenerateDownloadUrl(jobId, job.Status, job.BlobPath),
             ErrorMessage = job.Status == ReportExportJobStatus.Failed ? job.ErrorMessage : null,
         };
 
@@ -173,7 +173,7 @@ public sealed class ReportsController(
                 Format = j.Format,
                 CreatedAtUtc = j.CreatedAtUtc,
                 CompletedAtUtc = j.CompletedAtUtc,
-                DownloadUrl = TryGenerateDownloadUrl(j.Status, j.BlobPath),
+                DownloadUrl = TryGenerateDownloadUrl(j.Id, j.Status, j.BlobPath),
                 ErrorMessage = j.Status == ReportExportJobStatus.Failed ? j.ErrorMessage : null,
             }).ToList()
         };
@@ -189,23 +189,51 @@ public sealed class ReportsController(
         HttpContext.Items[RequestIdMiddleware.RequestIdItemKey] as string
             ?? HttpContext.TraceIdentifier;
 
-    private string? TryGenerateDownloadUrl(string status, string? blobPath)
+    // No more direct-to-storage SAS URLs now that files are encrypted at rest — the
+    // client instead hits this same API (GET /exports/{jobId}/file), which fetches
+    // and decrypts the blob before streaming it back.
+    private static string? TryGenerateDownloadUrl(Guid jobId, string status, string? blobPath)
     {
         if (status != ReportExportJobStatus.Completed || blobPath is null)
         {
             return null;
         }
 
-        try
+        return $"/api/v1/reports/exports/{jobId:D}/file";
+    }
+
+    /// <summary>Streams a completed report export file.</summary>
+    [HttpGet("exports/{jobId:guid}/file")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-read")]
+    public async Task<IActionResult> DownloadExportFile(Guid jobId, CancellationToken cancellationToken)
+    {
+        var organisationId = ResolveOrganisationId();
+        var userId = ResolveUserId();
+
+        var job = await db.Set<ReportExportJob>()
+            .Where(j => j.Id == jobId && j.OrganisationId == organisationId && j.CreatedByUserId == userId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (job is null || job.Status != ReportExportJobStatus.Completed || job.BlobPath is null)
         {
-            var (url, _) = blobService.GenerateReadSasUri(blobPath);
-            return url.ToString();
+            return NotFound();
         }
-        catch (Exception ex)
+
+        var content = await blobService.DownloadAsync(job.BlobPath, cancellationToken);
+        if (content is null)
         {
-            logger.LogWarning(ex, "Failed to generate SAS URL for blob {BlobPath}", blobPath);
-            return null;
+            return NotFound();
         }
+
+        var extension = job.Format == "pdf" ? ".pdf" : ".xlsx";
+        var contentType = job.Format == "pdf"
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+        return File(content, contentType, $"{job.ReportType}{extension}");
     }
 
     private static ReportExportJobDto MapToDto(ReportExportJob job, string? downloadUrl) => new()

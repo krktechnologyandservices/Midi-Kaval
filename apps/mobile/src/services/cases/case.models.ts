@@ -61,12 +61,29 @@ export type CourtSittingScheduleItemDto = components['schemas']['CourtSittingSch
 export type CourtSittingUpcomingListResultDto =
   components['schemas']['CourtSittingUpcomingListResultDto'];
 export type FieldWorkerUserDto = components['schemas']['FieldWorkerUserDto'];
-export type AttachmentSummaryDto = components['schemas']['AttachmentSummaryDto'];
-export type AttachmentPresignRequest = components['schemas']['AttachmentPresignRequest'];
-export type AttachmentPresignResultDto = components['schemas']['AttachmentPresignResultDto'];
-export type AttachmentConfirmRequest = components['schemas']['AttachmentConfirmRequest'];
-export type AttachmentDto = components['schemas']['AttachmentDto'];
-export type AttachmentDownloadUrlDto = components['schemas']['AttachmentDownloadUrlDto'];
+// Hand-written rather than pulled from the generated client: the generated schema
+// still has the old presign/confirm/downloadUrl shape from before attachments were
+// switched to a single encrypted upload/download flow through the API.
+export interface AttachmentSummaryDto {
+  id: string;
+  originalFileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  confirmedAtUtc: string;
+}
+
+export interface AttachmentDto {
+  id: string;
+  resourceType: string;
+  resourceId: string;
+  originalFileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  status: string;
+  uploadedByUserId: string;
+  createdAtUtc: string;
+  confirmedAtUtc?: string | null;
+}
 
 export const CASE_NOTE_TYPES = ['Visit', 'Court', 'Intervention', 'General'] as const;
 export type CaseNoteType = (typeof CASE_NOTE_TYPES)[number];

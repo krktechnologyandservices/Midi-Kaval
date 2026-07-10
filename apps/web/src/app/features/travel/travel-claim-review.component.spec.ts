@@ -46,7 +46,7 @@ describe('TravelClaimReviewComponent', () => {
     });
 
     const attachmentApi = jasmine.createSpyObj('AttachmentApiService', [
-      'getDownloadUrl',
+      'download',
       'extractErrorMessage',
     ]);
 
@@ -112,7 +112,7 @@ describe('TravelClaimReviewComponent', () => {
         { provide: CaseApiService, useValue: caseApi },
         {
           provide: AttachmentApiService,
-          useValue: jasmine.createSpyObj('AttachmentApiService', ['getDownloadUrl']),
+          useValue: jasmine.createSpyObj('AttachmentApiService', ['download']),
         },
         {
           provide: ActivatedRoute,

@@ -3,14 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { AuthSessionService } from '../../../core/auth/auth-session.service';
-import {
-  ApiEnvelope,
-  AttachmentConfirmRequest,
-  AttachmentDownloadUrlDto,
-  AttachmentDto,
-  AttachmentPresignRequest,
-  AttachmentPresignResultDto,
-} from '../models/case.models';
+import { ApiEnvelope, AttachmentDto } from '../models/case.models';
 import { CaseApiError } from './case-api.service';
 
 @Injectable({ providedIn: 'root' })
@@ -18,26 +11,21 @@ export class AttachmentApiService {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthSessionService);
 
-  async presign(request: AttachmentPresignRequest): Promise<AttachmentPresignResultDto> {
+  async upload(request: {
+    resourceType: 'CaseNote' | 'TravelClaim' | 'BudgetUtilization';
+    resourceId: string;
+    file: File;
+  }): Promise<AttachmentDto> {
     try {
-      const envelope = await firstValueFrom(
-        this.http.post<ApiEnvelope<AttachmentPresignResultDto>>(
-          `${environment.apiBaseUrl}/api/v1/attachments/presign`,
-          request,
-        ),
-      );
-      return envelope.data;
-    } catch (error) {
-      throw this.wrapError(error);
-    }
-  }
+      const formData = new FormData();
+      formData.append('resourceType', request.resourceType);
+      formData.append('resourceId', request.resourceId);
+      formData.append('file', request.file, request.file.name);
 
-  async confirm(request: AttachmentConfirmRequest): Promise<AttachmentDto> {
-    try {
       const envelope = await firstValueFrom(
         this.http.post<ApiEnvelope<AttachmentDto>>(
-          `${environment.apiBaseUrl}/api/v1/attachments/confirm`,
-          request,
+          `${environment.apiBaseUrl}/api/v1/attachments/upload`,
+          formData,
         ),
       );
       return envelope.data;
@@ -46,45 +34,21 @@ export class AttachmentApiService {
     }
   }
 
-  async getDownloadUrl(attachmentId: string): Promise<AttachmentDownloadUrlDto> {
+  async download(attachmentId: string): Promise<Blob> {
     try {
-      const envelope = await firstValueFrom(
-        this.http.get<ApiEnvelope<AttachmentDownloadUrlDto>>(
-          `${environment.apiBaseUrl}/api/v1/attachments/${attachmentId}/download-url`,
-        ),
+      return await firstValueFrom(
+        this.http.get(`${environment.apiBaseUrl}/api/v1/attachments/${attachmentId}/download`, {
+          responseType: 'blob',
+        }),
       );
-      return envelope.data;
     } catch (error) {
       throw this.wrapError(error);
-    }
-  }
-
-  async uploadToPresignedUrl(
-    uploadUrl: string,
-    file: File,
-    requiredHeaders: Record<string, string>,
-  ): Promise<void> {
-    const response = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: requiredHeaders,
-      body: file,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Upload failed (${response.status})`);
     }
   }
 
   extractErrorMessage(error: unknown): string {
     if (error instanceof CaseApiError) {
       return this.auth.extractErrorMessage(error.sourceError);
-    }
-
-    if (
-      error instanceof Error &&
-      (error.message.startsWith('Upload failed') || error.message === 'Presign failed')
-    ) {
-      return 'Attachment upload failed. The note was saved without the file.';
     }
 
     return this.auth.extractErrorMessage(error);
