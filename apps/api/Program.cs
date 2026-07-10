@@ -69,6 +69,7 @@ if (!builder.Environment.IsTesting())
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+    connectionString = PostgresConnectionStringNormalizer.Normalize(connectionString);
 
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
@@ -206,7 +207,7 @@ if (!builder.Environment.IsTesting())
         if (!string.IsNullOrWhiteSpace(hangfireConnectionString))
         {
             config.UsePostgreSqlStorage(opts =>
-                    opts.UseNpgsqlConnection(hangfireConnectionString));
+                    opts.UseNpgsqlConnection(PostgresConnectionStringNormalizer.Normalize(hangfireConnectionString)));
         }
         else
         {
