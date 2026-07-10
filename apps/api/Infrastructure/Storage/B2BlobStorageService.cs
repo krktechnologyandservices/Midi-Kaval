@@ -32,13 +32,20 @@ public sealed class B2BlobStorageService : IBlobStorageService
 
     public async Task EnsureContainerAsync(CancellationToken cancellationToken = default)
     {
-        var buckets = await _client.ListBucketsAsync(cancellationToken);
-        if (buckets.Buckets.Any(b => b.BucketName == _bucketName))
+        // A B2 application key scoped to a single bucket (the recommended, least-privilege
+        // setup) generally can't enumerate other buckets via ListBuckets, so that can't be
+        // used as an existence check here. Try to create it instead and treat "already
+        // exists" as success — this bucket is normally created once by hand in the
+        // Backblaze dashboard, so this is expected to no-op on every real deploy.
+        try
         {
-            return;
+            await _client.PutBucketAsync(_bucketName, cancellationToken);
         }
-
-        await _client.PutBucketAsync(_bucketName, cancellationToken);
+        catch (Exception ex) when (
+            ex is Amazon.S3.Model.BucketAlreadyExistsException
+            or Amazon.S3.Model.BucketAlreadyOwnedByYouException)
+        {
+        }
     }
 
     public async Task UploadAsync(
