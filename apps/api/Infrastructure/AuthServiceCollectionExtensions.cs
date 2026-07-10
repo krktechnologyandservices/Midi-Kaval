@@ -52,7 +52,13 @@ public static class AuthServiceCollectionExtensions
         var redisConnection = configuration.GetConnectionString("Redis");
         ArgumentException.ThrowIfNullOrWhiteSpace(redisConnection);
 
-        var multiplexer = ConnectionMultiplexer.Connect(redisConnection);
+        // AbortOnConnectFail defaults to true, which crashes the whole process if Redis
+        // isn't reachable at the exact instant the app boots (e.g. a Render cold-start
+        // race where the API container comes up before the Redis service is ready).
+        // Disabling it lets the multiplexer keep retrying in the background instead.
+        var redisOptions = ConfigurationOptions.Parse(redisConnection);
+        redisOptions.AbortOnConnectFail = false;
+        var multiplexer = ConnectionMultiplexer.Connect(redisOptions);
         services.AddSingleton<IConnectionMultiplexer>(multiplexer);
         services.AddStackExchangeRedisCache(options =>
         {
