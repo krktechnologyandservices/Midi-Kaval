@@ -51,6 +51,7 @@ public static class AuthServiceCollectionExtensions
 
         var redisConnection = configuration.GetConnectionString("Redis");
         ArgumentException.ThrowIfNullOrWhiteSpace(redisConnection);
+        redisConnection = RedisConnectionStringNormalizer.Normalize(redisConnection);
 
         // AbortOnConnectFail defaults to true, which crashes the whole process if Redis
         // isn't reachable at the exact instant the app boots (e.g. a Render cold-start
