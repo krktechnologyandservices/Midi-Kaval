@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Hangfire;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -153,23 +154,13 @@ public sealed class AuthService(
                 otpBody += $"\n\nDid you know? Two-factor authentication provides an extra layer of security to protect your account. Set it up at {setupUrl}.";
             }
 
-            await emailSender.SendAsync(
-                new EmailMessage(
-                    user.Email,
-                    "Your Kaval Online verification code",
-                    otpBody),
-                cancellationToken);
+            // Enqueued rather than awaited inline: a live SMTP round-trip inside the
+            // request path can hang long enough to trip the platform's gateway timeout
+            // (observed as a 504) if the mail server is slow to respond.
+            var message = new EmailMessage(user.Email, "Your Kaval Online verification code", otpBody);
+            BackgroundJob.Enqueue<IEmailSender>(es => es.SendAsync(message, CancellationToken.None));
         }
         catch (OperationCanceledException)
-        {
-            if (challengeId != Guid.Empty)
-            {
-                await otpChallengeStore.RemoveAsync(challengeId, CancellationToken.None);
-            }
-
-            throw;
-        }
-        catch (EmailDeliveryException)
         {
             if (challengeId != Guid.Empty)
             {
@@ -477,13 +468,15 @@ public sealed class AuthService(
                     var token = await passwordResetTokenStore.IssueAsync(user.Id, cancellationToken);
                     var resetUrl = BuildResetUrl(token);
                     var expiryMinutes = passwordResetOptions.Value.ExpiryMinutes;
-                    await emailSender.SendAsync(
-                        new EmailMessage(
-                            user.Email,
-                            "Reset your Kaval Online password",
-                            $"Use the link below to reset your password:\n\n{resetUrl}\n\n"
-                                + $"This link expires in {expiryMinutes} minutes and can only be used once."),
-                        cancellationToken);
+                    // Enqueued rather than awaited inline: a live SMTP round-trip inside the
+                    // request path can hang long enough to trip the platform's gateway timeout
+                    // (observed as a 504) if the mail server is slow to respond.
+                    var message = new EmailMessage(
+                        user.Email,
+                        "Reset your Kaval Online password",
+                        $"Use the link below to reset your password:\n\n{resetUrl}\n\n"
+                            + $"This link expires in {expiryMinutes} minutes and can only be used once.");
+                    BackgroundJob.Enqueue<IEmailSender>(es => es.SendAsync(message, CancellationToken.None));
 
                     await auditService.RecordAsync(
                         AuditEventTypes.PasswordResetRequested,
@@ -616,23 +609,17 @@ public sealed class AuthService(
         try
         {
             challengeId = await otpChallengeStore.CreateAsync(challenge, cancellationToken);
-            await emailSender.SendAsync(
-                new EmailMessage(
-                    user.Email,
-                    "Your Kaval Online step-up verification code",
-                    $"Your verification code is: {otpCode}\n\nEnter the 6-digit code from your email."),
-                cancellationToken);
+
+            // Enqueued rather than awaited inline: a live SMTP round-trip inside the
+            // request path can hang long enough to trip the platform's gateway timeout
+            // (observed as a 504) if the mail server is slow to respond.
+            var message = new EmailMessage(
+                user.Email,
+                "Your Kaval Online step-up verification code",
+                $"Your verification code is: {otpCode}\n\nEnter the 6-digit code from your email.");
+            BackgroundJob.Enqueue<IEmailSender>(es => es.SendAsync(message, CancellationToken.None));
         }
         catch (OperationCanceledException)
-        {
-            if (challengeId != Guid.Empty)
-            {
-                await otpChallengeStore.RemoveAsync(challengeId, CancellationToken.None);
-            }
-
-            throw;
-        }
-        catch (EmailDeliveryException)
         {
             if (challengeId != Guid.Empty)
             {
