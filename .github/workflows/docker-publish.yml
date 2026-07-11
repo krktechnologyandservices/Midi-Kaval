@@ -1,7 +1,8 @@
 name: Build and publish Docker images
 
 # Only runs when something that actually affects the images changes, to avoid burning
-# CI minutes on unrelated commits (docs, mobile-only changes, etc.).
+# CI minutes on unrelated commits (docs, mobile-only changes, etc.). workflow_dispatch
+# lets it be re-run manually from the Actions tab regardless of what changed.
 on:
   push:
     branches: [master]
@@ -10,9 +11,11 @@ on:
       - "apps/web/**"
       - "packages/**"
       - "docker-compose.yml"
+      - ".dockerignore"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/docker-publish.yml"
+  workflow_dispatch: {}
 
 jobs:
   build-and-push:
