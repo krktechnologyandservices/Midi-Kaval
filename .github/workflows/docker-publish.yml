@@ -1,0 +1,41 @@
+name: Build and publish Docker images
+
+# Only runs when something that actually affects the images changes, to avoid burning
+# CI minutes on unrelated commits (docs, mobile-only changes, etc.).
+on:
+  push:
+    branches: [master]
+    paths:
+      - "apps/api/**"
+      - "apps/web/**"
+      - "packages/**"
+      - "docker-compose.yml"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/docker-publish.yml"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Reuses docker-compose.yml's own build/image config directly, so there's only
+      # one place (the compose file) that defines how these images are built — CI and
+      # a developer's local `docker compose build` always stay in sync.
+      - name: Build images
+        run: docker compose build
+
+      - name: Push images
+        run: docker compose push

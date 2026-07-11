@@ -40,6 +40,7 @@ public static class AuthServiceCollectionExtensions
         services.Configure<RefreshTokenOptions>(configuration.GetSection(RefreshTokenOptions.SectionName));
         services.Configure<PasswordResetOptions>(configuration.GetSection(PasswordResetOptions.SectionName));
         services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
+        services.Configure<BrevoOptions>(configuration.GetSection(BrevoOptions.SectionName));
 
         services.AddOptions<DualAuthOptions>()
             .Bind(configuration.GetSection(DualAuthOptions.SectionName))
@@ -77,7 +78,18 @@ public static class AuthServiceCollectionExtensions
         services.AddScoped<TwoFactorService>();
         services.AddScoped<BackupCodeService>();
         services.AddScoped<AdminTwoFactorService>();
-        services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        // Email:Provider selects between raw SMTP and Brevo's HTTPS API — some hosts
+        // throttle/block outbound SMTP ports on free-tier plans, so this can be switched
+        // to "Brevo" without any code changes when that happens.
+        var emailProvider = configuration["Email:Provider"];
+        if (string.Equals(emailProvider, "Brevo", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<IEmailSender, BrevoEmailSender>();
+        }
+        else
+        {
+            services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        }
         services.AddSingleton<IUserNotificationRateLimiter, RedisUserNotificationRateLimiter>();
         services.AddHttpContextAccessor();
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, InactiveUserAuthorizationMiddlewareResultHandler>();

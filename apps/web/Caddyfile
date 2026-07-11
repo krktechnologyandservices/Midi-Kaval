@@ -1,0 +1,16 @@
+{$SITE_DOMAIN} {
+	# Reverse-proxies to the api container by its Docker Compose service name — Caddy's
+	# built-in DNS resolves "api" to the container's address on the compose network.
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		root * /srv/web
+		# SPA fallback: Angular is client-side routed, so a deep link like /cases/123
+		# must still serve index.html and let the Angular router take over, rather
+		# than 404ing on a path with no matching static file.
+		try_files {path} /index.html
+		file_server
+	}
+}

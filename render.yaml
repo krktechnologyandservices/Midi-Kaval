@@ -72,6 +72,8 @@ services:
         value: attachments-midi-kaval
       # SMTP creds for outbound email (password reset, activation links, reminders).
       # Use a freshly-rotated credential, not the one committed in appsettings.Development.json.
+      # Kept in place (unused while Email__Provider=Brevo below) so switching back to SMTP
+      # later — e.g. after moving off the free plan — is just flipping Email__Provider back.
       - key: Email__Smtp__Host
         sync: false
       - key: Email__Smtp__Port
@@ -82,6 +84,17 @@ services:
         sync: false
       - key: Email__Smtp__From
         sync: false
+      # Render's free plan appears to throttle/block outbound SMTP (port 587), so email
+      # goes via Brevo's HTTPS API instead. Switch this back to "Smtp" (or remove it —
+      # Smtp is the default) once on a plan where raw SMTP is reliable.
+      - key: Email__Provider
+        value: Brevo
+      - key: Email__Brevo__ApiKey
+        sync: false
+      - key: Email__Brevo__SenderEmail
+        sync: false
+      - key: Email__Brevo__SenderName
+        value: Midi Kaval
       - key: Cors__AllowedOrigins__0
         value: https://midi-kaval-web.onrender.com
       - key: ConfirmationLink__BaseUrl
