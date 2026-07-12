@@ -19,7 +19,11 @@ react {
     reactNativeDir = file("../../../../node_modules/react-native")
     codegenDir = file("../../../../node_modules/@react-native/codegen")
     cliFile = file("../../../../node_modules/react-native/cli.js")
-    hermesCommand = "../../../../node_modules/react-native/sdks/hermesc/${hermesOsBin}/hermesc"
+    // Absolute, not relative: the relative form resolved fine at Gradle configuration
+    // time but the actual process spawn happens from a different implicit working
+    // directory, making "../../../../..." invalid at the moment it's actually run
+    // ("A problem occurred starting process ... hermesc").
+    hermesCommand = file("../../../../node_modules/react-native/sdks/hermesc/${hermesOsBin}/hermesc").absolutePath
     autolinkLibrariesWithApp()
 }
 

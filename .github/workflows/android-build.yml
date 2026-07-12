@@ -44,7 +44,11 @@ jobs:
       # the source like gradlew was) — "A problem occurred starting process ...
       # hermesc" without this.
       - name: Ensure hermesc is executable
-        run: chmod +x node_modules/react-native/sdks/hermesc/linux64-bin/hermesc
+        run: |
+          chmod +x node_modules/react-native/sdks/hermesc/linux64-bin/hermesc
+          ls -la node_modules/react-native/sdks/hermesc/linux64-bin/hermesc
+          file node_modules/react-native/sdks/hermesc/linux64-bin/hermesc
+          ldd node_modules/react-native/sdks/hermesc/linux64-bin/hermesc || true
 
       # packages/*'s dist/ output is git-ignored (only checked-in TS source), so they
       # must be compiled before the mobile app's own build runs — same pattern as the
