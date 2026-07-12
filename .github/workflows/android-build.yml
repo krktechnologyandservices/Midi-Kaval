@@ -56,6 +56,11 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ hashFiles('apps/mobile/android/gradle/wrapper/gradle-wrapper.properties') }}
 
+      # git doesn't reliably preserve the executable bit on files edited/committed from
+      # Windows — belt-and-suspenders alongside fixing the bit in git itself.
+      - name: Ensure gradlew is executable
+        run: chmod +x apps/mobile/android/gradlew
+
       # Currently signed with the React Native default debug keystore (checked into
       # the repo) — fine for internal testing, but must switch to a real release
       # keystore before this can be submitted to the Play Store.
