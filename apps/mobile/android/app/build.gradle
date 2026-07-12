@@ -2,11 +2,24 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+// The RN Gradle plugin's own Hermes-binary auto-detection doesn't reliably resolve
+// node_modules hoisted four levels up (this monorepo's layout — see reactNativeDir
+// below), failing with "Couldn't determine Hermesc location ... %OS-BIN%". Setting
+// hermesCommand explicitly, os-detected so this still works for local Windows/Mac
+// builds and not just CI's Linux runner.
+def hermesOsBin = {
+    def osName = System.getProperty("os.name").toLowerCase()
+    if (osName.contains("mac")) return "osx-bin"
+    if (osName.contains("win")) return "win64-bin"
+    return "linux64-bin"
+}()
+
 react {
     root = file("../../")
     reactNativeDir = file("../../../../node_modules/react-native")
     codegenDir = file("../../../../node_modules/@react-native/codegen")
     cliFile = file("../../../../node_modules/react-native/cli.js")
+    hermesCommand = "../../../../node_modules/react-native/sdks/hermesc/${hermesOsBin}/hermesc"
     autolinkLibrariesWithApp()
 }
 
