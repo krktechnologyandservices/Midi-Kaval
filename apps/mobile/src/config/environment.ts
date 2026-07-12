@@ -1,4 +1,6 @@
-/** Use localhost with `adb reverse tcp:5049 tcp:5049` on a USB-connected device. */
+// Note: no "/api" suffix here — every call site appends "/api/v1/..." itself
+// (e.g. `${environment.apiBaseUrl}/api/v1/auth/login`), so including it here
+// would double up to ".../api/api/v1/...".
 export const environment = {
-  apiBaseUrl: 'http://localhost:5049',
+  apiBaseUrl: 'https://midi-kaval.duckdns.org',
 };

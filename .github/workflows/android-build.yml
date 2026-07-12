@@ -1,0 +1,71 @@
+name: Build Android APK
+
+# Only runs when something that actually affects the mobile app changes, to avoid
+# burning CI minutes on unrelated commits (API/web-only changes, docs, etc.).
+# workflow_dispatch lets it be re-run manually from the Actions tab regardless.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "apps/mobile/**"
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/android-build.yml"
+  workflow_dispatch: {}
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # packages/*'s dist/ output is git-ignored (only checked-in TS source), so they
+      # must be compiled before the mobile app's own build runs — same pattern as the
+      # web Dockerfile.
+      - name: Build shared-types
+        run: npm run build --workspace=packages/shared-types
+
+      - name: Build api-client
+        run: npm run build --workspace=packages/api-client
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('apps/mobile/android/gradle/wrapper/gradle-wrapper.properties') }}
+
+      # Currently signed with the React Native default debug keystore (checked into
+      # the repo) — fine for internal testing, but must switch to a real release
+      # keystore before this can be submitted to the Play Store.
+      - name: Build release APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: midi-kaval-mobile-apk
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30

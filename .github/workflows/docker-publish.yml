@@ -42,3 +42,20 @@ jobs:
 
       - name: Push images
         run: docker compose push
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      # Update the VM_HOST secret yourself if the Oracle VM's IP ever changes
+      # (it's currently an ephemeral IP, not a reserved/static one).
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: opc
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            cd ~/Midi-Kaval
+            docker compose pull
+            docker compose up -d
