@@ -74,7 +74,15 @@ services:
       B2Storage__AccessKeyId: ${B2_ACCESS_KEY_ID}
       B2Storage__SecretAccessKey: ${B2_SECRET_ACCESS_KEY}
       B2Storage__BucketName: ${B2_BUCKET_NAME}
-      Email__Provider: Brevo
+      # EMAIL_PROVIDER switches between "Smtp" and "Brevo" via .env — a full VM has
+      # normal outbound network access (unlike Render's free tier), so plain SMTP works
+      # fine here and needs no HTTP-API workaround.
+      Email__Provider: ${EMAIL_PROVIDER}
+      Email__Smtp__Host: ${SMTP_HOST}
+      Email__Smtp__Port: ${SMTP_PORT}
+      Email__Smtp__User: ${SMTP_USER}
+      Email__Smtp__Password: ${SMTP_PASSWORD}
+      Email__Smtp__From: ${SMTP_FROM}
       Email__Brevo__ApiKey: ${BREVO_API_KEY}
       Email__Brevo__SenderEmail: ${BREVO_SENDER_EMAIL}
       Email__Brevo__SenderName: Midi Kaval
