@@ -39,6 +39,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # npm's extraction doesn't reliably preserve the executable bit on this
+      # prebuilt binary (node_modules isn't git-tracked, so this can't be fixed at
+      # the source like gradlew was) — "A problem occurred starting process ...
+      # hermesc" without this.
+      - name: Ensure hermesc is executable
+        run: chmod +x node_modules/react-native/sdks/hermesc/linux64-bin/hermesc
+
       # packages/*'s dist/ output is git-ignored (only checked-in TS source), so they
       # must be compiled before the mobile app's own build runs — same pattern as the
       # web Dockerfile.
