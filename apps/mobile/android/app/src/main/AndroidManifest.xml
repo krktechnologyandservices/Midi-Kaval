@@ -37,5 +37,18 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+
+      <!-- Android 24+ blocks handing other apps a raw file:// URI (FileUriExposedException) —
+           this lets openAttachmentFile.ts open a downloaded attachment via a content:// URI
+           that the native viewer app is actually allowed to read. -->
+      <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.provider"
+        android:exported="false"
+        android:grantUriPermissions="true">
+        <meta-data
+          android:name="android.support.FILE_PROVIDER_PATHS"
+          android:resource="@xml/file_paths" />
+      </provider>
     </application>
 </manifest>

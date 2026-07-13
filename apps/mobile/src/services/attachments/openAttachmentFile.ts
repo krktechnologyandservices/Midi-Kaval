@@ -1,5 +1,5 @@
 import RNFS from 'react-native-fs';
-import {Linking} from 'react-native';
+import FileViewer from 'react-native-file-viewer';
 import {attachmentApiService} from './AttachmentApiService';
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -20,12 +20,14 @@ function blobToBase64(blob: Blob): Promise<string> {
 /**
  * Downloads a decrypted attachment (an authenticated request, so it can't just be
  * handed to Linking.openURL as a plain link) and saves it to a cache file so the
- * device's native viewer can open it.
+ * device's native viewer can open it. Uses react-native-file-viewer (backed by the
+ * FileProvider declared in AndroidManifest.xml) rather than Linking.openURL with a
+ * raw file:// URI, which Android blocks with FileUriExposedException on API 24+.
  */
 export async function openAttachment(attachmentId: string, fileName: string): Promise<void> {
   const blob = await attachmentApiService.download(attachmentId);
   const base64 = await blobToBase64(blob);
   const path = `${RNFS.CachesDirectoryPath}/${attachmentId}-${fileName}`;
   await RNFS.writeFile(path, base64, 'base64');
-  await Linking.openURL(`file://${path}`);
+  await FileViewer.open(path, {showOpenWithDialog: true});
 }

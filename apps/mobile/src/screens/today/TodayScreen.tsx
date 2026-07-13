@@ -759,6 +759,22 @@ export function TodayScreen(): React.JSX.Element {
 
       ) : null}
 
+      {auth.isFieldRole ? (
+
+        <Pressable
+
+          onPress={() => navigation.navigate('UpcomingVisits')}
+
+          accessibilityRole="button"
+
+          accessibilityLabel="Upcoming visits">
+
+          <Text style={styles.groupButton}>Upcoming visits</Text>
+
+        </Pressable>
+
+      ) : null}
+
 
 
       {auth.isFieldRole && hasUnverifiedGps && !bannerDismissed ? (

@@ -42,7 +42,7 @@ import {
   InterventionStatus,
   MAX_ATTACHMENT_BYTES,
 } from '../../services/cases/case.models';
-import {isCourtSittingPastDue} from '../../utils/courtSittingUtils';
+import {formatDaysUntilLabel, isCourtSittingPastDue} from '../../utils/courtSittingUtils';
 import {openAndroidDatePicker} from '../../utils/androidDatePicker';
 
 type Props = NativeStackScreenProps<CasesStackParamList, 'CaseDetailPlaceholder'>;
@@ -1059,6 +1059,9 @@ export function CaseDetailPlaceholderScreen({
             <Text style={styles.noteMeta}>{item.purpose}</Text>
             <Text style={styles.noteMeta}>
               Scheduled {item.scheduledAtUtc ? new Date(item.scheduledAtUtc).toLocaleString() : ''}
+              {item.scheduledAtUtc
+                ? ` (${formatDaysUntilLabel(item.scheduledAtUtc, isCourtSittingPastDue(item))})`
+                : ''}
               {item.nextCourtAtUtc
                 ? ` · Next court ${new Date(item.nextCourtAtUtc).toLocaleString()}`
                 : ''}

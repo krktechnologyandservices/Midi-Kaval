@@ -12,15 +12,14 @@ import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useAuth} from '../../context/AuthContext';
 import {TodayStackParamList} from '../../navigation/types';
-import {courtApiService} from '../../services/court/CourtApiService';
-import {CourtSittingScheduleItemDto} from '../../services/cases/case.models';
+import {visitApiService} from '../../services/visits/VisitApiService';
+import {VisitListItemDto} from '../../services/visits/visit.models';
 import {beneficiaryInitials} from '../../utils/beneficiaryInitials';
-import {getUtcWeekBounds} from '../../utils/utcWeekBounds';
 import {formatDaysUntilLabel} from '../../utils/courtSittingUtils';
 
-type Navigation = NativeStackNavigationProp<TodayStackParamList, 'CourtSchedule'>;
+type Navigation = NativeStackNavigationProp<TodayStackParamList, 'UpcomingVisits'>;
 
-function isInCurrentUtcWeek(scheduledAtUtc: string | null | undefined): boolean {
+function isStartOfTodayOrLater(scheduledAtUtc: string | null | undefined): boolean {
   if (!scheduledAtUtc) {
     return false;
   }
@@ -30,22 +29,38 @@ function isInCurrentUtcWeek(scheduledAtUtc: string | null | undefined): boolean 
     return false;
   }
 
-  const {start, end} = getUtcWeekBounds();
-  return scheduled.getTime() >= start.getTime() && scheduled.getTime() <= end.getTime();
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  return scheduled.getTime() >= startOfToday.getTime();
 }
 
-export function CourtScheduleScreen(): React.JSX.Element {
+/** Rest-of-week visits, excluding today's (already shown on the Today tab) and
+ * anything already completed. */
+function isUpcoming(item: VisitListItemDto): boolean {
+  if (item.status === 'Completed') {
+    return false;
+  }
+
+  if (!item.scheduledAtUtc) {
+    return false;
+  }
+
+  const scheduled = new Date(item.scheduledAtUtc);
+  const startOfTomorrow = new Date();
+  startOfTomorrow.setHours(0, 0, 0, 0);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+  return scheduled.getTime() >= startOfTomorrow.getTime();
+}
+
+export function UpcomingVisitsScreen(): React.JSX.Element {
   const auth = useAuth();
   const navigation = useNavigation<Navigation>();
-  const [items, setItems] = useState<CourtSittingScheduleItemDto[]>([]);
+  const [items, setItems] = useState<VisitListItemDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const weekItems = useMemo(
-    () => items.filter(item => isInCurrentUtcWeek(item.scheduledAtUtc)),
-    [items],
-  );
+  const upcomingItems = useMemo(() => items.filter(isUpcoming), [items]);
 
   const load = useCallback(async (isRefresh = false): Promise<void> => {
     if (!auth.isFieldRole) {
@@ -60,11 +75,15 @@ export function CourtScheduleScreen(): React.JSX.Element {
     }
 
     try {
-      const upcoming = await courtApiService.listUpcomingCourtSittings();
-      setItems(upcoming);
+      const result = await visitApiService.listWeekly();
+      // The generated VisitListResultDto's nested `case` type predates the locally
+      // patched VisitListItemDto (see visit.models.ts) — same known mismatch already
+      // present elsewhere (e.g. TodayScreen.tsx), not something introduced here.
+      const weeklyItems = (result.items ?? []) as unknown as VisitListItemDto[];
+      setItems(weeklyItems.filter(item => isStartOfTodayOrLater(item.scheduledAtUtc)));
       setErrorMessage(null);
     } catch (error) {
-      setErrorMessage(courtApiService.extractErrorMessage(error));
+      setErrorMessage(visitApiService.extractErrorMessage(error));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -94,7 +113,7 @@ export function CourtScheduleScreen(): React.JSX.Element {
   if (!auth.isFieldRole) {
     return (
       <View style={styles.container}>
-        <Text style={styles.subtitle}>Court schedule is for field workers only.</Text>
+        <Text style={styles.subtitle}>Upcoming visits is for field workers only.</Text>
       </View>
     );
   }
@@ -104,7 +123,7 @@ export function CourtScheduleScreen(): React.JSX.Element {
       style={styles.container}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-      {loading ? <ActivityIndicator accessibilityLabel="Loading court schedule" /> : null}
+      {loading ? <ActivityIndicator accessibilityLabel="Loading upcoming visits" /> : null}
 
       {errorMessage ? (
         <>
@@ -115,29 +134,29 @@ export function CourtScheduleScreen(): React.JSX.Element {
         </>
       ) : null}
 
-      {!loading && !errorMessage && weekItems.length === 0 ? (
-        <Text style={styles.emptyState}>No sittings this week.</Text>
+      {!loading && !errorMessage && upcomingItems.length === 0 ? (
+        <Text style={styles.emptyState}>No upcoming visits scheduled this week.</Text>
       ) : null}
 
-      {weekItems.map(item => (
+      {upcomingItems.map(item => (
         <Pressable
           key={item.id}
-          style={[styles.row, item.isPastDue ? styles.rowPastDue : null]}
+          style={[styles.row, item.isOverdue ? styles.rowOverdue : null]}
           accessibilityRole="button"
-          onPress={() => openCase(item.caseId)}>
+          onPress={() => openCase(item.case?.id)}>
           <View style={styles.rowHeader}>
             <Text style={styles.statusChip}>{item.status}</Text>
-            {item.isPastDue ? <Text style={styles.overdueChip}>Overdue</Text> : null}
+            {item.isOverdue ? <Text style={styles.overdueChip}>Overdue</Text> : null}
           </View>
-          <Text style={styles.courtName}>{item.courtName}</Text>
-          <Text style={styles.purpose}>{item.purpose}</Text>
+          <Text style={styles.caseName}>
+            {item.case
+              ? `${beneficiaryInitials(item.case.beneficiaryName)} · ${item.case.crimeNumber ?? '—'}`
+              : 'Unknown case'}
+          </Text>
           <Text style={styles.meta}>
             {item.scheduledAtUtc
-              ? `${new Date(item.scheduledAtUtc).toLocaleString()} · ${formatDaysUntilLabel(item.scheduledAtUtc, item.isPastDue)}`
+              ? `${new Date(item.scheduledAtUtc).toLocaleString()} · ${formatDaysUntilLabel(item.scheduledAtUtc, item.isOverdue)}`
               : 'No date'}
-            {item.case
-              ? ` · ${beneficiaryInitials(item.case.beneficiaryName)} · ${item.case.crimeNumber ?? '—'}`
-              : ''}
           </Text>
         </Pressable>
       ))}
@@ -176,7 +195,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
   },
-  rowPastDue: {
+  rowOverdue: {
     borderLeftWidth: 4,
     borderLeftColor: '#b54708',
     backgroundColor: '#fffaeb',
@@ -203,13 +222,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     overflow: 'hidden',
   },
-  courtName: {
+  caseName: {
     fontWeight: '600',
     fontSize: 15,
-    marginBottom: 4,
-  },
-  purpose: {
-    color: '#344054',
     marginBottom: 4,
   },
   meta: {

@@ -32,6 +32,18 @@ export class VisitApiService {
     }
   }
 
+  /** Visits scheduled during the current UTC week (Mon–Sun), including today's. */
+  async listWeekly(): Promise<VisitListResultDto> {
+    try {
+      const envelope = await this.auth.getApi<VisitListResultDto>(
+        '/api/v1/visits/weekly',
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
   async getTodayGroupingSuggestion(): Promise<VisitGroupingSuggestionDto> {
     try {
       const envelope = await this.auth.getApi<VisitGroupingSuggestionDto>(

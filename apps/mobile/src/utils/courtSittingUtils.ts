@@ -8,6 +8,39 @@ export function isCourtSittingPastDue(item: CourtSittingDto): boolean {
   );
 }
 
+/** Whole calendar days between today and the given date (negative if in the past). */
+function calendarDaysUntil(dateIso: string): number | null {
+  const scheduled = new Date(dateIso);
+  if (Number.isNaN(scheduled.getTime())) {
+    return null;
+  }
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfScheduled = new Date(scheduled);
+  startOfScheduled.setHours(0, 0, 0, 0);
+  return Math.round((startOfScheduled.getTime() - startOfToday.getTime()) / 86400000);
+}
+
+/** Short "in N days" / "today" / "N days ago" label for a row in a list. */
+export function formatDaysUntilLabel(dateIso: string, isPastDue?: boolean): string {
+  const calendarDays = calendarDaysUntil(dateIso);
+  if (calendarDays === null) {
+    return '';
+  }
+
+  if (isPastDue || calendarDays < 0) {
+    const daysAgo = Math.abs(calendarDays);
+    return daysAgo === 0 ? 'today' : daysAgo === 1 ? '1 day ago' : `${daysAgo} days ago`;
+  }
+
+  if (calendarDays === 0) {
+    return 'today';
+  }
+
+  return calendarDays === 1 ? 'tomorrow' : `in ${calendarDays} days`;
+}
+
 export function buildCourtCountdownLabel(
   item: CourtSittingScheduleItemDto,
 ): string | null {
@@ -25,14 +58,9 @@ export function buildCourtCountdownLabel(
   }
 
   const weekday = scheduled.toLocaleDateString(undefined, {weekday: 'long'});
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const startOfScheduled = new Date(scheduled);
-  startOfScheduled.setHours(0, 0, 0, 0);
-  const calendarDays = Math.round(
-    (startOfScheduled.getTime() - startOfToday.getTime()) / 86400000,
+  const dayLabel = formatDaysUntilLabel(item.scheduledAtUtc, item.isPastDue).replace(
+    /^in /,
+    '',
   );
-  const dayLabel =
-    calendarDays <= 0 ? 'today' : calendarDays === 1 ? '1 day' : `${calendarDays} days`;
-  return `Court sitting ${weekday} — ${dayLabel}`;
+  return `Court sitting ${weekday} — ${dayLabel === 'tomorrow' ? '1 day' : dayLabel}`;
 }

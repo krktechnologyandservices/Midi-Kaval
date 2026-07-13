@@ -32,6 +32,7 @@ export type TodayStackParamList = {
   TodayHome: {refreshToken?: number} | undefined;
   ActiveVisit: {visit: VisitListItemDto};
   CourtSchedule: undefined;
+  UpcomingVisits: undefined;
 };
 
 export type CasesStackParamList = {

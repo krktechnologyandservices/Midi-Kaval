@@ -66,6 +66,13 @@ jest.mock('react-native-fs', () => ({
   writeFile: jest.fn(() => Promise.resolve()),
 }));
 
+jest.mock('react-native-file-viewer', () => ({
+  __esModule: true,
+  default: {
+    open: jest.fn(() => Promise.resolve()),
+  },
+}));
+
 jest.mock('react-native-screens', () => {
   const React = require('react');
   const {View} = require('react-native');
