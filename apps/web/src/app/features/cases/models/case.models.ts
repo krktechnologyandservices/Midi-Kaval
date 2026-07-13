@@ -101,6 +101,11 @@ export interface CancelVisitRequest {
   reason: string;
 }
 
+export interface RescheduleVisitRequest {
+  scheduledAtUtc: string;
+  reason: string;
+}
+
 export interface GeocodingResultDto {
   displayName: string;
   latitude: number;

@@ -172,9 +172,11 @@ public sealed class VisitsController(VisitService visitService) : ControllerBase
         }
     }
 
-    /// <summary>Reschedules a visit with a supervisor-visible reason.</summary>
+    /// <summary>Reschedules a visit with a supervisor-visible reason. Coordinators/Directors
+    /// can also use this to correct a scheduling mistake on the web app, not just the
+    /// visit's assigned field worker.</summary>
     [HttpPost("{id:guid}/reschedule")]
-    [Authorize(Policy = Policies.FieldWorker)]
+    [Authorize(Policy = Policies.FieldWorkerOrCoordinatorOrAbove)]
     [ProducesResponseType(typeof(VisitListItemDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]

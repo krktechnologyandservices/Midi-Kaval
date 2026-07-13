@@ -47,6 +47,7 @@ import {
   GeocodingResultDto,
   ScheduleVisitRequest,
   CancelVisitRequest,
+  RescheduleVisitRequest,
 } from '../models/case.models';
 
 @Injectable({ providedIn: 'root' })
@@ -521,6 +522,23 @@ export class CaseApiService {
       const envelope = await firstValueFrom(
         this.http.post<ApiEnvelope<VisitListItemDto>>(
           `${environment.apiBaseUrl}/api/v1/cases/${caseId}/visits/${visitId}/cancel`,
+          request,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async rescheduleVisit(
+    visitId: string,
+    request: RescheduleVisitRequest,
+  ): Promise<VisitListItemDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.post<ApiEnvelope<VisitListItemDto>>(
+          `${environment.apiBaseUrl}/api/v1/visits/${visitId}/reschedule`,
           request,
         ),
       );

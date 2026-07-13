@@ -961,7 +961,7 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
             throw new VisitNotFoundException();
         }
 
-        if (row.Visit.AssigneeUserId != actorUserId)
+        if (row.Visit.AssigneeUserId != actorUserId && !IsSupervisorRole(ResolveActorRole()))
         {
             throw new VisitForbiddenException();
         }
@@ -1379,6 +1379,12 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
 
         return (organisationId, actorUserId);
     }
+
+    private static bool IsSupervisorRole(string role) =>
+        role is UserRoles.Director or UserRoles.Coordinator;
+
+    private string ResolveActorRole() =>
+        httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
 
     private sealed record VisitCaseRow(Visit Visit, Case Case);
 }

@@ -8,6 +8,7 @@ import {
   AddVisitPlaceRequest,
   FieldWorkerUserDto,
   GeocodingResultDto,
+  RescheduleVisitRequest,
   ScheduleVisitRequest,
   VisitListItemDto,
   VisitPlaceDto,
@@ -50,9 +51,11 @@ export class CaseVisitsComponent implements OnInit, OnDestroy {
   readonly loading = signal(true);
   readonly submitting = signal(false);
   readonly cancellingId = signal<string | null>(null);
+  readonly reschedulingId = signal<string | null>(null);
   readonly errorMessage = signal<string | null>(null);
   readonly formErrorMessage = signal<string | null>(null);
   readonly cancelFormErrorMessage = signal<string | null>(null);
+  readonly rescheduleFormErrorMessage = signal<string | null>(null);
 
   readonly showNoMatchHint = computed(
     () =>
@@ -72,6 +75,11 @@ export class CaseVisitsComponent implements OnInit, OnDestroy {
   });
 
   readonly cancelForm = this.fb.nonNullable.group({
+    reason: ['', [Validators.required, Validators.maxLength(500)]],
+  });
+
+  readonly rescheduleForm = this.fb.nonNullable.group({
+    scheduledAtLocal: [defaultScheduleLocal(), Validators.required],
     reason: ['', [Validators.required, Validators.maxLength(500)]],
   });
 
@@ -194,6 +202,55 @@ export class CaseVisitsComponent implements OnInit, OnDestroy {
       await this.loadVisits();
     } catch (error) {
       this.cancelFormErrorMessage.set(this.caseApi.extractErrorMessage(error));
+    } finally {
+      this.submitting.set(false);
+    }
+  }
+
+  startReschedule(item: VisitListItemDto): void {
+    this.reschedulingId.set(item.id);
+    this.rescheduleForm.reset({
+      scheduledAtLocal: defaultScheduleLocal(),
+      reason: '',
+    });
+    this.rescheduleFormErrorMessage.set(null);
+  }
+
+  cancelRescheduling(): void {
+    this.reschedulingId.set(null);
+  }
+
+  async submitReschedule(item: VisitListItemDto): Promise<void> {
+    if (this.reschedulingId() !== item.id || this.rescheduleForm.invalid) {
+      this.rescheduleForm.markAllAsTouched();
+      return;
+    }
+
+    const value = this.rescheduleForm.getRawValue();
+    const scheduled = new Date(value.scheduledAtLocal);
+    if (Number.isNaN(scheduled.getTime())) {
+      this.rescheduleFormErrorMessage.set('Scheduled date is invalid.');
+      return;
+    }
+
+    if (scheduled.getTime() <= Date.now()) {
+      this.rescheduleFormErrorMessage.set('Visits must be scheduled in the future.');
+      return;
+    }
+
+    const request: RescheduleVisitRequest = {
+      scheduledAtUtc: scheduled.toISOString(),
+      reason: value.reason.trim(),
+    };
+
+    this.submitting.set(true);
+    this.rescheduleFormErrorMessage.set(null);
+    try {
+      await this.caseApi.rescheduleVisit(item.id, request);
+      this.reschedulingId.set(null);
+      await this.loadVisits();
+    } catch (error) {
+      this.rescheduleFormErrorMessage.set(this.caseApi.extractErrorMessage(error));
     } finally {
       this.submitting.set(false);
     }

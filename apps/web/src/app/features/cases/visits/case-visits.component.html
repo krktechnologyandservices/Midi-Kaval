@@ -120,7 +120,28 @@
             </div>
 
             @if (isActive(item)) {
-              @if (cancellingId() === item.id) {
+              @if (reschedulingId() === item.id) {
+                <form
+                  class="reschedule-form"
+                  [formGroup]="rescheduleForm"
+                  (ngSubmit)="submitReschedule(item)">
+                  @if (rescheduleFormErrorMessage()) {
+                    <p class="error">{{ rescheduleFormErrorMessage() }}</p>
+                  }
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>New date &amp; time</mat-label>
+                    <input matInput type="datetime-local" formControlName="scheduledAtLocal" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Reason for rescheduling</mat-label>
+                    <textarea matInput rows="2" formControlName="reason" maxlength="500"></textarea>
+                  </mat-form-field>
+                  <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">
+                    Confirm reschedule
+                  </button>
+                  <button mat-button type="button" (click)="cancelRescheduling()">Back</button>
+                </form>
+              } @else if (cancellingId() === item.id) {
                 <form class="cancel-form" [formGroup]="cancelForm" (ngSubmit)="submitCancel(item)">
                   @if (cancelFormErrorMessage()) {
                     <p class="error">{{ cancelFormErrorMessage() }}</p>
@@ -135,6 +156,9 @@
                   <button mat-button type="button" (click)="cancelCancelling()">Back</button>
                 </form>
               } @else {
+                <button mat-stroked-button type="button" (click)="startReschedule(item)">
+                  Reschedule
+                </button>
                 <button mat-stroked-button type="button" (click)="startCancel(item)">
                   Cancel visit
                 </button>
