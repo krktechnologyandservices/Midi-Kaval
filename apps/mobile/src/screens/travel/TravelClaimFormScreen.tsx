@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  PermissionsAndroid,
   Platform,
   Pressable,
   ScrollView,
@@ -340,6 +341,25 @@ export function TravelClaimFormScreen(): React.JSX.Element {
   const captureReceiptPhoto = async (): Promise<void> => {
     if (readOnly || isLocalDraft) {
       return;
+    }
+
+    if (Platform.OS === 'android') {
+      // react-native-image-picker checks the CAMERA permission but never requests it
+      // (see its Utils.isCameraPermissionFulfilled) — without this explicit request the
+      // OS permission popup never appears and launchCamera just fails silently with a
+      // permission error on first use.
+      const alreadyGranted = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+      );
+      if (!alreadyGranted) {
+        const result = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+        );
+        if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+          setErrorMessage('Camera permission is required to take a photo. Check camera permission in device settings.');
+          return;
+        }
+      }
     }
 
     let response;

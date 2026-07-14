@@ -174,9 +174,23 @@ export class ReportsPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  downloadJob(job: ReportExportJobDto): void {
-    if (job.downloadUrl) {
-      window.open(job.downloadUrl, '_blank');
+  async downloadJob(job: ReportExportJobDto): Promise<void> {
+    if (!job.downloadUrl) {
+      return;
+    }
+
+    this.errorMessage.set(null);
+    try {
+      const blob = await this.api.downloadFile(job.downloadUrl);
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${this.getReportDisplayName(job.reportType)}.${job.format}`;
+      anchor.click();
+      // Delay revoke to allow the browser to start the download
+      setTimeout(() => window.URL.revokeObjectURL(url), 100);
+    } catch (error) {
+      this.errorMessage.set(this.api.extractErrorMessage(error));
     }
   }
 

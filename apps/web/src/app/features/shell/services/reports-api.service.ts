@@ -58,6 +58,21 @@ export class ReportsApiService {
     }
   }
 
+  // downloadUrl comes from the backend as a root-relative path
+  // (e.g. "/api/v1/reports/exports/{jobId}/file") — must go through HttpClient, not a
+  // raw window.open()/anchor href, because the download endpoint requires the JWT
+  // bearer token that only Angular's auth interceptor attaches; a plain browser
+  // request bypasses it entirely and gets a silent 401.
+  async downloadFile(downloadUrl: string): Promise<Blob> {
+    try {
+      return await firstValueFrom(
+        this.http.get(`${environment.apiBaseUrl}${downloadUrl}`, { responseType: 'blob' }),
+      );
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
   extractErrorMessage(error: unknown): string {
     if (error instanceof ReportsApiError) {
       return error.message;
