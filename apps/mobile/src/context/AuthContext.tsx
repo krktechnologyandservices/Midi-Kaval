@@ -37,6 +37,7 @@ interface AuthContextValue {
   isSupervisorRole: boolean;
   login: (request: LoginRequest) => Promise<{requiresTotp: boolean}>;
   verifyOtp: (code: string) => Promise<void>;
+  clearOtpChallenge: () => Promise<void>;
   verifyTotpLogin: (code: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<{message?: string}>;
   resetPassword: (token: string, newPassword: string) => Promise<{message?: string}>;
@@ -135,6 +136,11 @@ export function AuthProvider({
     [service, syncFromService],
   );
 
+  const clearOtpChallenge = useCallback(async () => {
+    await service.clearOtpChallenge();
+    setOtpChallenge(null);
+  }, [service]);
+
   const verifyTotpLogin = useCallback(
     async (code: string) => {
       await service.verifyTotpLogin(code);
@@ -189,6 +195,7 @@ export function AuthProvider({
       isSupervisorRole: isSupervisorRole(user?.role),
       login,
       verifyOtp,
+      clearOtpChallenge,
       verifyTotpLogin,
       forgotPassword,
       resetPassword,
@@ -206,6 +213,7 @@ export function AuthProvider({
       destination,
       login,
       verifyOtp,
+      clearOtpChallenge,
       verifyTotpLogin,
       forgotPassword,
       resetPassword,

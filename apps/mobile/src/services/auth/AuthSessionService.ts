@@ -40,6 +40,11 @@ export class AuthSessionService {
     return this.challenge;
   }
 
+  async clearOtpChallenge(): Promise<void> {
+    this.challenge = null;
+    await AsyncStorage.removeItem(CHALLENGE_KEY);
+  }
+
   getTotpChallenge(): TotpChallengeState | null {
     return this.totpChallenge;
   }
@@ -81,9 +86,11 @@ export class AuthSessionService {
       return envelope.data;
     }
 
+    const expiresInSeconds = envelope.data.expiresInSeconds ?? 300;
     this.challenge = {
       challengeId: envelope.data.challengeId!,
-      expiresInSeconds: envelope.data.expiresInSeconds ?? 300,
+      expiresInSeconds,
+      expiresAtUtc: Date.now() + expiresInSeconds * 1000,
     };
     await AsyncStorage.setItem(CHALLENGE_KEY, JSON.stringify(this.challenge));
     this.totpChallenge = null;
@@ -181,9 +188,11 @@ export class AuthSessionService {
     this.challenge = null;
     await AsyncStorage.removeItem(CHALLENGE_KEY);
     const envelope = await this.postApi<StepUpResponse>('/api/v1/auth/step-up');
+    const expiresInSeconds = envelope.data.expiresInSeconds ?? 300;
     this.stepUpChallenge = {
       challengeId: envelope.data.challengeId,
-      expiresInSeconds: envelope.data.expiresInSeconds ?? 300,
+      expiresInSeconds,
+      expiresAtUtc: Date.now() + expiresInSeconds * 1000,
     };
     return envelope.data;
   }
@@ -267,7 +276,15 @@ export class AuthSessionService {
     const storedChallenge = await AsyncStorage.getItem(CHALLENGE_KEY);
     if (storedChallenge) {
       try {
-        this.challenge = JSON.parse(storedChallenge) as OtpChallengeState;
+        const parsed = JSON.parse(storedChallenge) as OtpChallengeState;
+        // A challenge left over from a login the user never finished (missed OTP, app
+        // killed) must not force the OTP screen forever — without this check it was
+        // reloaded as-is every launch, blocking the user from ever reaching Login again.
+        if (parsed.expiresAtUtc && parsed.expiresAtUtc > Date.now()) {
+          this.challenge = parsed;
+        } else {
+          await AsyncStorage.removeItem(CHALLENGE_KEY);
+        }
       } catch {
         await AsyncStorage.removeItem(CHALLENGE_KEY);
       }

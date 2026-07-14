@@ -30,6 +30,10 @@ export const TOTP_CHALLENGE_KEY = 'midi_kaval_totp_challenge';
 export interface OtpChallengeState {
   challengeId: string;
   expiresInSeconds: number;
+  // Absolute expiry (epoch ms), computed at login time. expiresInSeconds alone is a
+  // duration — reloading it as-is after an app restart (bootstrapSession) would make a
+  // long-dead challenge look freshly issued and re-arm the countdown from full length.
+  expiresAtUtc: number;
 }
 
 // LoginResponse's requiresTotp/totpChallengeId/userId/tokenVersion fields are read via

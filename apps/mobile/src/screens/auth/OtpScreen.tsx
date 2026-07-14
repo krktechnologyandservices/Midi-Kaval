@@ -32,7 +32,19 @@ export function OtpScreen({navigation}: Props): React.JSX.Element {
     }
 
     setExpiredMessage(null);
-    setSecondsRemaining(challenge.expiresInSeconds);
+    // Derive from the absolute expiry, not the stored duration — a challenge reloaded
+    // after an app restart would otherwise show a fresh full-length countdown even
+    // though it actually expired hours ago.
+    const remaining = Math.max(
+      0,
+      Math.round((challenge.expiresAtUtc - Date.now()) / 1000),
+    );
+    setSecondsRemaining(remaining);
+
+    if (remaining <= 0) {
+      setExpiredMessage('Code expired — request new code');
+      return;
+    }
 
     timerRef.current = setInterval(() => {
       setSecondsRemaining(prev => {
@@ -117,7 +129,13 @@ export function OtpScreen({navigation}: Props): React.JSX.Element {
       {expiredMessage ? (
         <Pressable
           style={styles.linkButton}
-          onPress={() => navigation.replace('Login')}
+          onPress={async () => {
+            // Without clearing the challenge here, it stays in AsyncStorage and the next
+            // app launch (bootstrapSession) routes straight back to this screen instead
+            // of Login, even though the code is dead — see AuthSessionService.
+            await auth.clearOtpChallenge();
+            navigation.replace('Login');
+          }}
           accessibilityRole="button">
           <Text style={styles.linkText}>Request new code</Text>
         </Pressable>

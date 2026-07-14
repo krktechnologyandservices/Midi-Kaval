@@ -173,11 +173,12 @@ describe('AuthSessionService', () => {
     expect(onDeactivated).toHaveBeenCalled();
   });
 
-  it('bootstrap restores OTP challenge from storage', async () => {
+  it('bootstrap restores a still-valid OTP challenge from storage', async () => {
     (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(
       JSON.stringify({
         challengeId: '33333333-3333-4333-8333-333333333333',
         expiresInSeconds: 120,
+        expiresAtUtc: Date.now() + 120_000,
       }),
     );
     (Keychain.getGenericPassword as jest.Mock).mockResolvedValue(false);
@@ -187,6 +188,24 @@ describe('AuthSessionService', () => {
     expect(service.getOtpChallenge()?.challengeId).toBe(
       '33333333-3333-4333-8333-333333333333',
     );
+  });
+
+  it('bootstrap discards an expired OTP challenge instead of restoring it', async () => {
+    // Regression test: a challenge left over from a login the user never finished
+    // (missed OTP, app killed) must not force the OTP screen forever on relaunch.
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(
+      JSON.stringify({
+        challengeId: '44444444-4444-4444-8444-444444444444',
+        expiresInSeconds: 120,
+        expiresAtUtc: Date.now() - 1_000,
+      }),
+    );
+    (Keychain.getGenericPassword as jest.Mock).mockResolvedValue(false);
+
+    const user = await service.bootstrapSession();
+    expect(user).toBeNull();
+    expect(service.getOtpChallenge()).toBeNull();
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith('midi_kaval_otp_challenge');
   });
 
   it('logout sends refreshToken and deviceInstallId in JSON body', async () => {
