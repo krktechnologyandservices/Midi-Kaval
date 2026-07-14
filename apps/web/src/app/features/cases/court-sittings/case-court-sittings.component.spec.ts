@@ -88,12 +88,10 @@ describe('CaseCourtSittingsComponent', () => {
     await settle();
 
     const future = new Date(Date.now() + 86400000);
-    const local = new Date(future.getTime() - future.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
 
     fixture.componentInstance.addForm.setValue({
-      scheduledAtLocal: local,
+      scheduledDate: future,
+      scheduledTime: '10:00',
       courtName: 'Family Court',
       purpose: 'Review',
       status: 'Upcoming',
@@ -114,12 +112,10 @@ describe('CaseCourtSittingsComponent', () => {
     await settle();
 
     const future = new Date(Date.now() + 86400000);
-    const local = new Date(future.getTime() - future.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
 
     fixture.componentInstance.addForm.setValue({
-      scheduledAtLocal: local,
+      scheduledDate: future,
+      scheduledTime: '10:00',
       courtName: 'Family Court',
       purpose: 'Review',
       status: 'Attended',
@@ -140,12 +136,14 @@ describe('CaseCourtSittingsComponent', () => {
     fixture.componentInstance.startUpdate(courtSittings[0]);
     fixture.componentInstance.updateForm.setValue({
       status: 'Attended',
-      scheduledAtLocal: '2026-12-01T10:00',
+      scheduledDate: new Date('2026-12-01T00:00:00'),
+      scheduledTime: '10:00',
       courtName: 'District Court',
       purpose: 'Hearing',
       notes: '',
       outcome: 'Completed',
-      nextCourtAtLocal: '',
+      nextCourtDate: null,
+      nextCourtTime: '',
     });
 
     await fixture.componentInstance.submitUpdate(courtSittings[0]);

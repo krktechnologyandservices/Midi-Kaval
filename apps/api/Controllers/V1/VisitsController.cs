@@ -265,6 +265,49 @@ public sealed class VisitsController(VisitService visitService) : ControllerBase
         }
     }
 
+    /// <summary>Adds or updates the field worker's own free-text remark on a place —
+    /// independent of the one-time GPS log, usable before or after logging.</summary>
+    [HttpPatch("{id:guid}/places/{placeId:guid}/comment")]
+    [Authorize(Policy = Policies.FieldWorker)]
+    [ProducesResponseType(typeof(ApiResponse<VisitPlaceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("data-write")]
+    public async Task<IActionResult> UpdatePlaceComment(
+        Guid id,
+        Guid placeId,
+        [FromBody] UpdateVisitPlaceCommentRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequestProblem("Request body is required.");
+        }
+
+        try
+        {
+            var dto = await visitService.UpdatePlaceCommentAsync(id, placeId, request, cancellationToken);
+            var requestId = HttpContext.Items[RequestIdMiddleware.RequestIdItemKey] as string
+                ?? HttpContext.TraceIdentifier;
+
+            return Ok(new ApiResponse<VisitPlaceDto>(dto, new ApiMeta { RequestId = requestId }));
+        }
+        catch (VisitValidationException ex)
+        {
+            return BadRequestProblem(ex.Message);
+        }
+        catch (VisitForbiddenException)
+        {
+            return ForbiddenProblem(Policies.ForbiddenByRoleMessage);
+        }
+        catch (VisitNotFoundException)
+        {
+            return NotFoundProblem("Visit place not found.");
+        }
+    }
+
     private async Task<ApiResponse<VisitListResultDto>> BuildListResponseAsync(
         Func<Task<(VisitListResultDto Result, int TotalCount)>> load)
     {

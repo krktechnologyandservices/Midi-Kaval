@@ -16,6 +16,8 @@ export interface VisitPlaceDto {
   loggedLongitude?: number | null;
   loggedAtUtc?: string | null;
   loggedByEmail?: string | null;
+  comment?: string | null;
+  commentUpdatedAtUtc?: string | null;
 }
 
 export type VisitListItemDto = Omit<

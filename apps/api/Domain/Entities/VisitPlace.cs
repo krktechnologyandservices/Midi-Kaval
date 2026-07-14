@@ -22,4 +22,15 @@ public sealed class VisitPlace
     public decimal? LoggedLongitude { get; set; }
     public DateTime? LoggedAtUtc { get; set; }
     public Guid? LoggedByUserId { get; set; }
+
+    // Free-text remark a field worker can add/update on their own visit place at any
+    // time (independent of the one-time GPS log) — e.g. "gate locked, spoke to neighbour".
+    public string? Comment { get; set; }
+    public DateTime? CommentUpdatedAtUtc { get; set; }
+    public Guid? CommentUpdatedByUserId { get; set; }
+
+    // Soft-delete: a coordinator can remove a not-yet-logged place from an active visit.
+    // Kept rather than hard-deleted so the audit trail shows a place was added then removed.
+    public DateTime? RemovedAtUtc { get; set; }
+    public Guid? RemovedByUserId { get; set; }
 }

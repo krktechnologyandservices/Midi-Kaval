@@ -330,6 +330,80 @@ public sealed class CasesController(
         }
     }
 
+    /// <summary>Edits a not-yet-logged place on an active visit.</summary>
+    [HttpPatch("{id:guid}/visits/{visitId:guid}/places/{placeId:guid}")]
+    [Authorize(Policy = Policies.CoordinatorOrAbove)]
+    [ProducesResponseType(typeof(ApiResponse<VisitPlaceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
+    public async Task<IActionResult> UpdateVisitPlace(
+        Guid id,
+        Guid visitId,
+        Guid placeId,
+        [FromBody] UpdateVisitPlaceRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequestProblem("Request body is required.");
+        }
+
+        try
+        {
+            var dto = await visitService.UpdatePlaceAsync(id, visitId, placeId, request, cancellationToken);
+            var requestId = HttpContext.Items[RequestIdMiddleware.RequestIdItemKey] as string
+                ?? HttpContext.TraceIdentifier;
+
+            return Ok(new ApiResponse<VisitPlaceDto>(dto, new ApiMeta { RequestId = requestId }));
+        }
+        catch (VisitValidationException ex)
+        {
+            return BadRequestProblem(ex.Message);
+        }
+        catch (VisitBusinessRuleException ex)
+        {
+            return UnprocessableProblem(ex.Message);
+        }
+        catch (VisitNotFoundException)
+        {
+            return NotFoundProblem("Visit place not found.");
+        }
+    }
+
+    /// <summary>Removes a not-yet-logged place from an active visit (soft-delete).</summary>
+    [HttpDelete("{id:guid}/visits/{visitId:guid}/places/{placeId:guid}")]
+    [Authorize(Policy = Policies.CoordinatorOrAbove)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [EnableRateLimiting("data-write")]
+    public async Task<IActionResult> RemoveVisitPlace(
+        Guid id,
+        Guid visitId,
+        Guid placeId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await visitService.RemovePlaceAsync(id, visitId, placeId, cancellationToken);
+            return NoContent();
+        }
+        catch (VisitBusinessRuleException ex)
+        {
+            return UnprocessableProblem(ex.Message);
+        }
+        catch (VisitNotFoundException)
+        {
+            return NotFoundProblem("Visit place not found.");
+        }
+    }
+
     [HttpGet("{id:guid}")]
     [Authorize]
     [ProducesResponseType(typeof(CaseDetailDto), StatusCodes.Status200OK)]

@@ -83,9 +83,18 @@ export interface VisitPlaceDto {
   loggedLongitude?: number | null;
   loggedAtUtc?: string | null;
   loggedByEmail?: string | null;
+  comment?: string | null;
+  commentUpdatedAtUtc?: string | null;
 }
 
 export interface AddVisitPlaceRequest {
+  address: string;
+  osmReference?: string | null;
+  plannedLatitude?: number | null;
+  plannedLongitude?: number | null;
+}
+
+export interface UpdateVisitPlaceRequest {
   address: string;
   osmReference?: string | null;
   plannedLatitude?: number | null;

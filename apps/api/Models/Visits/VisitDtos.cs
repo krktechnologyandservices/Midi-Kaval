@@ -33,9 +33,19 @@ public sealed class VisitPlaceDto
     public decimal? LoggedLongitude { get; set; }
     public DateTime? LoggedAtUtc { get; set; }
     public string? LoggedByEmail { get; set; }
+    public string? Comment { get; set; }
+    public DateTime? CommentUpdatedAtUtc { get; set; }
 }
 
 public sealed class AddVisitPlaceRequest
+{
+    public string? Address { get; set; }
+    public string? OsmReference { get; set; }
+    public decimal? PlannedLatitude { get; set; }
+    public decimal? PlannedLongitude { get; set; }
+}
+
+public sealed class UpdateVisitPlaceRequest
 {
     public string? Address { get; set; }
     public string? OsmReference { get; set; }
@@ -47,6 +57,11 @@ public sealed class LogVisitPlaceRequest
 {
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
+}
+
+public sealed class UpdateVisitPlaceCommentRequest
+{
+    public string? Comment { get; set; }
 }
 
 public sealed class VisitListResultDto

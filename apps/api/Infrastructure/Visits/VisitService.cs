@@ -407,6 +407,250 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
         };
     }
 
+    public async Task<VisitPlaceDto> UpdatePlaceAsync(
+        Guid caseId,
+        Guid visitId,
+        Guid placeId,
+        UpdateVisitPlaceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            throw new VisitValidationException("Request body is required.");
+        }
+
+        var address = request.Address?.Trim() ?? string.Empty;
+        if (address.Length == 0)
+        {
+            throw new VisitValidationException("address is required.");
+        }
+
+        if (address.Length > 500)
+        {
+            throw new VisitValidationException("address must be at most 500 characters.");
+        }
+
+        if (request.PlannedLatitude is < -90 or > 90)
+        {
+            throw new VisitValidationException("plannedLatitude must be between -90 and 90.");
+        }
+
+        if (request.PlannedLongitude is < -180 or > 180)
+        {
+            throw new VisitValidationException("plannedLongitude must be between -180 and 180.");
+        }
+
+        var (organisationId, actorUserId) = ResolveActorContext();
+        var row = await LoadVisitCaseRowAsync(visitId, organisationId, cancellationToken);
+
+        if (row is null || row.Case.Id != caseId)
+        {
+            throw new VisitNotFoundException();
+        }
+
+        if (row.Visit.Status is VisitStatus.Completed or VisitStatus.Cancelled)
+        {
+            throw new VisitBusinessRuleException("Cannot edit places on a completed or cancelled visit.");
+        }
+
+        var place = await db.VisitPlaces.SingleOrDefaultAsync(
+            p => p.Id == placeId && p.VisitId == visitId && p.OrganisationId == organisationId,
+            cancellationToken);
+
+        if (place is null || place.RemovedAtUtc is not null)
+        {
+            throw new VisitNotFoundException();
+        }
+
+        if (place.LoggedAtUtc is not null)
+        {
+            throw new VisitBusinessRuleException("Cannot edit a place that has already been logged.");
+        }
+
+        place.Address = address;
+        place.OsmReference = request.OsmReference;
+        place.PlannedLatitude = request.PlannedLatitude;
+        place.PlannedLongitude = request.PlannedLongitude;
+
+        var now = DateTime.UtcNow;
+        db.AuditEvents.Add(new AuditEvent
+        {
+            Id = Guid.NewGuid(),
+            OrganisationId = organisationId,
+            ActorUserId = actorUserId,
+            SubjectUserId = row.Visit.AssigneeUserId,
+            EventType = AuditEventTypes.VisitPlaceUpdated,
+            MetadataJson = JsonSerializer.Serialize(
+                new Dictionary<string, object?>
+                {
+                    ["visitId"] = visitId.ToString("D"),
+                    ["placeId"] = place.Id.ToString("D"),
+                },
+                JsonOptions),
+            CreatedAtUtc = now,
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new VisitPlaceDto
+        {
+            Id = place.Id,
+            VisitId = place.VisitId,
+            Address = place.Address,
+            OsmReference = place.OsmReference,
+            PlannedLatitude = place.PlannedLatitude,
+            PlannedLongitude = place.PlannedLongitude,
+            CreatedAtUtc = place.CreatedAtUtc,
+            Comment = place.Comment,
+            CommentUpdatedAtUtc = place.CommentUpdatedAtUtc,
+        };
+    }
+
+    public async Task RemovePlaceAsync(
+        Guid caseId,
+        Guid visitId,
+        Guid placeId,
+        CancellationToken cancellationToken = default)
+    {
+        var (organisationId, actorUserId) = ResolveActorContext();
+        var row = await LoadVisitCaseRowAsync(visitId, organisationId, cancellationToken);
+
+        if (row is null || row.Case.Id != caseId)
+        {
+            throw new VisitNotFoundException();
+        }
+
+        if (row.Visit.Status is VisitStatus.Completed or VisitStatus.Cancelled)
+        {
+            throw new VisitBusinessRuleException("Cannot remove places from a completed or cancelled visit.");
+        }
+
+        var place = await db.VisitPlaces.SingleOrDefaultAsync(
+            p => p.Id == placeId && p.VisitId == visitId && p.OrganisationId == organisationId,
+            cancellationToken);
+
+        if (place is null || place.RemovedAtUtc is not null)
+        {
+            throw new VisitNotFoundException();
+        }
+
+        if (place.LoggedAtUtc is not null)
+        {
+            throw new VisitBusinessRuleException("Cannot remove a place that has already been logged.");
+        }
+
+        var now = DateTime.UtcNow;
+        place.RemovedAtUtc = now;
+        place.RemovedByUserId = actorUserId;
+
+        db.AuditEvents.Add(new AuditEvent
+        {
+            Id = Guid.NewGuid(),
+            OrganisationId = organisationId,
+            ActorUserId = actorUserId,
+            SubjectUserId = row.Visit.AssigneeUserId,
+            EventType = AuditEventTypes.VisitPlaceRemoved,
+            MetadataJson = JsonSerializer.Serialize(
+                new Dictionary<string, object?>
+                {
+                    ["visitId"] = visitId.ToString("D"),
+                    ["placeId"] = place.Id.ToString("D"),
+                },
+                JsonOptions),
+            CreatedAtUtc = now,
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<VisitPlaceDto> UpdatePlaceCommentAsync(
+        Guid visitId,
+        Guid placeId,
+        UpdateVisitPlaceCommentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            throw new VisitValidationException("Request body is required.");
+        }
+
+        var comment = request.Comment?.Trim() ?? string.Empty;
+        if (comment.Length > 1000)
+        {
+            throw new VisitValidationException("comment must be at most 1000 characters.");
+        }
+
+        var (organisationId, actorUserId) = ResolveActorContext();
+        var row = await LoadVisitCaseRowAsync(visitId, organisationId, cancellationToken);
+
+        if (row is null)
+        {
+            throw new VisitNotFoundException();
+        }
+
+        if (row.Visit.AssigneeUserId != actorUserId)
+        {
+            throw new VisitForbiddenException();
+        }
+
+        var place = await db.VisitPlaces.SingleOrDefaultAsync(
+            p => p.Id == placeId && p.VisitId == visitId && p.OrganisationId == organisationId,
+            cancellationToken);
+
+        if (place is null || place.RemovedAtUtc is not null)
+        {
+            throw new VisitNotFoundException();
+        }
+
+        var now = DateTime.UtcNow;
+        place.Comment = comment.Length == 0 ? null : comment;
+        place.CommentUpdatedAtUtc = now;
+        place.CommentUpdatedByUserId = actorUserId;
+
+        db.AuditEvents.Add(new AuditEvent
+        {
+            Id = Guid.NewGuid(),
+            OrganisationId = organisationId,
+            ActorUserId = actorUserId,
+            SubjectUserId = actorUserId,
+            EventType = AuditEventTypes.VisitPlaceCommentUpdated,
+            MetadataJson = JsonSerializer.Serialize(
+                new Dictionary<string, object?>
+                {
+                    ["visitId"] = visitId.ToString("D"),
+                    ["placeId"] = placeId.ToString("D"),
+                },
+                JsonOptions),
+            CreatedAtUtc = now,
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        var loggedByEmail = place.LoggedByUserId.HasValue
+            ? await db.Users
+                .Where(u => u.Id == place.LoggedByUserId)
+                .Select(u => u.Email)
+                .SingleOrDefaultAsync(cancellationToken)
+            : null;
+
+        return new VisitPlaceDto
+        {
+            Id = place.Id,
+            VisitId = place.VisitId,
+            Address = place.Address,
+            OsmReference = place.OsmReference,
+            PlannedLatitude = place.PlannedLatitude,
+            PlannedLongitude = place.PlannedLongitude,
+            CreatedAtUtc = place.CreatedAtUtc,
+            LoggedLatitude = place.LoggedLatitude,
+            LoggedLongitude = place.LoggedLongitude,
+            LoggedAtUtc = place.LoggedAtUtc,
+            LoggedByEmail = loggedByEmail,
+            Comment = place.Comment,
+            CommentUpdatedAtUtc = place.CommentUpdatedAtUtc,
+        };
+    }
+
     public async Task<VisitPlaceDto> LogPlaceAsync(
         Guid visitId,
         Guid placeId,
@@ -450,7 +694,7 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
             p => p.Id == placeId && p.VisitId == visitId && p.OrganisationId == organisationId,
             cancellationToken);
 
-        if (place is null)
+        if (place is null || place.RemovedAtUtc is not null)
         {
             throw new VisitNotFoundException();
         }
@@ -505,6 +749,8 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
             LoggedLongitude = place.LoggedLongitude,
             LoggedAtUtc = place.LoggedAtUtc,
             LoggedByEmail = loggedByEmail,
+            Comment = place.Comment,
+            CommentUpdatedAtUtc = place.CommentUpdatedAtUtc,
         };
     }
 
@@ -1155,7 +1401,7 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
     {
         var rows = await (
             from place in db.VisitPlaces
-            where place.VisitId == visitId
+            where place.VisitId == visitId && place.RemovedAtUtc == null
             join loggedBy in db.Users on place.LoggedByUserId equals loggedBy.Id into loggedByJoin
             from loggedBy in loggedByJoin.DefaultIfEmpty()
             orderby place.CreatedAtUtc
@@ -1176,6 +1422,8 @@ public sealed class VisitService(AppDbContext db, IHttpContextAccessor httpConte
                 LoggedLongitude = row.place.LoggedLongitude,
                 LoggedAtUtc = row.place.LoggedAtUtc,
                 LoggedByEmail = row.LoggedByEmail,
+                Comment = row.place.Comment,
+                CommentUpdatedAtUtc = row.place.CommentUpdatedAtUtc,
             })
             .ToList();
     }

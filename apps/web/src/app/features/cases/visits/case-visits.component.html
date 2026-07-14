@@ -42,21 +42,72 @@
                 <ul class="place-list">
                   @for (place of item.places; track place.id) {
                     <li class="place-item">
-                      <p class="place-address">{{ place.address }}</p>
-                      @if (place.loggedAtUtc) {
-                        <p class="place-logged">
-                          Logged {{ formatTimestamp(place.loggedAtUtc) }}
-                          @if (place.loggedByEmail) {
-                            by {{ place.loggedByEmail }}
+                      @if (editingPlaceId() === place.id) {
+                        <form
+                          class="edit-place-form"
+                          [formGroup]="editPlaceForm"
+                          (ngSubmit)="submitEditPlace(item, place)">
+                          @if (editPlaceFormErrorMessage()) {
+                            <p class="error">{{ editPlaceFormErrorMessage() }}</p>
                           }
-                        </p>
+                          <mat-form-field appearance="outline" class="full-width">
+                            <mat-label>Address</mat-label>
+                            <input matInput formControlName="address" maxlength="500" />
+                          </mat-form-field>
+                          <button
+                            mat-flat-button
+                            color="primary"
+                            type="submit"
+                            [disabled]="editPlaceSubmitting()">
+                            {{ editPlaceSubmitting() ? 'Saving…' : 'Save' }}
+                          </button>
+                          <button mat-button type="button" (click)="cancelEditPlace()">Cancel</button>
+                        </form>
                       } @else {
-                        <p class="place-pending">Not yet visited</p>
-                      }
-                      @if (viewOnMapUrl(place); as mapUrl) {
-                        <a class="place-map-link" [href]="mapUrl" target="_blank" rel="noopener">
-                          View on map
-                        </a>
+                        <p class="place-address">{{ place.address }}</p>
+                        @if (place.loggedAtUtc) {
+                          <p class="place-logged">
+                            Logged {{ formatTimestamp(place.loggedAtUtc) }}
+                            @if (place.loggedByEmail) {
+                              by {{ place.loggedByEmail }}
+                            }
+                          </p>
+                        } @else {
+                          <p class="place-pending">Not yet visited</p>
+                        }
+                        @if (place.comment) {
+                          <p class="place-comment">
+                            Field worker note: {{ place.comment }}
+                          </p>
+                        }
+                        @if (viewOnMapUrl(place); as mapUrl) {
+                          <a class="place-map-link" [href]="mapUrl" target="_blank" rel="noopener">
+                            View on map
+                          </a>
+                        }
+
+                        @if (removingPlaceId() === place.id) {
+                          <div class="remove-place-confirm">
+                            @if (removePlaceErrorMessage()) {
+                              <p class="error">{{ removePlaceErrorMessage() }}</p>
+                            }
+                            <p>Remove this place from the visit?</p>
+                            <button
+                              mat-flat-button
+                              color="warn"
+                              type="button"
+                              [disabled]="removePlaceSubmitting()"
+                              (click)="confirmRemovePlace(item, place)">
+                              {{ removePlaceSubmitting() ? 'Removing…' : 'Confirm remove' }}
+                            </button>
+                            <button mat-button type="button" (click)="cancelRemovePlace()">Cancel</button>
+                          </div>
+                        } @else if (canEditPlace(item, place)) {
+                          <div class="place-actions">
+                            <button mat-button type="button" (click)="startEditPlace(place)">Edit</button>
+                            <button mat-button type="button" (click)="startRemovePlace(place)">Remove</button>
+                          </div>
+                        }
                       }
                     </li>
                   }
@@ -128,10 +179,27 @@
                   @if (rescheduleFormErrorMessage()) {
                     <p class="error">{{ rescheduleFormErrorMessage() }}</p>
                   }
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>New date &amp; time</mat-label>
-                    <input matInput type="datetime-local" formControlName="scheduledAtLocal" />
-                  </mat-form-field>
+                  <div class="schedule-fields">
+                    <mat-form-field appearance="outline">
+                      <mat-label>New date</mat-label>
+                      <input
+                        matInput
+                        [matDatepicker]="reschedulePicker"
+                        [min]="minScheduleDate"
+                        formControlName="scheduledDate"
+                      />
+                      <mat-datepicker-toggle matIconSuffix [for]="reschedulePicker"></mat-datepicker-toggle>
+                      <mat-datepicker #reschedulePicker></mat-datepicker>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>New time</mat-label>
+                      <mat-select formControlName="scheduledTime">
+                        @for (option of timeOptions; track option.value) {
+                          <mat-option [value]="option.value">{{ option.label }}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
                   <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Reason for rescheduling</mat-label>
                     <textarea matInput rows="2" formControlName="reason" maxlength="500"></textarea>
@@ -185,10 +253,27 @@
         <p class="error">{{ formErrorMessage() }}</p>
       }
 
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Scheduled date &amp; time</mat-label>
-        <input matInput type="datetime-local" formControlName="scheduledAtLocal" />
-      </mat-form-field>
+      <div class="schedule-fields">
+        <mat-form-field appearance="outline">
+          <mat-label>Scheduled date</mat-label>
+          <input
+            matInput
+            [matDatepicker]="addSchedulePicker"
+            [min]="minScheduleDate"
+            formControlName="scheduledDate"
+          />
+          <mat-datepicker-toggle matIconSuffix [for]="addSchedulePicker"></mat-datepicker-toggle>
+          <mat-datepicker #addSchedulePicker></mat-datepicker>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Scheduled time</mat-label>
+          <mat-select formControlName="scheduledTime">
+            @for (option of timeOptions; track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
 
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Assign to (optional — defaults to case's assigned worker)</mat-label>

@@ -169,6 +169,22 @@ export class VisitApiService {
     }
   }
 
+  async updatePlaceComment(
+    visitId: string,
+    placeId: string,
+    comment: string,
+  ): Promise<VisitPlaceDto> {
+    try {
+      const envelope = await this.auth.patchApi<VisitPlaceDto>(
+        `/api/v1/visits/${visitId}/places/${placeId}/comment`,
+        {comment},
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
   extractErrorMessage(error: unknown): string {
     if (error instanceof VisitApiError) {
       if (error.kind === 'network') {

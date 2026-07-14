@@ -1,6 +1,8 @@
 import { Component, computed, inject, input, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { provideNativeDateAdapter } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -10,27 +12,28 @@ import {
   GeocodingResultDto,
   RescheduleVisitRequest,
   ScheduleVisitRequest,
+  UpdateVisitPlaceRequest,
   VisitListItemDto,
   VisitPlaceDto,
 } from '../models/case.models';
 import { CaseApiService } from '../services/case-api.service';
+import {
+  buildTimeOfDayOptions,
+  combineDateAndTime,
+  defaultScheduleDate,
+  startOfToday,
+} from '../../../shared/utils/schedule-time.util';
 
 const ACTIVE_STATUSES = ['Scheduled', 'InProgress'];
-
-function defaultScheduleLocal(): string {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  date.setHours(10, 0, 0, 0);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-}
+const DEFAULT_SCHEDULE_TIME = '10:00';
 
 @Component({
   selector: 'app-case-visits',
+  providers: [provideNativeDateAdapter()],
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
+    MatDatepickerModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -69,8 +72,12 @@ export class CaseVisitsComponent implements OnInit, OnDestroy {
     () => this.items().find((item) => ACTIVE_STATUSES.includes(item.status)) ?? null,
   );
 
+  readonly minScheduleDate = startOfToday();
+  readonly timeOptions = buildTimeOfDayOptions(15);
+
   readonly addForm = this.fb.nonNullable.group({
-    scheduledAtLocal: [defaultScheduleLocal(), Validators.required],
+    scheduledDate: this.fb.control<Date | null>(defaultScheduleDate(), Validators.required),
+    scheduledTime: [DEFAULT_SCHEDULE_TIME, Validators.required],
     assigneeUserId: [''],
   });
 
@@ -79,7 +86,8 @@ export class CaseVisitsComponent implements OnInit, OnDestroy {
   });
 
   readonly rescheduleForm = this.fb.nonNullable.group({
-    scheduledAtLocal: [defaultScheduleLocal(), Validators.required],
+    scheduledDate: this.fb.control<Date | null>(defaultScheduleDate(), Validators.required),
+    scheduledTime: [DEFAULT_SCHEDULE_TIME, Validators.required],
     reason: ['', [Validators.required, Validators.maxLength(500)]],
   });
 
@@ -90,6 +98,17 @@ export class CaseVisitsComponent implements OnInit, OnDestroy {
   readonly selectedPlaceResult = signal<GeocodingResultDto | null>(null);
   readonly placeFormErrorMessage = signal<string | null>(null);
   readonly addingPlaceSubmitting = signal(false);
+
+  readonly editingPlaceId = signal<string | null>(null);
+  readonly editPlaceForm = this.fb.nonNullable.group({
+    address: ['', [Validators.required, Validators.maxLength(500)]],
+  });
+  readonly editPlaceFormErrorMessage = signal<string | null>(null);
+  readonly editPlaceSubmitting = signal(false);
+
+  readonly removingPlaceId = signal<string | null>(null);
+  readonly removePlaceErrorMessage = signal<string | null>(null);
+  readonly removePlaceSubmitting = signal(false);
 
   private placeSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private placeSearchSequence = 0;
@@ -140,9 +159,9 @@ export class CaseVisitsComponent implements OnInit, OnDestroy {
     }
 
     const value = this.addForm.getRawValue();
-    const scheduled = new Date(value.scheduledAtLocal);
-    if (Number.isNaN(scheduled.getTime())) {
-      this.formErrorMessage.set('Scheduled date is invalid.');
+    const scheduled = combineDateAndTime(value.scheduledDate, value.scheduledTime);
+    if (!scheduled || Number.isNaN(scheduled.getTime())) {
+      this.formErrorMessage.set('Pick a scheduled date and time.');
       return;
     }
 
@@ -167,7 +186,11 @@ export class CaseVisitsComponent implements OnInit, OnDestroy {
     this.formErrorMessage.set(null);
     try {
       await this.caseApi.scheduleVisit(this.caseId(), request);
-      this.addForm.reset({ scheduledAtLocal: defaultScheduleLocal(), assigneeUserId: '' });
+      this.addForm.reset({
+        scheduledDate: defaultScheduleDate(),
+        scheduledTime: DEFAULT_SCHEDULE_TIME,
+        assigneeUserId: '',
+      });
       await this.loadVisits();
     } catch (error) {
       this.formErrorMessage.set(this.caseApi.extractErrorMessage(error));
@@ -210,7 +233,8 @@ export class CaseVisitsComponent implements OnInit, OnDestroy {
   startReschedule(item: VisitListItemDto): void {
     this.reschedulingId.set(item.id);
     this.rescheduleForm.reset({
-      scheduledAtLocal: defaultScheduleLocal(),
+      scheduledDate: defaultScheduleDate(),
+      scheduledTime: DEFAULT_SCHEDULE_TIME,
       reason: '',
     });
     this.rescheduleFormErrorMessage.set(null);
@@ -227,9 +251,9 @@ export class CaseVisitsComponent implements OnInit, OnDestroy {
     }
 
     const value = this.rescheduleForm.getRawValue();
-    const scheduled = new Date(value.scheduledAtLocal);
-    if (Number.isNaN(scheduled.getTime())) {
-      this.rescheduleFormErrorMessage.set('Scheduled date is invalid.');
+    const scheduled = combineDateAndTime(value.scheduledDate, value.scheduledTime);
+    if (!scheduled || Number.isNaN(scheduled.getTime())) {
+      this.rescheduleFormErrorMessage.set('Pick a scheduled date and time.');
       return;
     }
 
@@ -356,6 +380,77 @@ export class CaseVisitsComponent implements OnInit, OnDestroy {
       this.placeFormErrorMessage.set(this.caseApi.extractErrorMessage(error));
     } finally {
       this.addingPlaceSubmitting.set(false);
+    }
+  }
+
+  canEditPlace(item: VisitListItemDto, place: VisitPlaceDto): boolean {
+    // A place a field worker has already logged is a real record of what happened —
+    // only not-yet-visited places on an active visit stay editable/removable.
+    return this.isActive(item) && !place.loggedAtUtc;
+  }
+
+  startEditPlace(place: VisitPlaceDto): void {
+    this.removingPlaceId.set(null);
+    this.editingPlaceId.set(place.id);
+    this.editPlaceForm.reset({ address: place.address });
+    this.editPlaceFormErrorMessage.set(null);
+  }
+
+  cancelEditPlace(): void {
+    this.editingPlaceId.set(null);
+  }
+
+  async submitEditPlace(item: VisitListItemDto, place: VisitPlaceDto): Promise<void> {
+    if (this.editingPlaceId() !== place.id || this.editPlaceForm.invalid) {
+      this.editPlaceForm.markAllAsTouched();
+      return;
+    }
+
+    const request: UpdateVisitPlaceRequest = {
+      address: this.editPlaceForm.getRawValue().address.trim(),
+      osmReference: place.osmReference,
+      plannedLatitude: place.plannedLatitude,
+      plannedLongitude: place.plannedLongitude,
+    };
+
+    this.editPlaceSubmitting.set(true);
+    this.editPlaceFormErrorMessage.set(null);
+    try {
+      await this.caseApi.updateVisitPlace(this.caseId(), item.id, place.id, request);
+      this.editingPlaceId.set(null);
+      await this.loadVisits();
+    } catch (error) {
+      this.editPlaceFormErrorMessage.set(this.caseApi.extractErrorMessage(error));
+    } finally {
+      this.editPlaceSubmitting.set(false);
+    }
+  }
+
+  startRemovePlace(place: VisitPlaceDto): void {
+    this.editingPlaceId.set(null);
+    this.removingPlaceId.set(place.id);
+    this.removePlaceErrorMessage.set(null);
+  }
+
+  cancelRemovePlace(): void {
+    this.removingPlaceId.set(null);
+  }
+
+  async confirmRemovePlace(item: VisitListItemDto, place: VisitPlaceDto): Promise<void> {
+    if (this.removingPlaceId() !== place.id) {
+      return;
+    }
+
+    this.removePlaceSubmitting.set(true);
+    this.removePlaceErrorMessage.set(null);
+    try {
+      await this.caseApi.removeVisitPlace(this.caseId(), item.id, place.id);
+      this.removingPlaceId.set(null);
+      await this.loadVisits();
+    } catch (error) {
+      this.removePlaceErrorMessage.set(this.caseApi.extractErrorMessage(error));
+    } finally {
+      this.removePlaceSubmitting.set(false);
     }
   }
 

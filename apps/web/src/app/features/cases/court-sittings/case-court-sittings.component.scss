@@ -6,6 +6,16 @@
   width: 100%;
 }
 
+.schedule-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.schedule-fields mat-form-field {
+  flex: 1 1 160px;
+}
+
 .error {
   color: var(--mat-sys-error, #b3261e);
 }

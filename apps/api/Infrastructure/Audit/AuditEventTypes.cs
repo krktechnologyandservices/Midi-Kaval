@@ -21,7 +21,10 @@ public static class AuditEventTypes
     public const string VisitStarted = "visit.started";
     public const string VisitCancelled = "visit.cancelled";
     public const string VisitPlaceAdded = "visit.place.added";
+    public const string VisitPlaceUpdated = "visit.place.updated";
+    public const string VisitPlaceRemoved = "visit.place.removed";
     public const string VisitPlaceLogged = "visit.place.logged";
+    public const string VisitPlaceCommentUpdated = "visit.place.comment_updated";
     public const string VisitNoteMerged = "visit.note.merged";
     public const string CaseGpsVerified = "case.gps.verified";
     public const string CasePiiRevealed = "case.pii.revealed";

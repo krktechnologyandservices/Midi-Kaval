@@ -44,6 +44,7 @@ import {
   VisitListItemDto,
   VisitPlaceDto,
   AddVisitPlaceRequest,
+  UpdateVisitPlaceRequest,
   GeocodingResultDto,
   ScheduleVisitRequest,
   CancelVisitRequest,
@@ -561,6 +562,37 @@ export class CaseApiService {
         ),
       );
       return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async updateVisitPlace(
+    caseId: string,
+    visitId: string,
+    placeId: string,
+    request: UpdateVisitPlaceRequest,
+  ): Promise<VisitPlaceDto> {
+    try {
+      const envelope = await firstValueFrom(
+        this.http.patch<ApiEnvelope<VisitPlaceDto>>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/visits/${visitId}/places/${placeId}`,
+          request,
+        ),
+      );
+      return envelope.data;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async removeVisitPlace(caseId: string, visitId: string, placeId: string): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.http.delete<void>(
+          `${environment.apiBaseUrl}/api/v1/cases/${caseId}/visits/${visitId}/places/${placeId}`,
+        ),
+      );
     } catch (error) {
       throw this.wrapError(error);
     }

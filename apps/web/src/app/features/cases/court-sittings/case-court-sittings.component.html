@@ -44,10 +44,26 @@
                     }
                   </mat-select>
                 </mat-form-field>
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Scheduled date</mat-label>
-                  <input matInput type="datetime-local" formControlName="scheduledAtLocal" />
-                </mat-form-field>
+                <div class="schedule-fields">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Scheduled date</mat-label>
+                    <input
+                      matInput
+                      [matDatepicker]="updateSchedulePicker"
+                      formControlName="scheduledDate"
+                    />
+                    <mat-datepicker-toggle matIconSuffix [for]="updateSchedulePicker"></mat-datepicker-toggle>
+                    <mat-datepicker #updateSchedulePicker></mat-datepicker>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Scheduled time</mat-label>
+                    <mat-select formControlName="scheduledTime">
+                      @for (option of updateScheduledTimeOptions(); track option.value) {
+                        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                </div>
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>Court name</mat-label>
                   <input matInput formControlName="courtName" maxlength="256" />
@@ -65,10 +81,27 @@
                   <textarea matInput rows="2" formControlName="outcome" maxlength="2000"></textarea>
                 </mat-form-field>
                 @if (updateForm.controls.status.value === 'Postponed') {
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Next court date (optional)</mat-label>
-                    <input matInput type="datetime-local" formControlName="nextCourtAtLocal" />
-                  </mat-form-field>
+                  <div class="schedule-fields">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Next court date (optional)</mat-label>
+                      <input
+                        matInput
+                        [matDatepicker]="nextCourtPicker"
+                        [min]="minScheduleDate"
+                        formControlName="nextCourtDate"
+                      />
+                      <mat-datepicker-toggle matIconSuffix [for]="nextCourtPicker"></mat-datepicker-toggle>
+                      <mat-datepicker #nextCourtPicker></mat-datepicker>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Next court time</mat-label>
+                      <mat-select formControlName="nextCourtTime">
+                        @for (option of updateNextCourtTimeOptions(); track option.value) {
+                          <mat-option [value]="option.value">{{ option.label }}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
                 }
                 <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">Save</button>
                 <button mat-button type="button" (click)="cancelUpdate()">Cancel</button>
@@ -97,10 +130,27 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Scheduled date</mat-label>
-      <input matInput type="datetime-local" formControlName="scheduledAtLocal" />
-    </mat-form-field>
+    <div class="schedule-fields">
+      <mat-form-field appearance="outline">
+        <mat-label>Scheduled date</mat-label>
+        <input
+          matInput
+          [matDatepicker]="addSchedulePicker"
+          [min]="minScheduleDate"
+          formControlName="scheduledDate"
+        />
+        <mat-datepicker-toggle matIconSuffix [for]="addSchedulePicker"></mat-datepicker-toggle>
+        <mat-datepicker #addSchedulePicker></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Scheduled time</mat-label>
+        <mat-select formControlName="scheduledTime">
+          @for (option of timeOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
 
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Court name</mat-label>

@@ -1,6 +1,8 @@
 import { Component, inject, input, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { provideNativeDateAdapter } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -12,6 +14,17 @@ import {
   UpdateCourtSittingRequest,
 } from '../models/case.models';
 import { CaseApiService } from '../services/case-api.service';
+import {
+  buildTimeOfDayOptions,
+  combineDateAndTime,
+  defaultScheduleDate,
+  ensureTimeOptionPresent,
+  splitIsoToDateAndTime,
+  startOfToday,
+  TimeOfDayOption,
+} from '../../../shared/utils/schedule-time.util';
+
+const DEFAULT_SCHEDULE_TIME = '10:00';
 
 export function isCourtSittingPastDue(item: CourtSittingDto): boolean {
   return item.status === 'Upcoming'
@@ -21,9 +34,11 @@ export function isCourtSittingPastDue(item: CourtSittingDto): boolean {
 
 @Component({
   selector: 'app-case-court-sittings',
+  providers: [provideNativeDateAdapter()],
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
+    MatDatepickerModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -45,8 +60,14 @@ export class CaseCourtSittingsComponent implements OnInit {
   readonly errorMessage = signal<string | null>(null);
   readonly formErrorMessage = signal<string | null>(null);
 
+  readonly minScheduleDate = startOfToday();
+  readonly timeOptions = buildTimeOfDayOptions(15);
+  readonly updateScheduledTimeOptions = signal<TimeOfDayOption[]>(this.timeOptions);
+  readonly updateNextCourtTimeOptions = signal<TimeOfDayOption[]>(this.timeOptions);
+
   readonly addForm = this.fb.nonNullable.group({
-    scheduledAtLocal: ['', Validators.required],
+    scheduledDate: this.fb.control<Date | null>(defaultScheduleDate(), Validators.required),
+    scheduledTime: [DEFAULT_SCHEDULE_TIME, Validators.required],
     courtName: ['', [Validators.required, Validators.maxLength(256)]],
     purpose: ['', [Validators.required, Validators.maxLength(512)]],
     status: ['Upcoming' as CourtSittingStatus, Validators.required],
@@ -56,12 +77,14 @@ export class CaseCourtSittingsComponent implements OnInit {
 
   readonly updateForm = this.fb.nonNullable.group({
     status: ['Upcoming' as CourtSittingStatus, Validators.required],
-    scheduledAtLocal: ['', Validators.required],
+    scheduledDate: this.fb.control<Date | null>(null, Validators.required),
+    scheduledTime: ['', Validators.required],
     courtName: ['', [Validators.required, Validators.maxLength(256)]],
     purpose: ['', [Validators.required, Validators.maxLength(512)]],
     notes: ['', Validators.maxLength(2000)],
     outcome: ['', Validators.maxLength(2000)],
-    nextCourtAtLocal: [''],
+    nextCourtDate: this.fb.control<Date | null>(null),
+    nextCourtTime: [''],
   });
 
   async ngOnInit(): Promise<void> {
@@ -102,9 +125,9 @@ export class CaseCourtSittingsComponent implements OnInit {
     }
 
     const value = this.addForm.getRawValue();
-    const scheduled = new Date(value.scheduledAtLocal);
-    if (Number.isNaN(scheduled.getTime())) {
-      this.formErrorMessage.set('Scheduled date is invalid.');
+    const scheduled = combineDateAndTime(value.scheduledDate, value.scheduledTime);
+    if (!scheduled || Number.isNaN(scheduled.getTime())) {
+      this.formErrorMessage.set('Pick a scheduled date and time.');
       return;
     }
 
@@ -133,7 +156,8 @@ export class CaseCourtSittingsComponent implements OnInit {
     try {
       await this.caseApi.createCourtSitting(this.caseId(), request);
       this.addForm.reset({
-        scheduledAtLocal: '',
+        scheduledDate: defaultScheduleDate(),
+        scheduledTime: DEFAULT_SCHEDULE_TIME,
         courtName: '',
         purpose: '',
         status: 'Upcoming',
@@ -150,14 +174,22 @@ export class CaseCourtSittingsComponent implements OnInit {
 
   startUpdate(item: CourtSittingDto): void {
     this.updatingId.set(item.id ?? null);
+    const scheduled = splitIsoToDateAndTime(item.scheduledAtUtc);
+    const nextCourt = splitIsoToDateAndTime(item.nextCourtAtUtc);
+    // The stored time may not land on the fixed step (e.g. legacy data at :07) — merge it
+    // in as an extra option so the select shows the real value instead of going blank.
+    this.updateScheduledTimeOptions.set(ensureTimeOptionPresent(this.timeOptions, scheduled.time));
+    this.updateNextCourtTimeOptions.set(ensureTimeOptionPresent(this.timeOptions, nextCourt.time));
     this.updateForm.setValue({
       status: (item.status as CourtSittingStatus) ?? 'Upcoming',
-      scheduledAtLocal: this.toLocalInputValue(item.scheduledAtUtc),
+      scheduledDate: scheduled.date,
+      scheduledTime: scheduled.time,
       courtName: item.courtName ?? '',
       purpose: item.purpose ?? '',
       notes: item.notes ?? '',
       outcome: item.outcome ?? '',
-      nextCourtAtLocal: this.toLocalInputValue(item.nextCourtAtUtc),
+      nextCourtDate: nextCourt.date,
+      nextCourtTime: nextCourt.time,
     });
   }
 
@@ -172,9 +204,9 @@ export class CaseCourtSittingsComponent implements OnInit {
     }
 
     const value = this.updateForm.getRawValue();
-    const scheduled = new Date(value.scheduledAtLocal);
-    if (Number.isNaN(scheduled.getTime())) {
-      this.formErrorMessage.set('Scheduled date is invalid.');
+    const scheduled = combineDateAndTime(value.scheduledDate, value.scheduledTime);
+    if (!scheduled || Number.isNaN(scheduled.getTime())) {
+      this.formErrorMessage.set('Pick a scheduled date and time.');
       return;
     }
 
@@ -198,8 +230,9 @@ export class CaseCourtSittingsComponent implements OnInit {
       outcome: value.outcome.trim() || null,
     };
 
-    if (value.status === 'Postponed' && value.nextCourtAtLocal) {
-      request.nextCourtAtUtc = new Date(value.nextCourtAtLocal).toISOString();
+    const nextCourt = combineDateAndTime(value.nextCourtDate, value.nextCourtTime);
+    if (value.status === 'Postponed' && nextCourt) {
+      request.nextCourtAtUtc = nextCourt.toISOString();
     } else if (value.status === 'Postponed') {
       request.nextCourtAtUtc = null;
     }
@@ -222,18 +255,5 @@ export class CaseCourtSittingsComponent implements OnInit {
       return '';
     }
     return new Date(value).toLocaleString();
-  }
-
-  private toLocalInputValue(value: string | null | undefined): string {
-    if (!value) {
-      return '';
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return '';
-    }
-    return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
   }
 }

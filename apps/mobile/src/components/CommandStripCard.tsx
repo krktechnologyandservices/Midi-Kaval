@@ -1,6 +1,14 @@
 import Geolocation from '@react-native-community/geolocation';
 import React, {useState} from 'react';
-import {ActivityIndicator, Alert, Pressable, StyleSheet, Text, View} from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import {SyncChip} from './SyncChip';
 import {SyncChipPresentation} from '../services/sync/resolveVisitSyncChip';
 import {VisitListItemDto, VisitPlaceDto} from '../services/visits/visit.models';
@@ -57,7 +65,43 @@ function PlaceRow({
   onLogged?: (visitId: string, place: VisitPlaceDto) => void;
 }): React.JSX.Element {
   const [logging, setLogging] = useState(false);
+  const [editingComment, setEditingComment] = useState(false);
+  const [commentDraft, setCommentDraft] = useState(place.comment ?? '');
+  const [savingComment, setSavingComment] = useState(false);
   const isLogged = !!place.loggedAtUtc;
+
+  const startEditComment = (): void => {
+    setCommentDraft(place.comment ?? '');
+    setEditingComment(true);
+  };
+
+  const cancelEditComment = (): void => {
+    setEditingComment(false);
+  };
+
+  const saveComment = async (): Promise<void> => {
+    if (savingComment) {
+      return;
+    }
+
+    setSavingComment(true);
+    try {
+      const updated = await visitApiService.updatePlaceComment(
+        visitId,
+        place.id,
+        commentDraft.trim(),
+      );
+      onLogged?.(visitId, updated);
+      setEditingComment(false);
+    } catch (error) {
+      Alert.alert(
+        'Could not save note',
+        error instanceof Error ? error.message : 'Check connection and try again.',
+      );
+    } finally {
+      setSavingComment(false);
+    }
+  };
 
   const navigate = (): void => {
     void openPlaceInMaps({
@@ -98,29 +142,76 @@ function PlaceRow({
       <Text style={styles.placeStatus}>
         {isLogged ? `Logged ${new Date(place.loggedAtUtc!).toLocaleString()}` : 'Not yet visited'}
       </Text>
-      <View style={styles.placeActions}>
-        <Pressable
-          style={styles.placeButton}
-          onPress={navigate}
-          accessibilityRole="button"
-          accessibilityLabel={`Navigate to ${place.address}`}>
-          <Text style={styles.placeButtonText}>Navigate</Text>
-        </Pressable>
-        {!isLogged ? (
-          <Pressable
-            style={[styles.placeButton, logging ? styles.primaryDisabled : null]}
-            onPress={() => void logLocation()}
-            disabled={logging}
-            accessibilityRole="button"
-            accessibilityLabel={`Log location for ${place.address}`}>
-            {logging ? (
-              <ActivityIndicator size="small" color="#0D6E6E" />
-            ) : (
-              <Text style={styles.placeButtonText}>Log this location</Text>
-            )}
-          </Pressable>
-        ) : null}
-      </View>
+
+      {editingComment ? (
+        <View style={styles.commentEditRow}>
+          <TextInput
+            style={styles.commentInput}
+            value={commentDraft}
+            onChangeText={setCommentDraft}
+            multiline
+            maxLength={1000}
+            placeholder="Add a note about this location…"
+            placeholderTextColor="#98A2B3"
+            accessibilityLabel={`Note for ${place.address}`}
+          />
+          <View style={styles.placeActions}>
+            <Pressable
+              style={[styles.placeButton, savingComment ? styles.primaryDisabled : null]}
+              onPress={() => void saveComment()}
+              disabled={savingComment}
+              accessibilityRole="button"
+              accessibilityLabel="Save note">
+              {savingComment ? (
+                <ActivityIndicator size="small" color="#0D6E6E" />
+              ) : (
+                <Text style={styles.placeButtonText}>Save note</Text>
+              )}
+            </Pressable>
+            <Pressable
+              style={styles.placeButton}
+              onPress={cancelEditComment}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel note edit">
+              <Text style={styles.placeButtonText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <>
+          {place.comment ? <Text style={styles.placeComment}>{place.comment}</Text> : null}
+          <View style={styles.placeActions}>
+            <Pressable
+              style={styles.placeButton}
+              onPress={navigate}
+              accessibilityRole="button"
+              accessibilityLabel={`Navigate to ${place.address}`}>
+              <Text style={styles.placeButtonText}>Navigate</Text>
+            </Pressable>
+            {!isLogged ? (
+              <Pressable
+                style={[styles.placeButton, logging ? styles.primaryDisabled : null]}
+                onPress={() => void logLocation()}
+                disabled={logging}
+                accessibilityRole="button"
+                accessibilityLabel={`Log location for ${place.address}`}>
+                {logging ? (
+                  <ActivityIndicator size="small" color="#0D6E6E" />
+                ) : (
+                  <Text style={styles.placeButtonText}>Log this location</Text>
+                )}
+              </Pressable>
+            ) : null}
+            <Pressable
+              style={styles.placeButton}
+              onPress={startEditComment}
+              accessibilityRole="button"
+              accessibilityLabel={`${place.comment ? 'Edit' : 'Add'} note for ${place.address}`}>
+              <Text style={styles.placeButtonText}>{place.comment ? 'Edit note' : 'Add note'}</Text>
+            </Pressable>
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -311,6 +402,25 @@ const styles = StyleSheet.create({
   placeStatus: {
     fontSize: 12,
     color: '#667085',
+  },
+  placeComment: {
+    fontSize: 12,
+    color: '#475467',
+    fontStyle: 'italic',
+  },
+  commentEditRow: {
+    gap: 6,
+  },
+  commentInput: {
+    borderWidth: 1,
+    borderColor: '#D0D5DD',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: '#101828',
+    minHeight: 44,
+    textAlignVertical: 'top',
   },
   placeActions: {
     flexDirection: 'row',

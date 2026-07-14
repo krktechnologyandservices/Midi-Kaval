@@ -6,6 +6,16 @@
   width: 100%;
 }
 
+.schedule-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.schedule-fields mat-form-field {
+  flex: 1 1 160px;
+}
+
 .error {
   color: var(--mat-sys-error, #b3261e);
 }
@@ -143,6 +153,24 @@
 .place-map-link {
   font-size: 0.8125rem;
   color: #175cd3;
+}
+
+.place-comment {
+  color: var(--mat-sys-on-surface-variant, #475467);
+  font-size: 0.8125rem;
+  font-style: italic;
+  margin: 0.25rem 0;
+}
+
+.place-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.edit-place-form,
+.remove-place-confirm {
+  margin-top: 0.25rem;
 }
 
 .add-place-form {
