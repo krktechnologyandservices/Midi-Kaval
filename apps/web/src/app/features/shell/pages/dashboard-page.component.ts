@@ -2,11 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { AppRole } from '@midi-kaval/shared-types';
 import { DashboardApiService } from '../services/dashboard-api.service';
 import { DashboardResultDto } from '../shell.models';
 import { OnlineStateService } from '../../../core/services/online-state.service';
 import { OfflineCacheService } from '../../../core/services/offline-cache.service';
 import { StaleBannerComponent } from '../../../shared/stale-banner/stale-banner.component';
+import { AuthSessionService } from '../../../core/auth/auth-session.service';
 
 const SKELETON_WIDGET_COUNT = 10;
 const CACHE_KEY = 'dashboard';
@@ -21,7 +23,16 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(DashboardApiService);
   private readonly onlineState = inject(OnlineStateService);
   private readonly offlineCache = inject(OfflineCacheService);
+  private readonly auth = inject(AuthSessionService);
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
+
+  // Directors can see the full pending-claims list (/admin/travel-claims); Coordinators
+  // can't (Director-only guard) but do see pending claims within the Crisis Queue, so
+  // route them there instead — mirrors the same role split already used for Crisis
+  // Queue row navigation.
+  readonly pendingClaimsLink = computed(() =>
+    this.auth.currentUser()?.role === AppRole.Director ? '/admin/travel-claims' : '/crisis-queue',
+  );
 
   readonly data = signal<DashboardResultDto | null>(null);
   readonly loading = signal(true);

@@ -1,8 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { signal } from '@angular/core';
+import { AppRole } from '@midi-kaval/shared-types';
 import { DashboardApiService } from '../services/dashboard-api.service';
 import { DashboardResultDto } from '../shell.models';
 import { DashboardPageComponent } from './dashboard-page.component';
+import { AuthSessionService } from '../../../core/auth/auth-session.service';
 
 const fullDashboardData: DashboardResultDto = {
   casesByStage: [
@@ -79,11 +82,16 @@ describe('DashboardPageComponent', () => {
     dashboardApi.get.and.resolveTo(fullDashboardData);
     dashboardApi.extractErrorMessage.and.returnValue('Failed to load dashboard');
 
+    const authStub = {
+      currentUser: signal<{ role: AppRole } | null>({ role: AppRole.Director }),
+    } as unknown as AuthSessionService;
+
     await TestBed.configureTestingModule({
       imports: [DashboardPageComponent],
       providers: [
         provideRouter([]),
         { provide: DashboardApiService, useValue: dashboardApi },
+        { provide: AuthSessionService, useValue: authStub },
       ],
     }).compileComponents();
 

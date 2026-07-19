@@ -30,6 +30,9 @@ export class SupervisorShellComponent {
     { label: 'Reports', path: '/reports', icon: 'bar_chart', roles: COORDINATOR_OR_ABOVE },
     { label: 'Budgets', path: '/budgets', icon: 'account_balance_wallet', roles: BUDGET_VIEWERS },
     { label: 'Legends', path: '/legends', icon: 'list_alt', roles: COORDINATOR_OR_ABOVE },
+    // Director-only to match /admin/travel-claims' directorGuard — Coordinators still see
+    // pending claims via the Crisis Queue, just not this standalone list/approval page.
+    { label: 'Travel Claims', path: '/admin/travel-claims', icon: 'receipt_long', roles: [AppRole.Director] },
     { label: 'Admin', path: '/admin', icon: 'admin_panel_settings', roles: [AppRole.Director] },
   ];
 
